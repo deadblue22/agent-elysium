@@ -1,0 +1,285 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900"
+     font-family="'Noto Serif SC','Source Han Serif SC','Songti SC','PingFang SC','EB Garamond',serif">
+  <defs>
+    <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#31241a"/>
+      <stop offset="1" stop-color="#1a120c"/>
+    </linearGradient>
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a3554"/>
+      <stop offset="1" stop-color="#1f2a44"/>
+    </linearGradient>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9fb0b6"/>
+      <stop offset="1" stop-color="#c7cfcc"/>
+    </linearGradient>
+    <linearGradient id="pageL" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#e8dcc4"/>
+      <stop offset="0.93" stop-color="#e3d6bd"/>
+      <stop offset="1" stop-color="#cfc1a6"/>
+    </linearGradient>
+    <linearGradient id="pageR" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#cfc1a6"/>
+      <stop offset="0.07" stop-color="#e6dac2"/>
+      <stop offset="1" stop-color="#ede2cb"/>
+    </linearGradient>
+    <pattern id="stripes" width="26" height="26" patternUnits="userSpaceOnUse">
+      <rect width="26" height="26" fill="none"/>
+      <rect x="0" y="0" width="6" height="26" fill="#ffffff" opacity="0.035"/>
+    </pattern>
+    <pattern id="woodgrain" width="1600" height="18" patternUnits="userSpaceOnUse">
+      <rect width="1600" height="1" y="9" fill="#000" opacity="0.18"/>
+    </pattern>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+    <filter id="soft" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+
+  <!-- 木桌 -->
+  <rect width="1600" height="900" fill="url(#wood)"/>
+  <rect width="1600" height="900" fill="url(#woodgrain)"/>
+
+  <!-- 书页 -->
+  <g filter="url(#shadow)">
+    <path d="M285 520 L800 520 L800 862 L178 866 Z" fill="url(#pageL)"/>
+    <path d="M800 520 L1315 520 L1422 866 L800 862 Z" fill="url(#pageR)"/>
+    <path d="M178 866 L800 862 L1422 866 L1426 880 L174 880 Z" fill="#d9ccb2"/>
+    <path d="M174 880 L1426 880 L1428 890 L172 890 Z" fill="#c4b59a"/>
+  </g>
+  <line x1="800" y1="520" x2="800" y2="862" stroke="#8a7a5c" stroke-width="2" opacity="0.6"/>
+
+  <!-- 立体背景板：书房后墙 -->
+  <g filter="url(#shadow)">
+    <path d="M310 150
+             Q360 118 410 150 Q460 118 510 150 Q560 118 610 150 Q660 118 710 150 Q760 118 810 150
+             Q860 118 910 150 Q960 118 1010 150 Q1060 118 1110 150 Q1160 118 1210 150 Q1260 118 1310 150
+             L1315 520 L285 520 Z" fill="url(#wall)"/>
+  </g>
+  <path d="M310 150 Q360 118 410 150 Q460 118 510 150 Q560 118 610 150 Q660 118 710 150 Q760 118 810 150
+           Q860 118 910 150 Q960 118 1010 150 Q1060 118 1110 150 Q1160 118 1210 150 Q1260 118 1310 150
+           L1315 520 L285 520 Z" fill="url(#stripes)"/>
+  <!-- 踢脚线与折缝阴影 -->
+  <rect x="285" y="496" width="1030" height="24" fill="#151c30" opacity="0.8"/>
+  <rect x="285" y="516" width="1030" height="6" fill="#000" opacity="0.35"/>
+
+  <!-- 书架 -->
+  <g filter="url(#soft)">
+    <rect x="340" y="215" width="230" height="286" fill="#3f6e68"/>
+    <rect x="352" y="228" width="206" height="6" fill="#2b4f4a"/>
+    <rect x="352" y="300" width="206" height="6" fill="#2b4f4a"/>
+    <rect x="352" y="372" width="206" height="6" fill="#2b4f4a"/>
+    <rect x="352" y="444" width="206" height="6" fill="#2b4f4a"/>
+    <!-- 书脊 -->
+    <g>
+      <rect x="360" y="240" width="18" height="58" fill="#c9a05a"/>
+      <rect x="382" y="248" width="14" height="50" fill="#c2562b"/>
+      <rect x="400" y="236" width="22" height="62" fill="#7a8c7e"/>
+      <rect x="426" y="252" width="12" height="46" fill="#e8dcc4"/>
+      <rect x="442" y="242" width="20" height="56" fill="#a3232b"/>
+      <rect x="466" y="250" width="16" height="48" fill="#c9a05a"/>
+      <rect x="486" y="238" width="24" height="60" fill="#2b2622"/>
+      <rect x="514" y="254" width="14" height="44" fill="#7a8c7e"/>
+      <rect x="532" y="244" width="20" height="54" fill="#c2562b"/>
+      <rect x="360" y="318" width="26" height="52" fill="#7a8c7e"/>
+      <rect x="390" y="310" width="14" height="60" fill="#e8dcc4"/>
+      <rect x="408" y="322" width="20" height="48" fill="#c9a05a"/>
+      <rect x="432" y="314" width="18" height="56" fill="#2b2622"/>
+      <rect x="454" y="326" width="30" height="44" fill="#a3232b"/>
+      <rect x="488" y="312" width="16" height="58" fill="#c2562b"/>
+      <rect x="508" y="320" width="22" height="50" fill="#7a8c7e"/>
+      <rect x="534" y="316" width="18" height="54" fill="#c9a05a"/>
+      <rect x="360" y="392" width="20" height="50" fill="#a3232b"/>
+      <rect x="384" y="386" width="16" height="56" fill="#c9a05a"/>
+      <rect x="404" y="396" width="28" height="46" fill="#e8dcc4"/>
+      <rect x="436" y="388" width="14" height="54" fill="#2b2622"/>
+      <rect x="454" y="394" width="22" height="48" fill="#7a8c7e"/>
+      <rect x="480" y="384" width="18" height="58" fill="#c2562b"/>
+      <rect x="502" y="398" width="24" height="44" fill="#c9a05a"/>
+      <rect x="530" y="390" width="22" height="52" fill="#2b2622"/>
+    </g>
+  </g>
+
+  <!-- 壁炉与钟 -->
+  <g filter="url(#soft)">
+    <rect x="600" y="330" width="210" height="171" fill="#4a4034"/>
+    <rect x="590" y="318" width="230" height="16" fill="#c9a05a"/>
+    <rect x="636" y="362" width="138" height="139" fill="#0f0d0b"/>
+    <rect x="636" y="362" width="138" height="139" fill="url(#stripes)"/>
+  </g>
+  <!-- 钟：指针停在 23:40 -->
+  <g filter="url(#soft)">
+    <rect x="668" y="252" width="74" height="66" rx="6" fill="#8a6a2e"/>
+    <circle cx="705" cy="284" r="26" fill="#e8dcc4"/>
+    <circle cx="705" cy="284" r="26" fill="none" stroke="#2b2622" stroke-width="2"/>
+    <line x1="705" y1="284" x2="700" y2="266" stroke="#2b2622" stroke-width="3" stroke-linecap="round"/>
+    <line x1="705" y1="284" x2="686" y2="273" stroke="#2b2622" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="705" cy="284" r="2.5" fill="#2b2622"/>
+  </g>
+
+  <!-- 窗：开着，窗外下雪 -->
+  <g filter="url(#soft)">
+    <rect x="880" y="190" width="220" height="252" fill="#c9bba0"/>
+    <rect x="894" y="204" width="192" height="224" fill="url(#sky)"/>
+    <!-- 远处纸山 -->
+    <path d="M894 400 L930 350 L960 380 L1000 330 L1040 372 L1086 340 L1086 428 L894 428 Z" fill="#7a8c7e" opacity="0.7"/>
+    <rect x="988" y="204" width="6" height="224" fill="#c9bba0"/>
+    <rect x="894" y="312" width="192" height="6" fill="#c9bba0"/>
+    <!-- 窗台的雪 -->
+    <path d="M876 438 L1104 438 L1104 452 L876 452 Z" fill="#c9bba0"/>
+    <path d="M880 430 Q900 422 930 432 Q960 424 990 432 Q1020 422 1050 432 Q1080 424 1100 432 L1100 438 L880 438 Z" fill="#f2efe6"/>
+    <!-- 向外推开的窗扇 -->
+    <path d="M1100 200 L1160 234 L1160 400 L1100 436 Z" fill="#d8cbb0" opacity="0.9"/>
+    <path d="M1108 214 L1150 242 L1150 392 L1108 420 Z" fill="#b9c4c6" opacity="0.9"/>
+    <!-- 窗外的雪片 -->
+    <g fill="#f2efe6" opacity="0.9">
+      <circle cx="910" cy="230" r="3"/><circle cx="950" cy="262" r="2.4"/><circle cx="1010" cy="222" r="3"/>
+      <circle cx="1060" cy="270" r="2.4"/><circle cx="925" cy="300" r="2"/><circle cx="1040" cy="340" r="2.6"/>
+      <circle cx="970" cy="360" r="2"/><circle cx="1075" cy="386" r="2.4"/><circle cx="905" cy="384" r="2.6"/>
+    </g>
+  </g>
+  <!-- 纸窗帘 -->
+  <path d="M860 190 L880 190 L888 320 Q870 360 884 442 L860 442 Z" fill="#e8dcc4" opacity="0.85" filter="url(#soft)"/>
+
+  <!-- 中景：书桌与伏案的剪影 -->
+  <g filter="url(#soft)">
+    <!-- 椅背 -->
+    <rect x="712" y="410" width="60" height="64" rx="4" fill="#2f4f4a"/>
+    <!-- 伏案的人：肩背弓起，头枕在桌面的账本上 -->
+    <path d="M716 472 Q722 436 758 434 Q790 434 806 462 L806 472 Z" fill="#7a8c7e"/>
+    <circle cx="822" cy="458" r="15" fill="#7a8c7e"/>
+    <path d="M806 452 L818 446 L830 452 L830 472 L806 472 Z" fill="#7a8c7e"/>
+    <!-- 桌面 -->
+    <path d="M640 472 L1010 472 L1030 486 L620 486 Z" fill="#2f4f4a"/>
+    <rect x="640" y="486" width="390" height="34" fill="#243f3b"/>
+    <!-- 账本、烛台 -->
+    <rect x="800" y="464" width="72" height="10" fill="#e8dcc4"/>
+    <rect x="800" y="464" width="72" height="10" fill="none" stroke="#2b2622" stroke-width="1"/>
+    <rect x="920" y="436" width="8" height="36" fill="#c9a05a"/>
+    <rect x="912" y="468" width="24" height="6" fill="#c9a05a"/>
+  </g>
+  <!-- 折缝处的纸片：散落的纸页 -->
+  <g filter="url(#soft)">
+    <path d="M1060 500 L1110 494 L1116 520 L1066 520 Z" fill="#e8dcc4"/>
+    <path d="M300 506 L350 498 L356 520 L306 520 Z" fill="#e8dcc4"/>
+  </g>
+
+  <!-- 右页：纸偶 -->
+  <!-- 维隆 -->
+  <g filter="url(#soft)">
+    <ellipse cx="960" cy="782" rx="54" ry="5" fill="#000" opacity="0.28"/>
+    <path d="M934 780 L924 640 Q960 610 996 640 L988 780 Z" fill="#1f2a44"/>
+    <path d="M924 650 Q960 664 996 650 L994 672 Q960 684 926 672 Z" fill="#c2562b"/>
+    <circle cx="960" cy="628" r="20" fill="#e8dcc4"/>
+    <path d="M928 620 L992 620 L986 606 Q960 594 934 606 Z" fill="#2b2622"/>
+    <rect x="928" y="616" width="64" height="6" fill="#2b2622"/>
+    <circle cx="968" cy="634" r="2" fill="#2b2622"/>
+    <line x1="976" y1="642" x2="990" y2="648" stroke="#e8dcc4" stroke-width="3"/>
+    <circle cx="991" cy="648" r="3" fill="#c2562b"/>
+    <circle cx="991" cy="648" r="9" fill="#c2562b" opacity="0.35" filter="url(#glow)"/>
+  </g>
+  <!-- 卡斯克 -->
+  <g filter="url(#soft)">
+    <ellipse cx="1180" cy="782" rx="48" ry="5" fill="#000" opacity="0.28"/>
+    <path d="M1158 780 L1150 650 Q1180 626 1210 650 L1204 780 Z" fill="#7a8c7e"/>
+    <rect x="1150" y="650" width="60" height="4" fill="#5f6f63"/>
+    <circle cx="1180" cy="632" r="19" fill="#e8dcc4"/>
+    <path d="M1161 626 Q1180 606 1199 626 L1199 634 Q1180 616 1161 634 Z" fill="#2b2622"/>
+    <circle cx="1173" cy="636" r="5" fill="none" stroke="#2b2622" stroke-width="1.6"/>
+    <circle cx="1187" cy="636" r="5" fill="none" stroke="#2b2622" stroke-width="1.6"/>
+    <line x1="1178" y1="636" x2="1182" y2="636" stroke="#2b2622" stroke-width="1.6"/>
+    <rect x="1132" y="684" width="26" height="34" rx="2" fill="#f2efe6" stroke="#2b2622" stroke-width="1"/>
+    <line x1="1137" y1="694" x2="1153" y2="694" stroke="#7a8c7e" stroke-width="1.2"/>
+    <line x1="1137" y1="702" x2="1153" y2="702" stroke="#7a8c7e" stroke-width="1.2"/>
+    <line x1="1137" y1="710" x2="1149" y2="710" stroke="#7a8c7e" stroke-width="1.2"/>
+  </g>
+  <!-- 骰子：4 与 5 -->
+  <g filter="url(#soft)">
+    <g transform="translate(1248 812) rotate(-14)">
+      <rect x="-22" y="-22" width="44" height="44" rx="5" fill="#f2efe6" stroke="#2b2622" stroke-width="1.5"/>
+      <g fill="#c2562b">
+        <circle cx="-11" cy="-11" r="4"/><circle cx="11" cy="-11" r="4"/>
+        <circle cx="-11" cy="11" r="4"/><circle cx="11" cy="11" r="4"/>
+      </g>
+    </g>
+    <g transform="translate(1316 800) rotate(12)">
+      <rect x="-22" y="-22" width="44" height="44" rx="5" fill="#f2efe6" stroke="#2b2622" stroke-width="1.5"/>
+      <g fill="#c2562b">
+        <circle cx="-11" cy="-11" r="4"/><circle cx="11" cy="-11" r="4"/><circle cx="0" cy="0" r="4"/>
+        <circle cx="-11" cy="11" r="4"/><circle cx="11" cy="11" r="4"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- 士气 -->
+  <g transform="translate(1290 590)">
+    <text x="0" y="0" font-size="14" fill="#8a7a5c" letter-spacing="2">士气</text>
+    <g transform="translate(48 -12)">
+      <path d="M8 14 L1 6 Q-2 0 4 0 Q8 0 8 4 Q8 0 12 0 Q18 0 15 6 Z" fill="#a3232b"/>
+      <path transform="translate(22 0)" d="M8 14 L1 6 Q-2 0 4 0 Q8 0 8 4 Q8 0 12 0 Q18 0 15 6 Z" fill="#a3232b"/>
+      <path transform="translate(44 0)" d="M8 14 L1 6 Q-2 0 4 0 Q8 0 8 4 Q8 0 12 0 Q18 0 15 6 Z" fill="#a3232b"/>
+      <path transform="translate(66 0)" d="M8 14 L1 6 Q-2 0 4 0 Q8 0 8 4 Q8 0 12 0 Q18 0 15 6 Z" fill="#a3232b" opacity="0.25"/>
+    </g>
+  </g>
+
+  <!-- 左页：文字日志 -->
+  <g font-size="19" fill="#2b2622">
+    <text x="300" y="566" font-family="'JetBrains Mono','LXGW WenKai Mono','Menlo',monospace" font-size="17" fill="#c2562b" opacity="0.55">&gt; 检查壁炉上的钟。</text>
+    <text x="300" y="598">一座黄铜座钟，玻璃罩里的钟摆一动不动。</text>
+    <text x="300" y="626">指针停在 23:40。</text>
+
+    <text x="300" y="664" font-family="'Noto Sans SC','Source Han Sans SC','Inter',sans-serif" font-size="15" font-weight="700" fill="#6fa8dc" letter-spacing="3">博学多闻</text>
+    <text x="380" y="664" font-size="18">这种带钟摆的座钟受到撞击时会停摆。</text>
+    <text x="300" y="690" font-size="18">作家们很喜欢。凶手们也很喜欢。</text>
+
+    <text x="300" y="726" font-family="'JetBrains Mono','LXGW WenKai Mono','Menlo',monospace" font-size="17" fill="#c2562b" opacity="0.55">&gt; 把钟转过来看背面。</text>
+
+    <!-- 检定标签 -->
+    <g transform="translate(300 742)">
+      <rect x="0" y="0" width="170" height="26" rx="3" fill="#f2efe6" stroke="#2b2622" stroke-width="1"/>
+      <text x="10" y="18" font-family="'Noto Sans SC','Source Han Sans SC','Inter',sans-serif" font-size="14" font-weight="700" fill="#6fa8dc" letter-spacing="2">视觉计算</text>
+      <text x="86" y="18" font-family="'Noto Sans SC','Source Han Sans SC','Inter',sans-serif" font-size="13" fill="#2b2622">[中等 10]</text>
+      <text x="184" y="18" font-family="'JetBrains Mono','Menlo',monospace" font-size="14" fill="#2b2622">4 + 5 + 3 = 12</text>
+      <text x="318" y="18" font-family="'Noto Sans SC','Source Han Sans SC','Inter',sans-serif" font-size="14" font-weight="700" fill="#3f6e68" letter-spacing="2">成功</text>
+    </g>
+
+    <text x="300" y="796" font-family="'Noto Sans SC','Source Han Sans SC','Inter',sans-serif" font-size="15" font-weight="700" fill="#6fa8dc" letter-spacing="3">视觉计算</text>
+    <text x="380" y="796" font-size="18">后盖上的调针旋钮有新鲜的划痕。</text>
+    <text x="300" y="822" font-family="'Noto Sans SC','Source Han Sans SC','Inter',sans-serif" font-size="15" font-weight="700" fill="#7a8c7e" letter-spacing="3">卡斯克警督</text>
+    <text x="400" y="822" font-size="18">「记下了。」</text>
+
+    <text x="300" y="852" font-family="'JetBrains Mono','LXGW WenKai Mono','Menlo',monospace" font-size="17" fill="#c2562b">&gt; 回到房间中央。</text>
+    <rect x="456" y="838" width="10" height="17" fill="#c2562b"/>
+  </g>
+
+  <!-- 页眉与语言切换 -->
+  <text x="40" y="52" font-size="20" fill="#c9bba0" letter-spacing="2">《雪落之前》 第一章</text>
+  <text x="1440" y="52" font-family="'JetBrains Mono','Menlo',monospace" font-size="16" fill="#c9bba0" text-anchor="end" letter-spacing="1">中 / EN</text>
+
+  <!-- 飘落的雪片 -->
+  <g fill="#f2efe6">
+    <ellipse cx="420" cy="70" rx="5" ry="6" opacity="0.9"/>
+    <ellipse cx="640" cy="30" rx="4" ry="5" opacity="0.8"/>
+    <ellipse cx="900" cy="80" rx="6" ry="7" opacity="0.9"/>
+    <ellipse cx="1180" cy="40" rx="4" ry="5" opacity="0.8"/>
+    <ellipse cx="1400" cy="120" rx="5" ry="6" opacity="0.9"/>
+    <ellipse cx="240" cy="300" rx="4" ry="5" opacity="0.7"/>
+    <ellipse cx="1500" cy="420" rx="5" ry="6" opacity="0.7"/>
+    <ellipse cx="120" cy="620" rx="4" ry="5" opacity="0.6"/>
+    <ellipse cx="1530" cy="760" rx="4" ry="5" opacity="0.6"/>
+    <ellipse cx="760" cy="60" rx="3" ry="4" opacity="0.7"/>
+    <ellipse cx="1040" cy="20" rx="3" ry="4" opacity="0.7"/>
+  </g>
+
+  <!-- 颗粒 -->
+  <rect width="1600" height="900" filter="url(#grain)" opacity="0.09" style="mix-blend-mode:multiply"/>
+</svg>
