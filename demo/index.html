@@ -34,10 +34,14 @@
   --sans:"Elysium Sans SC","Inter","Noto Sans SC","Source Han Sans SC","PingFang SC","Microsoft YaHei","WenQuanYi Zen Hei",sans-serif;
   --mono:"Elysium Mono","JetBrains Mono","Elysium Mono SC","LXGW WenKai Mono","LXGW WenKai Mono TC","Noto Sans Mono CJK SC","DejaVu Sans Mono","Liberation Mono","WenQuanYi Zen Hei Mono","WenQuanYi Zen Hei",monospace;
 
-  /* pop-up geometry */
-  --theta:44deg;   /* pages tilted away from the viewer */
-  --phi:72deg;     /* backdrop layers rise from the page at this angle */
-  --phi-pup:78deg; /* paper puppets stand a little straighter */
+  /* pop-up geometry (the log overlay's JS reads these too) */
+  --theta:22deg;     /* pages tilted away from the viewer: a high, reading-friendly viewpoint */
+  --phi:70deg;       /* backdrop planes rise from the page at this angle */
+  --phi-pup:70deg;   /* puppets are hinged exactly like the room planes */
+  --persp:3200px;
+  --po-x:800px; --po-y:100px;
+  --book-left:130px; --book-top:288px; --book-w:1340px; --book-h:600px; --gutter:670px;
+  --log-ink:#1E1A16;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:#0b0806;overflow:hidden}
@@ -49,37 +53,37 @@ html,body{height:100%;background:#0b0806;overflow:hidden}
 .table-svg{inset:0;width:1600px;height:900px}
 
 /* ---------- 3D book ---------- */
-.scene{inset:0;perspective:1900px;perspective-origin:800px 100px}
-.book{position:absolute;left:130px;top:292px;width:1340px;height:580px;transform-style:preserve-3d;transform-origin:50% 100%;
-  transform:rotateX(var(--theta)) rotateZ(var(--rz,0deg))}
+.scene{inset:0;perspective:var(--persp);perspective-origin:var(--po-x) var(--po-y)}
+.book{position:absolute;left:var(--book-left);top:var(--book-top);width:var(--book-w);height:var(--book-h);transform-style:preserve-3d;transform-origin:50% 100%;
+  transform:rotateX(var(--theta))}
 .book > *{position:absolute}
-.cover{left:-18px;top:-6px;width:1376px;height:610px;transform:translateZ(-21px);border-radius:3px 3px 8px 8px;
+.cover{left:-18px;top:-6px;width:1376px;height:630px;transform:translateZ(-21px);border-radius:3px 3px 8px 8px;
   background:linear-gradient(180deg,#1a2031,#141926 70%,#10141e);
   box-shadow:inset 0 0 0 1px rgba(160,170,200,.07),inset 0 -2px 0 rgba(200,190,160,.10)}
-.cover-edge{left:-18px;top:604px;width:1376px;height:6px;transform-origin:50% 0;transform:translateZ(-21px) rotateX(-90deg);
+.cover-edge{left:-18px;top:624px;width:1376px;height:6px;transform-origin:50% 0;transform:translateZ(-21px) rotateX(-90deg);
   background:linear-gradient(180deg,#252b3d,#0e1119)}
-.sheet{top:2px;height:580px;background:#cbbb98;border-radius:2px}
-.sheet.l1{left:-4px;width:607px;transform:translateZ(-4px);background:#c8b793}
-.sheet.l2{left:-8px;width:611px;transform:translateZ(-13px);background:#b9a782}
-.sheet.r1{left:603px;width:741px;transform:translateZ(-4px);background:#c8b793}
-.sheet.r2{left:603px;width:745px;transform:translateZ(-13px);background:#b9a782}
-.stack{left:-2px;top:580px;width:1344px;height:20px;transform-origin:50% 0;transform:rotateX(-90deg)}
+.sheet{top:2px;height:600px;background:#cbbb98;border-radius:2px}
+.sheet.l1{left:-4px;width:674px;transform:translateZ(-4px);background:#c8b793}
+.sheet.l2{left:-8px;width:678px;transform:translateZ(-13px);background:#b9a782}
+.sheet.r1{left:670px;width:674px;transform:translateZ(-4px);background:#c8b793}
+.sheet.r2{left:670px;width:678px;transform:translateZ(-13px);background:#b9a782}
+.stack{left:-2px;top:600px;width:1344px;height:20px;transform-origin:50% 0;transform:rotateX(-90deg)}
 .stack svg{display:block;width:100%;height:100%}
 
-.pages{left:0;top:0;width:1340px;height:580px;overflow:hidden;will-change:transform;border-radius:1px 1px 3px 3px;
+.pages{left:0;top:0;width:1340px;height:600px;overflow:hidden;will-change:transform;border-radius:1px 1px 3px 3px;
   background:
-    linear-gradient(90deg,rgba(58,38,18,.30) 0,rgba(58,38,18,0) 70px,rgba(58,38,18,0) 500px,rgba(70,48,24,.10) 560px,rgba(45,28,12,.42) 598px,rgba(30,18,8,.62) 603px,rgba(45,28,12,.36) 609px,rgba(70,48,24,.08) 650px,rgba(58,38,18,0) 720px,rgba(58,38,18,0) 1250px,rgba(58,38,18,.34) 1340px),
-    linear-gradient(90deg,rgba(255,248,230,0) 540px,rgba(255,248,230,.28) 572px,rgba(255,248,230,0) 590px,rgba(255,248,230,0) 618px,rgba(255,248,230,.22) 640px,rgba(255,248,230,0) 676px),
+    linear-gradient(90deg,rgba(58,38,18,.30) 0,rgba(58,38,18,0) 70px,rgba(58,38,18,0) 567px,rgba(70,48,24,.10) 627px,rgba(45,28,12,.42) 665px,rgba(30,18,8,.62) 670px,rgba(45,28,12,.36) 676px,rgba(70,48,24,.08) 717px,rgba(58,38,18,0) 787px,rgba(58,38,18,0) 1250px,rgba(58,38,18,.34) 1340px),
+    linear-gradient(90deg,rgba(255,248,230,0) 607px,rgba(255,248,230,.28) 639px,rgba(255,248,230,0) 657px,rgba(255,248,230,0) 685px,rgba(255,248,230,.22) 707px,rgba(255,248,230,0) 743px),
     linear-gradient(180deg,rgba(40,26,12,.16) 0,rgba(40,26,12,0) 30%,rgba(40,26,12,0) 80%,rgba(40,26,12,.22) 100%),
-    radial-gradient(ellipse 72% 78% at 40% 52%,#e6dbc3 0,#dccfb2 50%,#c4b393 88%,#b09e7e 100%) 0 0/603px 100% no-repeat,
-    radial-gradient(ellipse 72% 78% at 52% 46%,#e6dbc3 0,#dccfb2 50%,#c4b393 88%,#ad9b7a 100%) 603px 0/737px 100% no-repeat;
+    radial-gradient(ellipse 72% 78% at 44% 52%,#e8ddc6 0,#ded1b5 55%,#c4b393 90%,#b09e7e 100%) 0 0/670px 100% no-repeat,
+    radial-gradient(ellipse 72% 78% at 52% 46%,#e6dbc3 0,#dccfb2 50%,#c4b393 88%,#ad9b7a 100%) 670px 0/670px 100% no-repeat;
 }
 .pages > *{position:absolute}
 .pages::after{content:"";position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(180deg,rgba(18,10,4,0) 70%,rgba(18,10,4,.2) 100%),
-    radial-gradient(ellipse 60% 75% at 34% 42%,rgba(0,0,0,0) 52%,rgba(22,12,4,.34) 100%) 0 0/603px 100% no-repeat,
-    radial-gradient(ellipse 60% 75% at 56% 38%,rgba(0,0,0,0) 52%,rgba(22,12,4,.4) 100%) 603px 0/737px 100% no-repeat}
-.page-art{left:0;top:0;width:1340px;height:580px}
+  background:linear-gradient(180deg,rgba(18,10,4,0) 78%,rgba(18,10,4,.14) 100%),
+    radial-gradient(ellipse 66% 80% at 44% 46%,rgba(0,0,0,0) 62%,rgba(22,12,4,.30) 100%) 0 0/670px 100% no-repeat,
+    radial-gradient(ellipse 60% 75% at 56% 38%,rgba(0,0,0,0) 52%,rgba(22,12,4,.4) 100%) 670px 0/670px 100% no-repeat}
+.page-art{left:0;top:0;width:1340px;height:600px}
 .floor{left:0;top:0;width:1340px;height:130px;filter:drop-shadow(0 2px 1px rgba(20,12,6,.55)) drop-shadow(0 6px 7px rgba(20,12,6,.35))}
 .floor svg,.page-art svg{display:block;width:100%;height:100%;overflow:visible}
 
@@ -94,10 +98,11 @@ html,body{height:100%;background:#0b0806;overflow:hidden}
 .l-furn {top:-404px;height:430px;filter:drop-shadow(2px 3px 1.5px rgba(4,4,8,.55)) drop-shadow(8px 10px 14px rgba(4,4,8,.45))}
 .l-desk {top:-188px;height:250px;filter:drop-shadow(2px 3px 1.5px rgba(4,4,8,.55)) drop-shadow(10px 12px 16px rgba(4,4,8,.45))}
 .l-front{top:-230px;height:330px;filter:drop-shadow(2px 3px 1.5px rgba(4,4,8,.6)) drop-shadow(10px 12px 18px rgba(4,4,8,.5))}
-.pup{transform-origin:50% 100%;transform:rotateX(calc(-1 * var(--phi-pup)));will-change:transform;filter:drop-shadow(1.5px 2px 1px rgba(10,6,4,.45))}
+/* puppets: profile cut-outs hinged on the page like the room planes */
+.pup{transform-origin:50% 100%;transform:rotateX(calc(-1 * var(--phi-pup)));will-change:transform;filter:drop-shadow(1px 1.5px .8px rgba(10,6,4,.45))}
 .pup svg{display:block;width:100%;height:100%;overflow:visible}
-.pup.villon{left:688px;top:94px;width:204px;height:336px}
-.pup.kask{left:926px;top:102px;width:180px;height:312px}
+.pup.villon{left:817px;top:130px;width:114px;height:190px}
+.pup.kask{left:1015px;top:125px;width:104.5px;height:180.5px}
 
 /* dice: real little paper cubes */
 .die{width:40px;height:40px;transform-style:preserve-3d}
@@ -109,38 +114,44 @@ html,body{height:100%;background:#0b0806;overflow:hidden}
 .die .f.far{transform:rotateX(90deg) translateZ(20px);background:#b8a988}
 .die .f.right{transform:rotateY(90deg) translateZ(20px);background:#b3a384}
 .die .f.left{transform:rotateY(-90deg) translateZ(20px);background:#b9aa8a}
-.die.d1{left:1150px;top:452px;transform:translateZ(20px) rotateZ(17deg)}
-.die.d2{left:1224px;top:478px;transform:translateZ(20px) rotateZ(-26deg)}
+.die.d1{left:1168px;top:486px;transform:translateZ(20px) rotateZ(17deg)}
+.die.d2{left:1240px;top:512px;transform:translateZ(20px) rotateZ(-26deg)}
+.pno{font-family:var(--serif);font-size:12px;color:rgba(43,38,34,.45);letter-spacing:.2em;top:578px}
+.pno.r{right:48px}
+.morale{left:1128px;top:139px;font-family:var(--sans);font-size:13px;font-weight:600;letter-spacing:.35em;color:rgba(43,38,34,.72)}
 
-/* ---------- left page: the log ---------- */
-.log{left:44px;top:128px;width:536px;font-family:var(--serif);color:var(--ink);font-size:20.2px;line-height:1.6;
+/* ---------- left page: the log ----------
+   Flat 2D layer over the page (no 3D transform, so glyphs rasterise crisply).
+   JS projects the page column to screen, sizes this box to it, and shapes the left float
+   so each line starts on the page's perspective edge. */
+.log-layer{pointer-events:none}
+.log-slant{float:left;height:100%;width:0}
+.log{display:block;font-family:var(--serif);color:var(--log-ink);font-size:22px;line-height:1.65;
   font-kerning:normal;text-rendering:optimizeLegibility}
+.log p{margin:0 0 3px}
 .log p:last-child{margin-bottom:0}
-.log p{text-wrap:pretty;margin:0 0 5px;text-shadow:0 0 .4px rgba(43,38,34,.4)}
-.log .opt{font-family:var(--mono);color:var(--rust-ink);font-size:19px;letter-spacing:.03em;-webkit-text-stroke:.35px currentColor}
+.log .opt{font-family:var(--mono);color:var(--rust-ink);font-size:20px;letter-spacing:.02em;-webkit-text-stroke:.3px currentColor}
 .log .gt{margin-right:.08em}
-.log .now{color:color-mix(in srgb,var(--rust) 80%,#3a1206);-webkit-text-stroke:.55px currentColor}
+.log .now{color:color-mix(in srgb,var(--rust) 80%,#3a1206);-webkit-text-stroke:.5px currentColor}
 .log .narr{text-indent:2em}
 .log .nb{white-space:nowrap}
 .log .narr::first-line{font-weight:600}
-.log .who{font-family:var(--sans);font-weight:600;font-size:15.8px;letter-spacing:.18em;margin-right:.1em;-webkit-text-stroke:.25px currentColor}
-.log .who::after{content:"—";letter-spacing:0;margin:0 .45em 0 .2em;opacity:.55;color:var(--ink);font-weight:400}
+.log .who{font-family:var(--sans);font-weight:600;font-size:16px;letter-spacing:.16em;margin-right:.1em;-webkit-text-stroke:.2px currentColor}
+.log .who::after{content:"—";letter-spacing:0;margin:0 .4em 0 .15em;opacity:.55;color:var(--log-ink);font-weight:400}
 .log .int{color:var(--intellect-ink)}
 .log .kask{color:var(--greygreen-ink)}
-.log .check{display:flex;align-items:center;gap:14px;margin:7px 0 7px}
-.log .tag{font-family:var(--sans);font-size:14.6px;font-weight:600;line-height:1;padding:5px 9px 4px;letter-spacing:.14em;
-  background:var(--check-white);border:1px solid rgba(43,38,34,.85);box-shadow:1.5px 1.5px 0 rgba(43,38,34,.22)}
+.log .check{margin:4px 0 5px;line-height:1.5}
+.log .check > span{display:inline-block;vertical-align:middle;margin-right:14px}
+.log .tag{font-family:var(--sans);font-size:16px;font-weight:600;line-height:1;padding:6px 10px 5px;letter-spacing:.12em;
+  background:var(--check-white);border:1px solid rgba(30,26,22,.9);box-shadow:1.5px 1.5px 0 rgba(30,26,22,.22)}
 .log .tag .sk{color:var(--intellect-ink)}
-.log .tag .dc{color:#4d4640;letter-spacing:.06em;font-weight:500;margin-left:.3em}
-.log .roll{font-family:var(--mono);font-size:17px;letter-spacing:.06em;color:#2f2924}
-.log .res{font-family:var(--sans);font-weight:600;font-size:15.8px;letter-spacing:.3em;color:color-mix(in srgb,var(--teal) 85%,#0f1f1c)}
-.log .o1{opacity:.62}.log .o2{opacity:.72}.log .o3{opacity:.78}.log .o4{opacity:.65}.log .o5{opacity:.94}
+.log .tag .dc{color:#3d3630;letter-spacing:.05em;font-weight:500;margin-left:.3em}
+.log .roll{font-family:var(--mono);font-size:19px;letter-spacing:.05em;color:#1E1A16}
+.log .res{font-family:var(--sans);font-weight:600;font-size:17px;letter-spacing:.3em;color:color-mix(in srgb,var(--teal) 85%,#0f1f1c)}
+.log .o1{opacity:.74}.log .o2{opacity:.82}.log .o3{opacity:.86}.log .o4{opacity:.76}.log .o5{opacity:.96}
 .cursor{will-change:opacity;display:inline-block;width:.6em;height:1.08em;background:var(--rust);vertical-align:-.2em;margin-left:.35em;box-shadow:0 0 .5px var(--rust)}
 @media (prefers-reduced-motion:no-preference){.cursor{animation:blink 1.1s steps(1,end) 8s infinite}}
 @keyframes blink{50%{opacity:.18}}
-.pno{font-family:var(--serif);font-size:12px;color:rgba(43,38,34,.45);letter-spacing:.2em;top:557px}
-.pno.l{left:48px}.pno.r{right:48px}
-.morale{left:1104px;top:129px;font-family:var(--sans);font-size:13px;font-weight:600;letter-spacing:.35em;color:rgba(43,38,34,.72)}
 
 /* ---------- overlays ---------- */
 .snow{inset:0;width:1600px;height:900px;pointer-events:none}
@@ -151,12 +162,12 @@ html,body{height:100%;background:#0b0806;overflow:hidden}
     linear-gradient(180deg,rgba(40,70,95,.35),rgba(0,0,0,0) 45%,rgba(110,60,25,.22))}
 .grain{inset:0;width:1600px;height:900px;pointer-events:none;mix-blend-mode:overlay;opacity:.34}
 .vignette{inset:0;pointer-events:none;
-  background:radial-gradient(ellipse 72% 72% at 50% 52%,rgba(0,0,0,0) 42%,rgba(4,2,1,.42) 72%,rgba(3,2,1,.86) 100%)}
+  background:radial-gradient(ellipse 80% 78% at 50% 56%,rgba(0,0,0,0) 50%,rgba(4,2,1,.38) 76%,rgba(3,2,1,.86) 100%)}
 .chrome{left:0;top:0;width:1600px;height:80px;pointer-events:none}
-.chrome .title{position:absolute;left:44px;top:30px;font-family:var(--serif);color:rgba(232,220,196,.74);font-size:15px;letter-spacing:.14em}
+.chrome .title{position:absolute;left:40px;top:11px;font-family:var(--serif);color:rgba(232,220,196,.74);font-size:15px;letter-spacing:.14em}
 .chrome .title .ch{margin-left:.9em;font-size:13px;color:rgba(232,220,196,.5);letter-spacing:.3em}
-.chrome .title::after{content:"";position:absolute;left:0;top:30px;width:64px;height:1px;background:rgba(194,86,43,.7)}
-.chrome .lang{position:absolute;right:44px;top:28px;font-family:var(--sans);font-size:12.5px;letter-spacing:.2em;color:rgba(232,220,196,.42);pointer-events:auto;cursor:pointer;
+.chrome .title::after{content:"";position:absolute;left:0;top:25px;width:56px;height:1px;background:rgba(194,86,43,.7)}
+.chrome .lang{position:absolute;right:36px;top:8px;font-family:var(--sans);font-size:12.5px;letter-spacing:.2em;color:rgba(232,220,196,.42);pointer-events:auto;cursor:pointer;
   padding:5px 10px 4px;border:1px solid rgba(232,220,196,.2)}
 .chrome .lang .on{color:rgba(232,220,196,.9)}
 .chrome .lang .sep{margin:0 .4em;opacity:.6}
@@ -335,68 +346,63 @@ html,body{height:100%;background:#0b0806;overflow:hidden}
       <!-- page surface (flat): paper, printed rug, shadows, floor piece, text -->
       <div class="pages">
         <div class="page-art">
-          <svg viewBox="0 0 1340 580" id="pageArt">
-            <rect width="1340" height="580" filter="url(#pageTex)" style="mix-blend-mode:multiply" opacity=".2"/>
-            <rect width="1340" height="580" filter="url(#pageMottle)" style="mix-blend-mode:multiply" opacity=".62"/>
+          <svg viewBox="0 0 1340 600" id="pageArt">
+            <defs>
+              <!-- keep the paper texture quiet under the text column (≈23% strength there) -->
+              <mask id="quietCol" maskUnits="userSpaceOnUse" x="0" y="0" width="1340" height="600">
+                <rect width="1340" height="600" fill="#fff"/>
+                <rect x="30" y="124" width="612" height="476" fill="#3a3a3a" filter="url(#soft10)"/>
+              </mask>
+            </defs>
+            <g mask="url(#quietCol)" style="mix-blend-mode:multiply"><rect width="1340" height="600" filter="url(#pageTex)" opacity=".2"/></g>
+            <g mask="url(#quietCol)" style="mix-blend-mode:multiply"><rect width="1340" height="600" filter="url(#pageMottle)" opacity=".62"/></g>
             <!-- foxing -->
-            <g fill="#8a5a2a" style="mix-blend-mode:multiply" id="foxing"></g>
+            <g mask="url(#quietCol)" style="mix-blend-mode:multiply"><g fill="#8a5a2a" id="foxing"></g></g>
             <!-- toned, handled edges -->
-            <rect x="1.5" y="1.5" width="1337" height="577" fill="none" stroke="#6b4a26" stroke-width="5" opacity=".16" filter="url(#soft4)"/>
-            <circle cx="410" cy="505" r="44" fill="none" stroke="#6e4a22" stroke-width="3" opacity=".08" filter="url(#tide)"/>
-            <circle cx="410" cy="505" r="41" fill="none" stroke="#6e4a22" stroke-width="1" opacity=".06"/>
+            <rect x="1.5" y="1.5" width="1337" height="597" fill="none" stroke="#6b4a26" stroke-width="5" opacity=".16" filter="url(#soft4)"/>
+            <circle cx="770" cy="540" r="44" fill="none" stroke="#6e4a22" stroke-width="3" opacity=".08" filter="url(#tide)"/>
+            <circle cx="770" cy="540" r="41" fill="none" stroke="#6e4a22" stroke-width="1" opacity=".06"/>
             <!-- faint printed rug under the actors -->
-            <g opacity=".17" fill="none" style="mix-blend-mode:multiply">
-              <ellipse cx="930" cy="420" rx="300" ry="112" stroke="#5a2a1c" stroke-width="3"/>
-              <ellipse cx="930" cy="420" rx="286" ry="104" stroke="#5a2a1c" stroke-width="1"/>
-              <ellipse cx="930" cy="420" rx="262" ry="92" stroke="#1f2a44" stroke-width="7" stroke-dasharray="3 9"/>
-              <ellipse cx="930" cy="420" rx="236" ry="80" stroke="#5a2a1c" stroke-width="1"/>
-              <ellipse cx="930" cy="420" rx="120" ry="38" stroke="#1f2a44" stroke-width="1.2"/>
-              <path d="M810,420 H1050 M930,382 V458" stroke="#5a2a1c" stroke-width="1"/>
+            <g opacity=".2" fill="none" style="mix-blend-mode:multiply">
+              <ellipse cx="972" cy="316" rx="150" ry="46" stroke="#5a2a1c" stroke-width="2.4"/>
+              <ellipse cx="972" cy="316" rx="142" ry="42" stroke="#5a2a1c" stroke-width=".9"/>
+              <ellipse cx="972" cy="316" rx="128" ry="36" stroke="#1f2a44" stroke-width="5" stroke-dasharray="2.5 7"/>
+              <ellipse cx="972" cy="316" rx="112" ry="30" stroke="#5a2a1c" stroke-width=".9"/>
+              <ellipse cx="972" cy="316" rx="46" ry="12" stroke="#1f2a44" stroke-width="1"/>
             </g>
             <!-- cold daylight from the window falling across the right page -->
-            <path d="M560,118 L760,118 L900,580 L610,580 Z" fill="#a9c0cf" opacity=".10" filter="url(#soft22)" style="mix-blend-mode:screen"/>
+            <path d="M650,118 L850,118 L990,600 L710,600 Z" fill="#a9c0cf" opacity=".10" filter="url(#soft22)" style="mix-blend-mode:screen"/>
             <!-- candle warmth -->
-            <ellipse cx="760" cy="150" rx="360" ry="140" fill="url(#warmGlow)" opacity=".30" style="mix-blend-mode:soft-light"/>
+            <ellipse cx="840" cy="150" rx="360" ry="140" fill="url(#warmGlow)" opacity=".30" style="mix-blend-mode:soft-light"/>
 
-            <!-- puppet shadows: long, cast toward the reader by the window light -->
-            <use href="#villonArt" filter="url(#castShadow)" opacity=".38" transform="translate(790 429) scale(1.2 -.4) skewX(-34) translate(-85 -267)"/>
-            <use href="#kaskArt" filter="url(#castShadow)" opacity=".38" transform="translate(1016 413) scale(1.2 -.4) skewX(-34) translate(-73 -251)"/>
-            <!-- contact shadows and stand tabs -->
-            <ellipse cx="792" cy="431" rx="54" ry="7" fill="#140c06" opacity=".6" filter="url(#soft4)"/>
-            <ellipse cx="1015" cy="415" rx="44" ry="6" fill="#140c06" opacity=".6" filter="url(#soft4)"/>
+            <!-- puppet shadows: short contact shadow, long faint cast toward the lower left -->
+            <use href="#villonArt" filter="url(#castShadow)" opacity=".26" transform="translate(880 320) scale(.95 -.44) skewX(30) translate(-66 -196)"/>
+            <use href="#kaskArt" filter="url(#castShadow)" opacity=".26" transform="translate(1068 306) scale(.95 -.44) skewX(30) translate(-56 -186)"/>
+            <ellipse cx="878" cy="321" rx="31" ry="4.6" fill="#140c06" opacity=".62" filter="url(#soft4)"/>
+            <ellipse cx="1066" cy="307" rx="27" ry="4.2" fill="#140c06" opacity=".62" filter="url(#soft4)"/>
             <!-- stand tabs: the fold that glues each puppet to the page -->
-            <path d="M752,430 L834,430 L830,438 L756,438 Z M984,414 L1048,414 L1045,421 L987,421 Z" fill="#c9b898" opacity=".55"/>
-            <path d="M752,430.4 H834 M984,414.4 H1048" stroke="#2e2116" stroke-width="1.6" opacity=".8"/>
-            <path d="M756,438 H830 M987,421 H1045" stroke="#6b5a44" stroke-width=".8" opacity=".4"/>
+            <path d="M855,320 L905,320 L902,326 L858,326 Z M1045,306 L1091,306 L1088,312 L1048,312 Z" fill="#c9b898" opacity=".6"/>
+            <path d="M855,320.4 H905 M1045,306.4 H1091" stroke="#2e2116" stroke-width="1.4" opacity=".8"/>
+            <path d="M858,326 H902 M1048,312 H1088" stroke="#6b5a44" stroke-width=".8" opacity=".4"/>
             <!-- dice shadows -->
             <g filter="url(#soft4)" fill="#120a05">
-              <rect x="1146" y="458" width="44" height="44" transform="rotate(17 1170 474) translate(-7 4)" opacity=".5"/>
-              <rect x="1220" y="484" width="44" height="44" transform="rotate(-26 1244 500) translate(-7 4)" opacity=".5"/>
+              <rect x="1164" y="492" width="44" height="44" transform="rotate(17 1188 508) translate(-7 4)" opacity=".5"/>
+              <rect x="1236" y="518" width="44" height="44" transform="rotate(-26 1260 534) translate(-7 4)" opacity=".5"/>
             </g>
             <!-- morale: four paper hearts, the last one gone pale -->
             <g id="hearts"></g>
             <!-- dog-eared corner of the right page -->
-            <path d="M1340,540 L1300,580 L1340,580 Z" fill="#1a1109" opacity=".5" filter="url(#soft4)"/>
-            <path d="M1340,538 L1299,579 L1306,546 Z" fill="#d8c9aa"/>
-            <path d="M1340,538 L1299,579" stroke="#8a7658" stroke-width="1" opacity=".7"/>
-            <path d="M1306,546 L1340,538" stroke="#fff6e0" stroke-width=".8" opacity=".5"/>
+            <path d="M1340,560 L1300,600 L1340,600 Z" fill="#1a1109" opacity=".5" filter="url(#soft4)"/>
+            <path d="M1340,558 L1299,599 L1306,566 Z" fill="#d8c9aa"/>
+            <path d="M1340,558 L1299,599" stroke="#8a7658" stroke-width="1" opacity=".7"/>
+            <path d="M1306,566 L1340,558" stroke="#fff6e0" stroke-width=".8" opacity=".5"/>
           </svg>
         </div>
 
         <!-- the study floor: a separate sheet the furniture stands on -->
         <div class="floor"><svg viewBox="0 0 1340 130" id="floorSvg"></svg></div>
 
-        <div class="log" id="log">
-          <p class="opt past o1"><span class="gt">&gt;</span> 检查壁炉上的钟。</p>
-          <p class="narr o2">一座黄铜座钟，玻璃罩里的钟摆一动不动。<span class="nb">指针停在 23:40。</span></p>
-          <p class="voice o3"><span class="who int">博学多闻</span>这种带钟摆的座钟受到撞击时会停摆。推理小说很喜欢这个桥段：死者倒下时撞停了钟，死亡时间就被永远记录下来。作家们很喜欢。凶手们也很喜欢。</p>
-          <p class="opt past o4"><span class="gt">&gt;</span> 把钟转过来看背面。</p>
-          <p class="check o5"><span class="tag"><span class="sk">视觉计算</span><span class="dc">[中等 10]</span></span><span class="roll">4 + 5 + 3 = 12</span><span class="res">成功</span></p>
-          <p class="voice"><span class="who int">视觉计算</span>后盖上的调针旋钮有新鲜的划痕，方向是顺时针，而且不止一圈。有人在钟停摆之后拨过指针。</p>
-          <p class="say"><span class="who kask">卡斯克警督</span>「记下了。」</p>
-          <p class="opt now"><span class="gt">&gt;</span> 回到房间中央。<span class="cursor"></span></p>
-        </div>
-        <div class="pno l">17</div><div class="pno r">18</div>
+        <div class="pno r">18</div>
         <div class="morale">士气</div>
       </div>
 
@@ -844,12 +850,12 @@ html,body{height:100%;background:#0b0806;overflow:hidden}
         </svg>
       </div>
 
-      <!-- ===== the paper puppets ===== -->
+      <!-- ===== the paper puppets: profile cut-outs, facing each other ===== -->
       <div class="pup villon" aria-label="维隆警探">
-        <svg viewBox="0 0 170 280">
+        <svg viewBox="0 0 120 200">
           <defs>
-            <linearGradient id="vCoat" x1="0" y1="0" x2="1" y2=".35">
-              <stop offset="0" stop-color="#34405f"/><stop offset=".5" stop-color="#253049"/><stop offset="1" stop-color="#171e31"/>
+            <linearGradient id="vCoat" x1="0" y1="0" x2="1" y2=".3">
+              <stop offset="0" stop-color="#34405f"/><stop offset=".55" stop-color="#253049"/><stop offset="1" stop-color="#19203a"/>
             </linearGradient>
             <linearGradient id="vScarf" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" stop-color="#cf6533"/><stop offset="1" stop-color="#963d1f"/>
@@ -858,113 +864,120 @@ html,body{height:100%;background:#0b0806;overflow:hidden}
               <stop offset="0" stop-color="#ffe0a0"/><stop offset=".2" stop-color="#ff8f3c" stop-opacity=".9"/><stop offset="1" stop-color="#ff6a1a" stop-opacity="0"/>
             </radialGradient>
           </defs>
-          <g><g id="villonArt">
+          <g id="villonArt">
+            <!-- legs in a slack stride, shoes pointing right -->
             <g filter="url(#cutS)">
-              <path fill="#1c1b20" d="M70,228 L68,258 L81,258 L82,228 Z"/>
-              <path fill="#222026" d="M90,228 L94,258 L106,258 L102,228 Z"/>
-              <path fill="#121014" d="M57,267 Q57,258 67,257 L81,257 Q84,262 82,267 Z"/>
-              <path fill="#141216" d="M90,267 Q90,258 97,257 L108,258 Q117,260 118,267 Z"/>
+              <path fill="#1c1b20" d="M52,154 L44,189 L54,189 L60,154 Z"/>
+              <path fill="#222026" d="M66,154 L73,189 L83,189 L75,154 Z"/>
+              <path fill="#121014" d="M38,196 Q38,188 45,188 L55,188 Q61,190 63,196 Z"/>
+              <path fill="#141216" d="M69,196 Q69,188 75,188 L85,188 Q93,190 95,196 Z"/>
             </g>
-            <path d="M96,260 q8,-1 14,1" stroke="#6a6670" stroke-width=".9" fill="none" opacity=".5"/>
-            <!-- coat: rounded, slouched back; elbows out, hands in pockets; belted loosely -->
-            <g filter="url(#cutS)"><path fill="#121829" d="M46,170 C44,196 42,216 39,236 L58,238 L60,176 Z"/></g>
-            <g filter="url(#cutS)"><path fill="url(#vCoat)" d="M72,56 C56,62 45,82 44,104 C44,120 38,136 38,150 C38,158 42,164 48,168 C46,190 43,214 39,236 L46,240 L53,234 L60,241 L68,234 L77,242 L86,235 L95,242 L104,235 L112,241 L121,236 C118,212 115,190 113,171 C117,168 122,160 121,148 C120,136 117,120 116,104 C115,90 111,78 104,70 Z"/></g>
-            <g filter="url(#cutS)"><path fill="#161519" d="M99,174 L108,174 L111,238 L97,238 Z"/></g>
-            <g filter="url(#cutS)"><path fill="#2b3553" d="M95,76 C104,84 108,100 108,120 C108,140 110,156 113,170 L104,171 C102,150 100,128 99,110 C98,96 96,86 90,78 Z"/></g>
-            <g filter="url(#cutS)"><path fill="#394769" d="M84,72 L103,78 L99,124 L92,100 Z"/></g>
-            <g filter="url(#cutS)"><path fill="#1c2440" d="M60,82 C49,98 41,126 41,148 C41,158 46,165 54,170 L65,179 L73,172 L61,160 C57,142 60,112 68,92 Z"/></g>
-            <path d="M42,142 q6,5 13,1 M46,124 q6,4 12,1" stroke="#070a12" stroke-opacity=".55" stroke-width="1.1" fill="none"/>
-            <path d="M44,141 q6,5 13,1" stroke="#cdbf9e" stroke-opacity=".22" stroke-width=".9" fill="none"/>
-            <!-- the belt, cinched badly, its tongue hanging -->
-            <g filter="url(#cutS)"><path fill="#141a2b" d="M47,164 C68,168 94,168 114,164 L114,173 C94,177 68,177 47,173 Z"/></g>
-            <path d="M80,167 h9 v8 h-9z" fill="none" stroke="#7e6a44" stroke-width="1.5"/>
-            <g filter="url(#cutS)"><path fill="#141a2b" d="M74,172 L81,172 L80,198 L76,202 L73,198 Z"/></g>
-            <path d="M64,176 L73,186" stroke="#05070d" stroke-width="1.6" opacity=".8"/>
+            <!-- coat tail behind -->
+            <g filter="url(#cutS)"><path fill="#121829" d="M40,116 C38,132 36,146 34,157 L44,160 L46,124 Z"/></g>
+            <!-- coat in profile: rounded hump behind, belly forward, torn hem -->
+            <g filter="url(#cutS)"><path fill="url(#vCoat)" d="M54,55 C45,60 39,70 39,84 C39,96 41,104 44,110 C42,126 39,142 36,156 L41,159 L47,155 L53,160 L60,155 L67,160 L74,155 L81,160 L87,157 C85,143 84,126 83,110 C85,98 84,85 80,72 C78,64 75,59 71,57 Z"/></g>
+            <g filter="url(#cutS)"><path fill="#2b3553" d="M76,61 C81,73 82,91 82,107 L78,107 C78,91 77,75 72,63 Z"/></g>
+            <g filter="url(#cutS)"><path fill="#394769" d="M68,57 L78,61 L75,84 L71,70 Z"/></g>
+            <!-- arm: elbow out behind, hand buried in the pocket -->
+            <g filter="url(#cutS)"><path fill="#1c2440" d="M55,62 C46,72 42,86 44,98 C46,106 51,111 58,115 L63,111 L56,103 C53,95 55,80 62,68 Z"/></g>
+            <path d="M44,92 q5,4 11,2" stroke="#070a12" stroke-opacity=".55" stroke-width="1" fill="none"/>
+            <path d="M43,91 q5,4 11,2" stroke="#cdbf9e" stroke-opacity=".22" stroke-width=".8" fill="none"/>
+            <!-- belt, badly cinched, tongue hanging -->
+            <g filter="url(#cutS)"><path fill="#141a2b" d="M41,107 C55,110 70,110 84,107 L84,114 C70,117 55,117 41,114 Z"/></g>
+            <path d="M77,108 h6 v6 h-6z" fill="none" stroke="#7e6a44" stroke-width="1.2"/>
+            <g filter="url(#cutS)"><path fill="#141a2b" d="M75,113 L79,113 L79,131 L77,134 L75,131 Z"/></g>
+            <path d="M57,114 L66,118" stroke="#05070d" stroke-width="1.3" opacity=".8"/>
             <g fill="none" stroke-linecap="round">
-              <path stroke="#070a12" stroke-opacity=".55" stroke-width="1.4" d="M56,180 l-5,18 M68,188 l-2,20 M88,180 l2,18 M94,196 l1,16 M52,214 l4,-10 M84,222 l1,-12"/>
-              <path stroke="#cdbf9e" stroke-opacity=".28" stroke-width=".9" d="M54,179 l-5,18 M66,187 l-2,20 M86,179 l2,18 M50,213 l4,-10"/>
+              <path stroke="#070a12" stroke-opacity=".55" stroke-width="1.1" d="M47,122 l-3,14 M58,128 l-1,15 M70,124 l2,14 M43,146 l3,-8"/>
+              <path stroke="#cdbf9e" stroke-opacity=".26" stroke-width=".8" d="M46,121 l-3,14 M57,127 l-1,15"/>
             </g>
-            <circle cx="104" cy="132" r="1.8" fill="#0d101a"/><circle cx="105" cy="152" r="1.8" fill="#0d101a"/>
-            <g filter="url(#cutS)"><path fill="#8b381d" d="M70,74 C58,82 50,96 48,112 L55,114 C58,100 64,88 74,80 Z"/></g>
-            <g filter="url(#cutS)"><path fill="#1b2238" d="M62,60 L72,50 L78,74 L66,80 Z"/></g>
-            <path fill="#29231f" d="M78,50 C77,58 80,66 88,70 L89,62 L86,51 Z"/>
-            <g filter="url(#cutS)">
-              <path fill="#b39a78" d="M88,50 L110,50 C111,53 112,56 117,60 L113,62 C114,65 113,67 111,68 C109,71 104,73 98,73 C93,72 89,68 88,62 Z"/>
+            <!-- scarf: tail flicked over the back -->
+            <g filter="url(#cutS)"><path fill="#8b381d" d="M52,57 C45,61 40,69 38,78 L43,79 C45,72 50,66 56,62 Z"/></g>
+            <g filter="url(#cutS)"><path fill="#1b2238" d="M46,40 L54,36 L57,58 L48,62 Z"/></g>
+            <!-- head in profile under the brim: nose and jaw catch the light -->
+            <path fill="#29231f" d="M48,32 C46,40 48,48 54,53 L58,50 L56,33 Z"/>
+            <g filter="url(#cutS)"><path fill="#bea582" d="M52,33 L79,33 C80,35 81,37 81,38 L88,41.5 L84.5,43 C85,45 84.5,46.5 83,47.2 C81,50.8 76,53 70,53 L62,53 C56,51.5 52,45.5 52,39.5 Z"/></g>
+            <path fill="#0a0b10" opacity=".58" d="M52,33 H81 L82,37.2 C75,36.5 66,37.3 59,41 L52,43 Z"/>
+            <path d="M81.5,38.6 C84,39.8 86,40.8 87.6,41.4 M73,52.6 C77,51.9 80.6,50 82.4,47.6" stroke="#ead7b4" stroke-width=".9" fill="none" opacity=".85"/>
+            <path d="M61,40 c2,-1 4,0 3.4,2.6 c-.6,1.8 -2.6,1.8 -3.4,.6 z" fill="#8a735a"/>
+            <g fill="#4d4034" opacity=".5"><circle cx="72" cy="50" r=".5"/><circle cx="75" cy="50.4" r=".5"/><circle cx="78" cy="49.4" r=".5"/><circle cx="70" cy="48.6" r=".5"/></g>
+            <g filter="url(#cutS)"><path fill="url(#vScarf)" d="M53,51 C60,56 72,57 80,52 L81,61 C72,65 60,65 51,61 Z"/></g>
+            <g filter="url(#cutS)"><path fill="url(#vScarf)" d="M73,59 L80,60 C81,73 79,87 82,99 L77,97 L75,102 L73,97 L70,102 L69,96 C68,83 70,71 73,59 Z"/></g>
+            <path d="M69,89 L81,90 M69.2,93 L81.4,94" stroke="#6b2912" stroke-width="1.1" opacity=".65"/>
+            <path fill="#a4431f" d="M75,56 C80,54 84,58 82,63 C79,65 76,63 75,56 Z"/>
+            <!-- fedora in side view, tipped forward: front brim dips over the eyes, back brim curls up -->
+            <g transform="rotate(6 60 26)">
+              <g filter="url(#cutS)">
+                <path fill="#191c26" d="M42,27 C41,15 46,8 58,7 C70,6 76,12 76,25 Z"/>
+                <path fill="#2b2525" d="M41.5,22.5 L76.5,21.5 L76.6,27 L42,27.6 Z"/>
+                <path fill="#11141c" d="M32,25.4 C37,27 41,28 44,28 C58,27 78,27 96,33 C98.5,35 96.5,37 92.5,36.4 C80,33 58,32 44,32.4 C38,32.6 33,31 30,28.4 C29.4,26.6 30.6,25.2 32,25.4 Z"/>
+              </g>
+              <path d="M51,9 Q58,13 65,8" stroke="#07080c" stroke-width="1.2" fill="none" opacity=".8"/>
+              <path d="M44,28.6 C58,27.6 78,27.6 94,33" stroke="#5d6680" stroke-width=".9" fill="none" opacity=".55"/>
             </g>
-            <path fill="#0a0b10" opacity=".62" d="M88,50 H112 L112.5,58.5 C106,57 100,58 96,62 C93,64 90,66 88,67 Z"/>
-            <path d="M109,59.5 C112,60 114,60.5 116.5,60.2 M104,70.8 C107,70 110,68.6 111.5,67.5" stroke="#e2cfae" stroke-width="1" fill="none" opacity=".75"/>
-            <path d="M104,58 q3,1 5,0" stroke="#5b4a3a" stroke-width=".9" fill="none" opacity=".7"/>
-            <g fill="#4d4034" opacity=".5"><circle cx="99" cy="70" r=".6"/><circle cx="102" cy="70.5" r=".6"/><circle cx="105" cy="69.5" r=".6"/><circle cx="96" cy="68.5" r=".6"/><circle cx="101" cy="68" r=".6"/><circle cx="108" cy="68" r=".6"/></g>
-            <g filter="url(#cutS)"><path fill="url(#vScarf)" d="M67,68 C78,76 96,77 108,70 L110,82 C98,88 78,88 65,81 Z"/></g>
-            <g filter="url(#cutS)"><path fill="url(#vScarf)" d="M98,82 L107,83 C107,104 105,128 108,152 L103,149 L101,156 L98,150 L95,157 L93,151 C91,128 94,104 98,82 Z"/></g>
-            <path d="M92.5,138 L107,139 M92.8,143 L107.3,144" stroke="#6b2912" stroke-width="1.3" opacity=".65"/>
-            <path fill="#a4431f" d="M99,77 C105,75 110,79 108,86 C104,88 100,86 99,77 Z"/>
-            <g filter="url(#cutS)"><path fill="#1f2740" d="M104,71 L113,70 L111,86 L102,82 Z"/></g>
-            <g filter="url(#cutS)">
-              <path fill="#191c26" d="M74,46 C73,31 78,20 92,18 C106,17 113,26 112,44 Z"/>
-              <path fill="#2b2525" d="M73,39 L112,38 L112,45 L73,46 Z"/>
-              <path fill="#11141c" d="M58,49 C72,41 106,40 127,50 C129,54 123,57 113,55 C98,51 78,51 62,54 Z"/>
-            </g>
-            <path d="M86,20 Q92,26 99,20" stroke="#07080c" stroke-width="1.4" fill="none" opacity=".8"/>
-            <path d="M61,49 C74,43 104,42 124,50" stroke="#5d6680" stroke-width="1" fill="none" opacity=".55"/>
-            <path fill="#e7e0d1" d="M111,65.5 L127,67.6 L126.7,69.8 L110.7,67.6 Z"/>
-            <path fill="#8b8378" d="M124.5,67.3 L127,67.6 L126.7,69.8 L124.2,69.5 Z"/>
-          </g></g>
+            <!-- cigarette -->
+            <path fill="#e7e0d1" d="M83,46.6 L95,48.6 L94.8,50.4 L82.8,48.6 Z"/>
+            <path fill="#8b8378" d="M93.2,48.3 L95,48.6 L94.8,50.4 L93,50.1 Z"/>
+          </g>
           <!-- ember + smoke: outside the art group so the cast shadow ignores them -->
-          <circle cx="128" cy="68.8" r="12" fill="url(#ember)" style="mix-blend-mode:screen"/>
-          <circle cx="127.6" cy="68.8" r="1.8" fill="#ffc070"/>
-          <path d="M130,63 C136,56 127,50 132,42 C137,34 128,28 134,19" fill="none" stroke="#dcd5c8" stroke-opacity=".32" stroke-width="2.4" stroke-linecap="round"/>
+          <circle cx="96" cy="49.6" r="9" fill="url(#ember)" style="mix-blend-mode:screen"/>
+          <circle cx="95.8" cy="49.6" r="1.5" fill="#ffc070"/>
+          <path d="M97.5,45 C102,39 95,34 99,28 C103,22 96,17 100,10" fill="none" stroke="#dcd5c8" stroke-opacity=".32" stroke-width="1.9" stroke-linecap="round"/>
         </svg>
       </div>
 
       <div class="pup kask" aria-label="卡斯克警督">
-        <svg viewBox="0 0 150 260">
+        <svg viewBox="0 0 110 190">
           <defs>
             <linearGradient id="kCoat" x1="0" y1="0" x2="1" y2=".25">
               <stop offset="0" stop-color="#8a9c8e"/><stop offset=".55" stop-color="#74867a"/><stop offset="1" stop-color="#5b6b61"/>
             </linearGradient>
           </defs>
-          <g><g id="kaskArt">
+          <g id="kaskArt">
+            <!-- legs together, boots pointing left -->
             <g filter="url(#cutS)">
-              <path fill="#353f3a" d="M60,206 L59,240 L72,240 L73,206 Z"/>
-              <path fill="#303a35" d="M79,206 L81,240 L93,240 L91,206 Z"/>
-              <path fill="#1a1918" d="M47,251 Q47,241 56,238 L72,238 L73,251 Z"/>
-              <path fill="#1d1c1b" d="M80,238 L94,238 Q98,242 98,251 L80,251 Z"/>
+              <path fill="#303a35" d="M57,146 L57,178 L65,178 L65,146 Z"/>
+              <path fill="#353f3a" d="M47,146 L47,178 L55,178 L55,146 Z"/>
+              <path fill="#1d1c1b" d="M49,186 Q49,178 55,177 L66,177 L66,186 Z"/>
+              <path fill="#1a1918" d="M38,186 Q38,178 45,177 L56,177 L56,186 Z"/>
             </g>
-            <path d="M52,242 q6,-3 14,-2" stroke="#8c8a86" stroke-width="1" opacity=".5" fill="none"/>
-            <g filter="url(#cutS)"><path fill="url(#kCoat)" d="M60,56 L46,63 L43,72 L47,120 L41,212 L109,212 L103,120 L107,72 L104,63 L90,56 Z"/></g>
-            <path fill="#8a9c8f" opacity=".5" d="M76,60 L89,60 L90,118 L76,118 Z"/>
-            <path d="M76,60 V118 M76,128 L74,212 M92,160 L95,212" stroke="#3f4c44" stroke-width="1.2" fill="none"/>
-            <g fill="#c9a05a" stroke="#5e4a26" stroke-width=".6">
-              <circle cx="69" cy="80" r="2.1"/><circle cx="69" cy="96" r="2.1"/><circle cx="69" cy="110" r="2.1"/>
-              <circle cx="84" cy="80" r="2.1"/><circle cx="84" cy="96" r="2.1"/><circle cx="84" cy="110" r="2.1"/>
+            <path d="M41,180 q5,-2.4 11,-1.6" stroke="#8c8a86" stroke-width=".8" opacity=".5" fill="none"/>
+            <!-- greatcoat: straight back, precise front -->
+            <g filter="url(#cutS)"><path fill="url(#kCoat)" d="M51,47 L67,47 C71,51 73,57 72.5,67 L71.5,87 L73.5,91 C74.5,109 76.5,127 77.5,146 L39.5,146 C40.5,127 42.5,109 44.5,93 L45.5,89 C43.5,77 41.5,63 43.5,55 C45.5,50 48,48 51,47 Z"/></g>
+            <path d="M66,95 L68,146" stroke="#56675c" stroke-width="1" fill="none"/>
+            <path d="M45.5,58 L46,88 M44.5,96 L41,146" stroke="#3f4c44" stroke-width="1.1" fill="none"/>
+            <g fill="#c9a05a" stroke="#5e4a26" stroke-width=".5">
+              <circle cx="48.5" cy="60" r="1.8"/><circle cx="48.5" cy="70" r="1.8"/><circle cx="48.5" cy="80" r="1.8"/><circle cx="46.6" cy="104" r="1.8"/><circle cx="45.4" cy="116" r="1.8"/>
             </g>
             <g filter="url(#cutS)">
-              <path fill="#46534a" d="M46,118 L104,118 L104,128 L46,128 Z"/>
-              <path fill="#65786c" d="M50,141 L66,140 L66,147 L50,148 Z M86,140 L102,141 L102,148 L86,147 Z"/>
-              <path fill="#5b6c61" d="M45,63 L60,58 L61,64 L46,69 Z M90,58 L105,63 L104,69 L89,64 Z"/>
+              <path fill="#46534a" d="M44.5,87 L73.5,87 L73.5,94 L44.5,94 Z"/>
+              <path fill="#65786c" d="M56,103 L69,103 L69,108 L56,108 Z"/>
+              <path fill="#5b6c61" d="M55,48 L69,50 L69.5,54.5 L55.5,52.5 Z"/>
             </g>
-            <rect x="71" y="118.8" width="10" height="8.6" fill="none" stroke="#c9a05a" stroke-width="1.6"/>
-            <g filter="url(#cutS)"><path fill="#5e7064" d="M101,66 C109,82 101,100 76,104 L58,103 L58,96 L74,95 C88,93 94,84 92,70 Z"/></g>
-            <g filter="url(#cutS)"><path fill="#6d8073" d="M47,66 C37,80 35,98 38,114 L48,114 C47,100 49,86 56,74 Z"/></g>
-            <g filter="url(#cutS)"><path fill="#ede7d8" d="M23,84 L50,88 L48,117 L21,113 Z"/></g>
-            <path d="M27,92 l18,2.6 M27,97 l17,2.5 M26.5,102 l18,2.6 M26,107 l12,1.7" stroke="#6f6a5d" stroke-width=".8" opacity=".75"/>
-            <path d="M44,87.5 L42,116.5" stroke="#2b2622" stroke-width="1.6"/>
-            <ellipse cx="41" cy="115" rx="5" ry="3.6" fill="#cdb898"/>
-            <ellipse cx="57" cy="99" rx="4.2" ry="3.3" fill="#cdb898"/>
-            <path d="M55,98 L44,91" stroke="#1f1b18" stroke-width="1.7" stroke-linecap="round"/>
-            <g filter="url(#cutS)"><path fill="#6a7c70" d="M62,49 L88,49 L90,60 L60,60 Z"/></g>
-            <rect x="63" y="53" width="5" height="3" fill="#c9a05a"/><rect x="82" y="53" width="5" height="3" fill="#c9a05a"/>
-            <rect x="69" y="44" width="11" height="7" fill="#b39e7f"/>
+            <rect x="44.6" y="87.6" width="6.4" height="5.8" fill="none" stroke="#c9a05a" stroke-width="1.3"/>
+            <!-- arm crooked, notebook held out in front, pen at work -->
+            <g filter="url(#cutS)"><path fill="#6d8073" d="M57,51 C66,55 68,65 67,77 C66,83 60,85 52,81 L37,75 L39,69 L53,73 C57,71 57,63 55,55 Z"/></g>
+            <path d="M58,70 q4,2 7,0" stroke="#3f4c44" stroke-width=".9" fill="none" opacity=".7"/>
+            <g filter="url(#cutS)"><path fill="#ede7d8" d="M22,60 L38,62 L37,82 L21,80 Z"/></g>
+            <path d="M24.5,66 l10,1.3 M24.3,70 l10,1.3 M24.1,74 l7,.9" stroke="#6f6a5d" stroke-width=".7" opacity=".75"/>
+            <path d="M35.6,61.7 L34.6,81.6" stroke="#2b2622" stroke-width="1.3"/>
+            <ellipse cx="38.5" cy="72.5" rx="3.6" ry="3" fill="#cdb898"/>
+            <path d="M40,69 L29,63.5" stroke="#1f1b18" stroke-width="1.4" stroke-linecap="round"/>
+            <!-- collar, neck, head in profile facing left -->
+            <g filter="url(#cutS)"><path fill="#6a7c70" d="M49.5,43 L65,43 L66,51 L48.5,51 Z"/></g>
+            <rect x="51" y="46" width="4" height="2.6" fill="#c9a05a"/>
+            <rect x="53" y="38" width="9" height="7" fill="#b39e7f"/>
             <g filter="url(#cutS)">
-              <path fill="#d3bf9f" d="M73,20 C82,20 86,27 86,35 C86,44 80,49 73,49 C66,49 62,45 61,40 L59,38 L61,35 C61,26 65,20 73,20 Z"/>
-              <path fill="#26211d" d="M61,34 C60,21 69,15 79,17 C88,19 91,28 89,40 L85,44 C85,33 80,27 72,27 C66,27 62,31 61,36 Z"/>
-              <circle cx="89" cy="36" r="6.5" fill="#26211d"/>
+              <path fill="#d3bf9f" d="M50,13 C58,11 66,15 67,23 L67,35 C64,41 58,43 52,42 L48.5,39.5 C47.2,37.6 47,36 46,34.8 L45.6,33.2 C44.6,32.6 43.6,32 41.8,30.6 L46,29.2 C45.8,26 46.6,22 47.4,19.4 C48,16 48.6,14.2 50,13 Z"/>
+              <path fill="#26211d" d="M48,14.5 C52,7.5 62,6.5 68,10.5 C73,14.5 74,23.5 72,31.5 L68,35.5 C68,27.5 66,19.5 60,17.5 C55,16.5 50,17.5 48,19.5 Z"/>
+              <circle cx="74" cy="23.5" r="5.5" fill="#26211d"/>
             </g>
-            <circle cx="66" cy="36" r="4.3" fill="#e2eaec" fill-opacity=".3" stroke="#1f1b18" stroke-width="1.3"/>
-            <circle cx="76.5" cy="35.5" r="4" fill="#e2eaec" fill-opacity=".3" stroke="#1f1b18" stroke-width="1.3"/>
-            <path d="M70.3,36 L72.5,35.8 M80.5,35 L86,34" stroke="#1f1b18" stroke-width="1.1"/>
-          </g></g>
+            <path d="M63,25 c2,-1 3.6,.4 3,2.6 c-.4,1.6 -2.2,1.8 -3,.8 z" fill="#b39e7f"/>
+            <!-- one round lens in profile, and its arm back to the ear -->
+            <circle cx="49.6" cy="24.2" r="3.7" fill="#e2eaec" fill-opacity=".3" stroke="#1f1b18" stroke-width="1.1"/>
+            <path d="M53.3,24 L63.5,23.2" stroke="#1f1b18" stroke-width=".9"/>
+            <path d="M46.2,31 q1.4,.6 2.6,.2" stroke="#8a7458" stroke-width=".7" fill="none"/>
+          </g>
         </svg>
       </div>
 
@@ -975,6 +988,20 @@ html,body{height:100%;background:#0b0806;overflow:hidden}
   </div>
 
   <canvas class="snow" id="snow" width="1600" height="900"></canvas>
+  <!-- left-page log: flat 2D layer, positioned onto the page by JS -->
+  <div class="log-layer" id="logLayer">
+    <div class="log-slant" id="logSlant"></div>
+    <div class="log" id="log">
+      <p class="opt past o1"><span class="gt">&gt;</span> 检查壁炉上的钟。</p>
+      <p class="narr o2">一座黄铜座钟，玻璃罩里的钟摆一动不动。<span class="nb">指针停在 23:40。</span></p>
+      <p class="voice o3"><span class="who int">博学多闻</span>这种带钟摆的座钟受到撞击时会停摆。推理小说很喜欢这个桥段：死者倒下时撞停了钟，死亡时间就被永远记录下来。作家们很喜欢。凶手们也很喜欢。</p>
+      <p class="opt past o4"><span class="gt">&gt;</span> 把钟转过来看背面。</p>
+      <p class="check o5"><span class="tag"><span class="sk">视觉计算</span><span class="dc">[中等 10]</span></span><span class="roll">4 + 5 + 3 = 12</span><span class="res">成功</span></p>
+      <p class="voice"><span class="who int">视觉计算</span>后盖上的调针旋钮有新鲜的划痕，方向是顺时针，而且不止一圈。有人在钟停摆之后拨过指针。</p>
+      <p class="say"><span class="who kask">卡斯克警督</span>「记下了。」</p>
+      <p class="opt now"><span class="gt">&gt;</span> 回到房间中央。<span class="cursor"></span></p>
+    </div>
+  </div>
   <div class="grade"></div>
   <div class="vignette"></div>
   <header class="chrome">
@@ -996,6 +1023,33 @@ html,body{height:100%;background:#0b0806;overflow:hidden}
   var stage = $("stage");
   function fit(){var s=Math.min(innerWidth/1600, innerHeight/900);stage.style.transform="scale("+s+")";}
   fit(); addEventListener("resize", fit);
+
+  /* ---------- page projection (mirrors the CSS 3D transform of .book) ---------- */
+  var css=getComputedStyle(document.documentElement);
+  function cssNum(n){return parseFloat(css.getPropertyValue(n));}
+  var GEO={t:cssNum("--theta")*Math.PI/180, d:cssNum("--persp"), ox:cssNum("--po-x"), oy:cssNum("--po-y"),
+           L:cssNum("--book-left"), T:cssNum("--book-top"), W:cssNum("--book-w"), H:cssNum("--book-h")};
+  function project(x, y, ox, oy){ // a point on the page plane (book px) -> stage px
+    if(ox===undefined){ox=GEO.ox;oy=GEO.oy;}
+    var by=y-GEO.H, Y=by*Math.cos(GEO.t), Z=by*Math.sin(GEO.t), f=GEO.d/(GEO.d-Z);
+    return {x:ox+(GEO.L+x-ox)*f, y:oy+(GEO.T+GEO.H+Y-oy)*f};
+  }
+  /* ---------- the log: a flat layer fitted onto the left page's text column ---------- */
+  var COL={x0:34, x1:640, y0:126, y1:GEO.H-8}, Q;
+  (function(){
+    var tl=project(COL.x0,COL.y0), bl=project(COL.x0,COL.y1), tr=project(COL.x1,COL.y0), br=project(COL.x1,COL.y1);
+    var left=Math.floor(bl.x), top=Math.round(tl.y), right=Math.floor(Math.min(tr.x,br.x)), bottom=Math.round(bl.y);
+    var lay=$("logLayer"), sl=$("logSlant"), w=right-left, h=bottom-top, slant=Math.round(tl.x-bl.x);
+    lay.style.left=left+"px"; lay.style.top=top+"px"; lay.style.width=w+"px"; lay.style.height=h+"px";
+    // each line starts on the page's receding left edge, glyphs stay upright and unscaled
+    sl.style.width=slant+"px";
+    sl.style.shapeOutside="polygon(0px 0px, "+slant+"px 0px, 0px "+h+"px)";
+    Q={left:left, top:top, right:right, bottom:bottom, slant:slant};
+  })();
+  function colInset(px,py){ // >0 inside the text column (px from its nearest edge), <0 outside
+    var xl=Q.left+Q.slant*(Q.bottom-py)/(Q.bottom-Q.top);
+    return Math.min(px-xl, Q.right-px, py-Q.top, Q.bottom-py);
+  }
 
   /* ---------- wall silhouette: ceiling-moulding scallops, window hole ---------- */
   (function(){
@@ -1137,8 +1191,8 @@ html,body{height:100%;background:#0b0806;overflow:hidden}
       for(var l=0;l<4;l++) el("rect",{x:-11,y:-7+l*4.5,width:17+R()*5,height:.8,fill:"#5d5445",opacity:.6},g);
     });
     // gutter crease across the floor sheet
-    el("rect",{x:596,y:0,width:14,height:122,fill:"#000",opacity:.35,filter:"url(#soft4)"},s);
-    el("rect",{x:602.4,y:0,width:1,height:122,fill:"#cdb995",opacity:.35},s);
+    el("rect",{x:663,y:0,width:14,height:122,fill:"#000",opacity:.35,filter:"url(#soft4)"},s);
+    el("rect",{x:669.4,y:0,width:1,height:122,fill:"#cdb995",opacity:.35},s);
   })();
 
   /* ---------- page stack at the fore-edge ---------- */
@@ -1146,23 +1200,23 @@ html,body{height:100%;background:#0b0806;overflow:hidden}
     var s=$("stackSvg");
     el("rect",{width:1344,height:20,fill:"#c4b38f"},s);
     for(var i=0;i<17;i++){
-      var y=1+i*1.1, dip=function(x){return 2.2*Math.exp(-Math.pow((x-605)/70,2));};
+      var y=1+i*1.1, dip=function(x){return 2.2*Math.exp(-Math.pow((x-672)/70,2));};
       var d="M0,"+y.toFixed(2);
       for(var x=0;x<=1344;x+=24) d+=" L"+x+","+(y+dip(x)).toFixed(2);
       el("path",{d:d,stroke:i%3?"#a3916f":"#e3d6ba",fill:"none","stroke-width":.7,opacity:.8},s);
     }
-    el("rect",{x:560,width:90,height:20,fill:"#2a1a0c",opacity:.35},s);
+    el("rect",{x:627,width:90,height:20,fill:"#2a1a0c",opacity:.35},s);
     el("rect",{y:14,width:1344,height:6,fill:"#1a1208",opacity:.45},s);
   })();
 
   /* ---------- page foxing and morale hearts ---------- */
   (function(){
     var R=mulberry32(88), f=$("foxing");
-    for(var i=0;i<46;i++){var r=R(); el("circle",{cx:(R()*1340).toFixed(0),cy:(R()*580).toFixed(0),r:(0.6+r*r*3.2).toFixed(1),opacity:(.05+R()*.12).toFixed(2)},f);}
+    for(var i=0;i<46;i++){var r=R(); el("circle",{cx:(R()*1340).toFixed(0),cy:(R()*600).toFixed(0),r:(0.6+r*r*3.2).toFixed(1),opacity:(.05+R()*.12).toFixed(2)},f);}
     el("circle",{cx:120,cy:470,r:36,fill:"none",stroke:"#7a4a1e","stroke-width":2.5,opacity:.07},f);
     var h=$("hearts"), heart="M0,6 C0,-1 9,-3 11,4 C13,-3 22,-1 22,6 C22,13 14,17 11,22 C8,17 0,13 0,6 Z";
     for(var k=0;k<4;k++){
-      var g=el("g",{transform:"translate("+(1166+k*31)+" 128)"},h);
+      var g=el("g",{transform:"translate("+(1190+k*31)+" 138)"},h);
       if(k<3){ el("path",{d:heart,fill:"#962c25",filter:"url(#cutS)"},g); el("path",{d:"M4,5 C5,1 8,1 9,4",stroke:"#e7b6a0","stroke-width":1.2,fill:"none",opacity:.45},g); }
       else { el("path",{d:heart,fill:"#b89c86",opacity:.35},g); el("path",{d:heart,fill:"none",stroke:"#7c2a22","stroke-width":1.2,"stroke-dasharray":"2.4 2",opacity:.7},g); }
     }
@@ -1190,9 +1244,9 @@ html,body{height:100%;background:#0b0806;overflow:hidden}
       var f={x:R()*1600,y:R()*900,kind:kind,ph:R()*6.28,sw:.3+R()*.8};
       if(kind===0){f.r=.7+R()*1.5;f.a=.35+R()*.45;f.vy=10+R()*16;}
       else if(kind===1){f.r=2+R()*1.8;f.a=.35+R()*.3;f.vy=18+R()*14;}
-      else {f.r=7+R()*9;f.a=.07+R()*.08;f.vy=26+R()*12;
-        // keep the big out-of-focus flakes off the text
-        if(f.x>170&&f.x<720&&f.y>430) f.x=f.x<445?f.x-160:f.x+620; }
+      else {f.r=7+R()*9;f.a=.07+R()*.08;f.vy=26+R()*12;}
+      // the resting frame keeps every flake off the text column
+      while(colInset(f.x,f.y)>-f.r-4){f.x=R()*1600;f.y=R()*900;}
       flakes.push(f);
     }
   })();
@@ -1227,18 +1281,25 @@ html,body{height:100%;background:#0b0806;overflow:hidden}
   /* ---------- film grain ---------- */
   (function(){
     var c=$("grain"), x=c.getContext("2d"), img=x.createImageData(800,450), d=img.data, R=mulberry32(99);
-    for(var i=0;i<d.length;i+=4){var v=(R()*255)|0; v=(v+((R()*255)|0))>>1; d[i]=d[i+1]=d[i+2]=v; d[i+3]=255;}
+    for(var i=0;i<d.length;i+=4){
+      var v=(R()*255)|0; v=(v+((R()*255)|0))>>1;
+      var p=i>>2, px=(p%800)*2, py=((p/800)|0)*2, k=Math.max(0,Math.min(1,colInset(px,py)/14));
+      v=128+(v-128)*(1-.8*k);
+      d[i]=d[i+1]=d[i+2]=v; d[i+3]=255;
+    }
     x.putImageData(img,0,0);
   })();
 
   /* ---------- parallax: move the eye, the paper layers separate by their real depth ---------- */
   (function(){
-    var scene=$("scene"), book=$("book"), tx=0,ty=0,cx=0,cy=0,raf=0;
+    var scene=$("scene"), lay=$("logLayer"), tx=0,ty=0,cx=0,cy=0,raf=0;
+    var mid={x:(COL.x0+COL.x1)/2, y:(COL.y0+COL.y1)/2}, m0=project(mid.x,mid.y);
     if(reduce) return;
     function tick(){
       cx+=(tx-cx)*.07; cy+=(ty-cy)*.07;
-      scene.style.perspectiveOrigin=(800-cx*90).toFixed(1)+"px "+(100-cy*40).toFixed(1)+"px";
-      book.style.setProperty("--rz",(cx*.6).toFixed(3)+"deg");
+      var ox=GEO.ox-cx*90, oy=GEO.oy-cy*40, m=project(mid.x,mid.y,ox,oy);
+      scene.style.perspectiveOrigin=ox.toFixed(1)+"px "+oy.toFixed(1)+"px";
+      lay.style.transform="translate("+(m.x-m0.x).toFixed(2)+"px,"+(m.y-m0.y).toFixed(2)+"px)";
       raf=(Math.abs(tx-cx)+Math.abs(ty-cy)>.001)?requestAnimationFrame(tick):0;
     }
     addEventListener("pointermove",function(e){
