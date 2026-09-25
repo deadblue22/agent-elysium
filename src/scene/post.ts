@@ -15,8 +15,9 @@ const FilmShader = {
     uExposure: { value: 1 },
     uGrade: { value: 1 },
     uVignette: { value: 1 },
-    uGrain: { value: 0.32 },
-    uGrainCells: { value: new Vector2(800, 450) },
+    uGrain: { value: 0.1 },
+    /** grain grid in cells across the frame; setSize keeps one cell at GRAIN_PX css px */
+    uGrainCells: { value: new Vector2(1280, 720) },
     /** uv rect (x0, y0, x1, y1) of the text column, where the grain is gentler (as on the M0 board). */
     uQuiet: { value: new Vector4(0, 0, 0, 0) },
     uQuietGrain: { value: 0.5 },
@@ -50,7 +51,7 @@ const FilmShader = {
       return fract((p3.x + p3.y) * p3.z);
     }
     float grainAt(vec2 c, float f) { return 0.5 * (hash(c + f * 17.13) + hash(c.yx * 1.37 + 91.7 + f * 3.71)); }
-    // value noise on the grain grid, bilinearly upscaled like the M0 board's 800 x 450 grain canvas
+    // value noise on the grain grid, bilinearly upscaled so each grain is a soft ~1 px speck
     float grain(vec2 p, float f) {
       vec2 i = floor(p - 0.5), u = p - 0.5 - i;
       return mix(mix(grainAt(i, f), grainAt(i + vec2(1.0, 0.0), f), u.x),
@@ -83,6 +84,9 @@ const FilmShader = {
     }`,
 };
 
+/** Size of one grain cell in css px: fine enough to read as film texture, not blotches. */
+const GRAIN_PX = 1.25;
+
 export function createPost(renderer: WebGLRenderer, scene: Scene, camera: Camera) {
   const size = renderer.getDrawingBufferSize(new Vector2());
   const target = new WebGLRenderTarget(size.x, size.y, { type: HalfFloatType, samples: 4 });
@@ -96,6 +100,7 @@ export function createPost(renderer: WebGLRenderer, scene: Scene, camera: Camera
     setSize(w: number, h: number, pixelRatio: number) {
       composer.setPixelRatio(pixelRatio);
       composer.setSize(w, h);
+      film.uniforms.uGrainCells.value.set(w / GRAIN_PX, h / GRAIN_PX);
     },
     render(t: number) {
       film.uniforms.uTime.value = t;
