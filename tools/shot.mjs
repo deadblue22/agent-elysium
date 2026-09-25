@@ -41,6 +41,7 @@ await page.waitForFunction(() => window.__ready === true, null, { timeout: 300_0
 const info = await page.evaluate(() => window.__shot);
 console.log(`ready in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 console.log(`renderer: ${info.renderer}  webgl2: ${info.webgl2}  anisotropy: ${info.anisotropy}  ink canvas: ${info.ink.w}x${info.ink.h}`);
+console.log('composition (frame px):', JSON.stringify(info.metrics));
 
 mkdirSync(join(root, 'docs'), { recursive: true });
 const full = join(root, 'docs', `style-board-three${suffix}.png`);

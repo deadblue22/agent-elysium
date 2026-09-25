@@ -20,7 +20,7 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
   const sc = key.shadow.camera as OrthographicCamera;
-  sc.left = -9.5; sc.right = 9.5; sc.top = 8.5; sc.bottom = -8.5; sc.near = 4; sc.far = 34;
+  sc.left = -10.5; sc.right = 10.5; sc.top = 10.5; sc.bottom = -10.5; sc.near = 4; sc.far = 36;
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.012;
   key.shadow.radius = 3;
@@ -28,7 +28,7 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
   group.add(key, key.target);
 
   // the candle: the only warm light in the room
-  const flame = new PointLight('#ffa35a', 8, 0, 2);
+  const flame = new PointLight('#ffa35a', 9, 0, 2);
   flame.position.copy(at.candleLight);
   flame.castShadow = true;
   flame.shadow.mapSize.set(1024, 1024);
@@ -41,14 +41,14 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
 
   // daylight spilling in at the window: lights the wall and floor around it (it sits between
   // the wall and the furniture plane, whose fronts face away from it), no shadows
-  const windowGlow = new PointLight('#a9bdd0', 3.2, 0, 2);
+  const windowGlow = new PointLight('#a9bdd0', 4.2, 0, 2);
   windowGlow.position.copy(at.windowGlow);
   group.add(windowGlow);
 
   // a reading lamp outside the frame: the warm pool on the table and the pages
   const lamp = new SpotLight('#ffdcb4', 330, 0, 0.55, 1, 2);
-  lamp.position.set(0.6, 15.5, 6.5);
-  lamp.target.position.set(-0.3, 0, 0.5);
+  lamp.position.set(0.6, 15.5, 8.5);
+  lamp.target.position.set(-0.3, 0, 1.4);
   group.add(lamp, lamp.target);
 
   // the flame itself and its halo (emissive sprites, drawn over the paper)

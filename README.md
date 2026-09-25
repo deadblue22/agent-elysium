@@ -22,14 +22,14 @@ npm run bake     # assets/art/*.svg 烘焙为 public/textures/*.png 与 manifest
 npm run shot     # 构建、在 Chromium 中渲染，截图到 docs/style-board-three*.png
 ```
 
-内容是第一章 `study.clock` 节点的一个静止瞬间：木桌上的开本，书页平放、页叠错落；两张顶页的上半被撕去，露出底页上的书房地板，五层纸艺书房从底页的折线竖起；左页文字日志从撕口下方开始，右页两个纸偶与骰子站在撕口下的纸面上。鼠标移动时相机有几度的视差，悬停左页的当前选项会高亮，点击在控制台输出选项序号。右上角可切换中英文。
+内容是第一章 `study.clock` 节点的一个静止瞬间：木桌上的开本，书页平放、页叠错落；两张顶页的上半被撕去，露出底页上的书房地板，五层纸艺书房从底页的折线竖起，占据画面上半；左页文字日志自下而上排列，旧行升入撕口处淡出，鼠标滚轮可在左页上翻看历史；右页两个纸偶与骰子站在撕口下的纸面上。鼠标移动时相机有几度的视差，悬停左页的当前选项会高亮，点击在控制台输出选项序号。右上角可切换中英文。
 
 `bake` 与 `shot` 使用预装的 Chromium（路径见 `tools/chromium.mjs`，可用 `CHROMIUM_PATH` 覆盖），没有 GPU 时由 SwiftShader 提供 WebGL 2。页面参数：`?still` 冻结雪、颗粒与光标，用于截图；`?lang=en` 以英文打开。
 
 ## 模块
 
 - `src/scene/`：`table` 木桌，`book` 封面、错落的页叠、底页上的地板与撕去上半的两张顶页，`popup` 背景板五层，`puppets` 纸偶、骰子与士气，`lights` 灯光与阴影，`post` 颗粒、暗角与调色，`camera` 相机与视差，`snow` 雪，`space` 坐标与纸片工具。
-- `src/page/`：`layout` 日志排版（中文按字断行、避头尾，英文按词），`painter` 画布绘制与局部重绘，`hit` 射线命中选项。
+- `src/page/`：`layout` 日志排版（中文按字断行、避头尾，英文按词；自下而上锚定），`painter` 画布绘制、滚动窗口与撕口处的淡出，`hit` 射线命中选项。
 - `src/content/`：`schema` 类型（design.md 7.3），`skills` 技能表与颜色，`study-clock` 本节点台词。
 - `assets/art/*.svg`：每张纸片一个矢量源文件，撕边与纸纹滤镜写在文件里，只在烘焙时运行。
 - `public/textures/`：烘焙结果；`public/fonts/`：字体子集。

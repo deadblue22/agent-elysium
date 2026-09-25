@@ -58,20 +58,23 @@
     "floor": {
       "file": "textures/floor.png",
       "px": [
-        2704,
-        896
+        2163,
+        493
       ],
       "viewBox": [
         -6,
         -4,
         1352,
-        448
+        308
       ],
       "world": [
         13.52,
-        4.48
+        3.08
       ],
-      "scale": 2
+      "scale": 1.6,
+      "meta": {
+        "fold": 192
+      }
     },
     "front-chair": {
       "file": "textures/front-chair.png",
@@ -167,46 +170,50 @@
       "file": "textures/page-left.png",
       "px": [
         1340,
-        1200
+        1800
       ],
       "viewBox": [
         0,
         0,
         670,
-        600
+        900
       ],
       "world": [
         6.7,
-        6
+        9
       ],
       "scale": 2,
       "meta": {
-        "tearMin": 252,
-        "tearMax": 286,
-        "columnY0": 298
+        "pageH": 900,
+        "tearMin": 326,
+        "tearMax": 360,
+        "columnY0": 372
       }
     },
     "page-right": {
       "file": "textures/page-right.png",
       "px": [
         1340,
-        1200
+        1800
       ],
       "viewBox": [
         670,
         0,
         670,
-        600
+        900
       ],
       "world": [
         6.7,
-        6
+        9
       ],
       "scale": 2,
       "meta": {
-        "tearMin": 277,
-        "tearMax": 384,
-        "columnY0": 298
+        "pageH": 900,
+        "tearMin": 349,
+        "tearMax": 456,
+        "columnY0": 372,
+        "puppetShift": 282,
+        "heartsY": 448
       }
     },
     "stack": {

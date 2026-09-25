@@ -95,14 +95,14 @@ export function createBook(art: Art, inkLeft: Texture, inkRight: Texture) {
   group.name = 'book';
 
   // the cover board, showing beyond the stack
-  const cover = new Mesh(new BoxGeometry(13.76, COVER_TOP, 6.3), new MeshStandardMaterial({ color: '#181d2b', roughness: 0.7 }));
+  const cover = new Mesh(new BoxGeometry(13.76, COVER_TOP, BOOK_H / UNIT + 0.3), new MeshStandardMaterial({ color: '#181d2b', roughness: 0.7 }));
   cover.position.set(0, COVER_TOP / 2, 0.09);
   cover.castShadow = cover.receiveShadow = true;
   group.add(cover, createStack(art.stack.texture));
 
-  // the base page's floor sheet: the ground of the pop-up, down past the lowest tear
-  const [fx, fy, fw, fh] = art.floor.viewBox;
-  const floor = flatSheet(fx, fx + fw, fy, fy + fh, BASE_Y + 0.003);
+  // the base page's floor sheet: the ground of the pop-up, from its fold down past the lowest tear
+  const [fx, fy, fw, fh] = art.floor.viewBox, fold = art.floor.meta.fold;
+  const floor = flatSheet(fx, fx + fw, fold + fy, fold + fy + fh, BASE_Y + 0.003);
   floor.material = paperMaterial(art.floor.texture, 0.95);
   floor.receiveShadow = true;
   floor.name = 'floor';

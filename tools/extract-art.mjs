@@ -25,15 +25,26 @@ mkdirSync(outDir, { recursive: true });
 // ---------------------------------------------------------------- the torn top sheets
 // The two visible pages are the book's top sheets with their upper part torn away; the
 // base page beneath carries the study's floor, on which the pop-up stands (as in the
-// reference pop-up book). Tear lines are in book px (y from the far edge, page is 600 tall).
+// reference pop-up book). Tear lines are in book px (y from the far edge).
+
+/**
+ * Page depth. The M0 board's pages were 600 deep; with the lower, more frontal camera the
+ * pages need to be deeper (near-portrait, like the reference book's) to stay large on screen.
+ */
+const BOOK_H = 900;
+/** The pop-up's fold line on the base page: the wall stands here, the strip behind it is never seen. */
+const FOLD = 192;
+/** Mean line of each tear: left ~38% of the page; the right tongue dips ~100 px below it. */
+const LEFT_TEAR = 342;
+const RIGHT_TEAR = 362;
 const TAU = Math.PI * 2;
 const TEAR = {
-  // left: gently wavy around 45% of the page height, rising a little toward the gutter
-  left: (x) => 268 - 0.02 * (x - 335) + 6 * Math.sin(TAU * x / 310 + 0.6) + 3 * Math.sin(TAU * x / 97 + 1.9) + 1.5 * Math.sin(TAU * x / 37 + 0.3),
-  // right: lower and rougher; a tongue of floor reaches ~64% down around x = 1090
+  // left: gently wavy, rising a little toward the gutter
+  left: (x) => LEFT_TEAR - 0.02 * (x - 335) + 6 * Math.sin(TAU * x / 310 + 0.6) + 3 * Math.sin(TAU * x / 97 + 1.9) + 1.5 * Math.sin(TAU * x / 37 + 0.3),
+  // right: lower and rougher; a tongue of floor reaches deepest around x = 1090
   right: (x) => {
     const u = x - 670;
-    return 290 + 72 * Math.exp(-(((u - 420) / 190) ** 2)) + 12 * u / 670
+    return RIGHT_TEAR + 72 * Math.exp(-(((u - 420) / 190) ** 2)) + 12 * u / 670
       + 8.5 * Math.sin(TAU * u / 140 + 0.4) + 5 * Math.sin(TAU * u / 53 + 2.2) + 2.6 * Math.sin(TAU * u / 23 + 1.1);
   },
 };
@@ -41,9 +52,10 @@ const TEAR = {
 const DISP = { left: 7, right: 8.5 };
 /** Width of the exposed-core fringe between the torn edge and the printed paper. */
 const FRINGE = 7;
-/** The puppets (and their printed stand tabs and rug) stand this much lower than on the M0 board, below the tongue. */
-const PUPPET_SHIFT = 112;
-const FLOOR_H = 440;
+/** The puppets (and their printed stand tabs and rug) stand this much nearer than on the M0 board, below the tongue. */
+const PUPPET_SHIFT = 282;
+/** Depth of the floor sheet from the fold: past the deepest point of the tongue. */
+const FLOOR_H = 300;
 
 function mulberry32(a) {
   return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -55,7 +67,7 @@ const tears = Object.fromEntries(['left', 'right'].map((side) => {
   for (let x = x0 - 14; x <= x1 + 14; x += 3) pts.push([x, f1(TEAR[side](x))]);
   const inside = pts.filter(([x]) => x >= x0 && x <= x1).map(([, y]) => y);
   const line = 'M' + pts.map(([x, y]) => `${x},${y}`).join(' L');
-  const shape = `${line} L${x1 + 14},614 L${x0 - 14},614 Z`;
+  const shape = `${line} L${x1 + 14},${BOOK_H + 14} L${x0 - 14},${BOOK_H + 14} Z`;
   // loose fibres along the edge, sticking out of it a little
   const R = mulberry32(side === 'left' ? 61 : 67);
   let whiskers = '';
@@ -69,8 +81,10 @@ const tears = Object.fromEntries(['left', 'right'].map((side) => {
     max: Math.ceil(Math.max(...inside) + DISP[side] / 2),
   }];
 }));
-/** The left page's text column starts under the lowest point of its tear, past the fringe. */
+/** The left page's text window starts under the lowest point of its tear, past the fringe. */
 const COLUMN_Y0 = tears.left.max + FRINGE + 5;
+/** The morale hearts sit at the top right of the right sheet's cream, clear of its tear. */
+const HEARTS_Y = Math.ceil(Math.max(...tears.right.pts.filter(([x]) => x >= 1180 && x <= 1320).map(([, y]) => y)) + DISP.right / 2 + FRINGE + 12);
 
 // Each piece: source svg (selector), viewBox crop, selectors to delete, optional edit(svg, data)
 // that runs in the page, optional attributes for the root (data-* ends up in the manifest).
@@ -123,23 +137,25 @@ const PIECES = [
   },
   {
     name: 'floor', src: '#floorSvg', viewBox: [-6, -4, 1352, FLOOR_H + 8],
-    note: `The study floor on the base page, under the torn top sheets: boards, rug, loose papers, the gutter crease, from the wall's fold (y=0) down to y=${FLOOR_H}, past the lowest point of both tears. The strip along each tear line is the torn sheet's soft contact shadow (too thin for the shadow map at 0.02 units).`,
-    data: { H: FLOOR_H, tears: [tears.left.pts, tears.right.pts] },
+    note: `The study floor on the base page, under the torn top sheets: boards, rug, loose papers, a faint gutter crease. y=0 is the pop-up's fold (book y=${FOLD}); the sheet reaches y=${FLOOR_H}, past the deepest point of the tongue. The strip along each tear line is the torn sheet's soft contact shadow (too thin for the shadow map at 0.02 units).`,
+    attrs: { 'data-fold': FOLD, 'data-bake-scale': 1.6 },
+    data: { H: FLOOR_H, tears: [tears.left.pts, tears.right.pts].map((pts) => pts.map(([x, y]) => [x, f1(y - FOLD)])) },
     edit: (svg, d) => {
-      // the legacy board's floor script, re-run for the deeper sheet (same palette and pieces)
+      // the legacy board's floor script, re-run for the deeper sheet, printed in a faded,
+      // dusty paper-toned grey-brown (a print of boards, not dark wood); the rug keeps its colour
       const NS = 'http://www.w3.org/2000/svg';
       const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
       const mulberry32 = (a) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
       const R = mulberry32(3), H = d.H;
       [...svg.children].forEach((c) => c.remove());
       const base = el('g', { filter: 'url(#cutL)' }, svg);
-      el('path', { d: `M0,0 H1340 V${H} H0 Z`, fill: '#4f3f31' }, base);
+      el('path', { d: `M0,0 H1340 V${H} H0 Z`, fill: '#8a7f71' }, base);
       for (let x = 0; x < 1340; x += 46) {
         const t = R();
-        el('rect', { x, y: 0, width: 46, height: H, fill: t < 0.33 ? '#463729' : t < 0.66 ? '#564535' : '#4c3c2f', opacity: 0.9 }, base);
-        el('rect', { x, y: 0, width: 1.6, height: H, fill: '#1a1310' }, base);
-        for (let j = 10 + R() * 100; j < H; j += 150 + R() * 120) el('rect', { x, y: j.toFixed(1), width: 46, height: 1.4, fill: '#1a1310', opacity: 0.8 }, base);
-        for (let k = 0; k < 11; k++) el('rect', { x: (x + 6 + R() * 34).toFixed(1), y: (R() * (H - 20)).toFixed(1), width: 0.8, height: (8 + R() * 20).toFixed(1), fill: '#6b5641', opacity: 0.35 }, base);
+        el('rect', { x, y: 0, width: 46, height: H, fill: t < 0.33 ? '#7f7467' : t < 0.66 ? '#8d8274' : '#86796b', opacity: 0.92 }, base);
+        el('rect', { x, y: 0, width: 1.6, height: H, fill: '#554a3f', opacity: 0.8 }, base);
+        for (let j = 10 + R() * 100; j < H; j += 150 + R() * 120) el('rect', { x, y: j.toFixed(1), width: 46, height: 1.4, fill: '#554a3f', opacity: 0.7 }, base);
+        for (let k = 0; k < 11; k++) el('rect', { x: (x + 6 + R() * 34).toFixed(1), y: (R() * (H - 20)).toFixed(1), width: 0.8, height: (8 + R() * 20).toFixed(1), fill: '#a69a8a', opacity: 0.35 }, base);
       }
       // faded rug under the desk
       const rug = el('g', {}, base);
@@ -151,7 +167,7 @@ const PIECES = [
       for (let fx = 392; fx < 822; fx += 5) el('rect', { x: fx, y: 106, width: 1.4, height: 5, fill: '#b89b70', opacity: 0.5 }, rug);
       // loose sheets: the board's five by the furniture, more across the floor that shows through the tears
       [[318, 86, -14], [618, 90, 22], [842, 100, -8], [998, 64, 12], [1040, 104, -24],
-        [196, 196, 9], [462, 226, -18], [760, 262, 14], [932, 228, -6], [1150, 300, 19], [1236, 212, -11]].forEach((p) => {
+        [196, 140, 9], [462, 150, -18], [760, 172, 14], [932, 205, -6], [1110, 246, 19], [1236, 182, -11]].forEach((p) => {
         const g = el('g', { transform: `translate(${p[0]} ${p[1]}) rotate(${p[2]})` }, svg);
         el('rect', { x: -15, y: -11, width: 30, height: 22, fill: '#d9d0bb' }, el('g', { filter: 'url(#cutS)' }, g));
         for (let l = 0; l < 4; l++) el('rect', { x: -11, y: -7 + l * 4.5, width: (17 + R() * 5).toFixed(1), height: 0.8, fill: '#5d5445', opacity: 0.6 }, g);
@@ -188,10 +204,13 @@ const PIECES = [
     },
   },
   ...['left', 'right'].map((side) => ({
-    name: `page-${side}`, src: '#pageArt', viewBox: side === 'left' ? [0, 0, 670, 600] : [670, 0, 670, 600],
+    name: `page-${side}`, src: '#pageArt', viewBox: side === 'left' ? [0, 0, 670, BOOK_H] : [670, 0, 670, BOOK_H],
     note: `The ${side} top sheet: its upper part torn away (tear between y=${tears[side].min} and y=${tears[side].max}), a lighter fringe of exposed paper core along the tear with a faint line of thickness inside it; fibre, mottling, foxing, toned edges${side === 'right' ? ', the faint printed rug and the puppets\' stand tabs' : ' (kept quiet under the text column)'}. Text is painted at runtime.`,
-    attrs: { 'data-tear-min': tears[side].min, 'data-tear-max': tears[side].max, 'data-column-y0': COLUMN_Y0 },
-    data: { shape: tears[side].shape, line: tears[side].line, whiskers: tears[side].whiskers, disp: DISP[side], fringe: FRINGE, seed: side === 'left' ? 17 : 29, colY0: COLUMN_Y0, shift: side === 'right' ? PUPPET_SHIFT : 0 },
+    attrs: {
+      'data-page-h': BOOK_H, 'data-tear-min': tears[side].min, 'data-tear-max': tears[side].max, 'data-column-y0': COLUMN_Y0,
+      ...(side === 'right' ? { 'data-puppet-shift': PUPPET_SHIFT, 'data-hearts-y': HEARTS_Y } : {}),
+    },
+    data: { H: BOOK_H, shape: tears[side].shape, line: tears[side].line, whiskers: tears[side].whiskers, disp: DISP[side], fringe: FRINGE, seed: side === 'left' ? 17 : 29, colY0: COLUMN_Y0, shift: side === 'right' ? PUPPET_SHIFT : 0 },
     remove: ['use', 'ellipse[fill="#140c06"]', 'g[fill="#120a05"]', '#hearts', 'path[fill="#a9c0cf"]', 'ellipse[fill="url(#warmGlow)"]',
       'path[d^="M1340,560"]', 'path[d^="M1340,558"]', 'path[d^="M1306,566"]'],
     edit: (svg, d) => {
@@ -203,30 +222,39 @@ const PIECES = [
           if (e) e.setAttribute('transform', `translate(0 ${d.shift})`);
         }
       }
-      // keep the paper texture quiet under the (moved) text column
+      // the M0 page was 600 deep: stretch its paper layers to the deeper page
+      const k = d.H / 600;
+      svg.querySelectorAll('rect[filter="url(#pageTex)"], rect[filter="url(#pageMottle)"], #quietCol > rect:not([filter])').forEach((r) => r.setAttribute('height', d.H));
+      const qm = svg.querySelector('#quietCol');
+      if (qm) qm.setAttribute('height', d.H);
+      const toned = svg.querySelector('rect[stroke="#6b4a26"]');
+      if (toned) toned.setAttribute('height', d.H - 3);
+      svg.querySelectorAll('#foxing circle').forEach((c) => c.setAttribute('cy', (+c.getAttribute('cy') * k).toFixed(0)));
+      svg.querySelectorAll('circle[cx="770"][cy="540"]').forEach((c) => c.setAttribute('cy', 540 + d.H - 600));
+      // keep the paper texture quiet under the (moved) text window
       const q = svg.querySelector('#quietCol rect[filter]');
-      if (q) { q.setAttribute('y', d.colY0 - 8); q.setAttribute('height', 620 - d.colY0); }
+      if (q) { q.setAttribute('y', d.colY0 - 8); q.setAttribute('height', d.H + 20 - d.colY0); }
       // the legacy page toning (aged paper, darker toward the edges): ellipse 72% x 78% of each page
       for (const [id, cx, cy, stops] of [
-        ['paperL', 295, 312, '<stop offset="0" stop-color="#e8ddc6"/><stop offset=".55" stop-color="#ded1b5"/><stop offset=".9" stop-color="#c8b797"/><stop offset="1" stop-color="#b5a383"/>'],
-        ['paperR', 1018, 276, '<stop offset="0" stop-color="#e6dbc3"/><stop offset=".5" stop-color="#dccfb2"/><stop offset=".88" stop-color="#c8b797"/><stop offset="1" stop-color="#b3a180"/>'],
+        ['paperL', 295, 312 * k, '<stop offset="0" stop-color="#e8ddc6"/><stop offset=".55" stop-color="#ded1b5"/><stop offset=".9" stop-color="#c8b797"/><stop offset="1" stop-color="#b5a383"/>'],
+        ['paperR', 1018, 276 * k, '<stop offset="0" stop-color="#e6dbc3"/><stop offset=".5" stop-color="#dccfb2"/><stop offset=".88" stop-color="#c8b797"/><stop offset="1" stop-color="#b3a180"/>'],
       ]) {
         const g = document.createElementNS(NS, 'radialGradient');
         g.id = id; g.setAttribute('gradientUnits', 'userSpaceOnUse');
         g.setAttribute('cx', cx); g.setAttribute('cy', cy); g.setAttribute('r', 482);
-        g.setAttribute('gradientTransform', `translate(${cx} ${cy}) scale(1 0.97) translate(${-cx} ${-cy})`);
+        g.setAttribute('gradientTransform', `translate(${cx} ${cy}) scale(1 ${0.97 * k}) translate(${-cx} ${-cy})`);
         g.innerHTML = stops;
         defs.appendChild(g);
       }
       // everything printed goes into one group, masked by the torn sheet inset below the fringe
       const content = document.createElementNS(NS, 'g');
       content.setAttribute('mask', 'url(#sheet)');
-      content.innerHTML = '<rect x="0" y="0" width="670" height="600" fill="url(#paperL)"/><rect x="670" y="0" width="670" height="600" fill="url(#paperR)"/>';
+      content.innerHTML = `<rect x="0" y="0" width="670" height="${d.H}" fill="url(#paperL)"/><rect x="670" y="0" width="670" height="${d.H}" fill="url(#paperR)"/>`;
       [...svg.children].filter((c) => c.tagName !== 'defs').forEach((c) => content.appendChild(c));
       // the tear: low-frequency waviness is in the line itself; the displacement adds the
       // fibrous irregularity. The inner edge (where the printed paper starts) uses its own
       // noise, so the fringe of exposed core varies in width. Filters work in user space.
-      const region = 'filterUnits="userSpaceOnUse" x="-40" y="-40" width="1420" height="690" color-interpolation-filters="sRGB"';
+      const region = `filterUnits="userSpaceOnUse" x="-40" y="-40" width="1420" height="${d.H + 90}" color-interpolation-filters="sRGB"`;
       defs.insertAdjacentHTML('beforeend', `
         <filter id="tearEdge" ${region}>
           <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="4" seed="${d.seed}" result="n"/>
@@ -239,7 +267,7 @@ const PIECES = [
           <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" seed="${d.seed + 7}" result="n"/>
           <feDisplacementMap in="SourceGraphic" in2="n" scale="${d.disp * 1.3}" xChannelSelector="R" yChannelSelector="G"/>
         </filter>
-        <mask id="sheet" maskUnits="userSpaceOnUse" x="-40" y="-40" width="1420" height="690">
+        <mask id="sheet" maskUnits="userSpaceOnUse" x="-40" y="-40" width="1420" height="${d.H + 90}">
           <g transform="translate(0 ${d.fringe})"><g filter="url(#tearInner)"><path d="${d.shape}" fill="#fff"/></g></g>
         </mask>`);
       // the sheet's torn silhouette in the colour of exposed paper core, with loose fibres

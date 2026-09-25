@@ -5,13 +5,16 @@
 import type { Lang, LogEntry } from '../content/schema';
 import { ATTRIBUTE_INK, DIFFICULTY, RESULT, SKILLS, SPEAKERS } from '../content/skills';
 
-export const PAGE = { w: 670, h: 600 };
+/** One page in book px (the legacy board's CSS px); the page is deeper than M0's 600 now. */
+export const PAGE = { w: 670, h: 900 };
 
 export interface Rect { x: number; y: number; w: number; h: number }
 export interface Column { x0: number; x1: number; y0: number; y1: number }
 
-/** The text column on the left top sheet: from just under its tear down to the near edge. */
-export const textColumn = (y0: number): Column => ({ x0: 34, x1: 616, y0, y1: 590 });
+/** The text window on the left top sheet: from just under its tear down to the near edge. */
+export const textColumn = (y0: number): Column => ({ x0: 34, x1: 620, y0, y1: PAGE.h - 20 });
+/** Old lines fade out over this many page px as they rise into the tear. */
+export const FADE = 60;
 
 export type DrawItem =
   | { t: 'text'; x: number; y: number; text: string; font: string; color: string; alpha: number; ls: number; stroke: number; option?: number; box: Rect }
@@ -20,12 +23,17 @@ export type DrawItem =
   | { t: 'cursor'; color: string; box: Rect };
 
 export interface PageLayout {
+  /** Positions with the log scrolled to its newest line (scroll = 0). */
   items: DrawItem[];
-  /** Hit boxes of the currently available options. */
+  /** Hit boxes of the currently available options (at scroll = 0). */
   options: { index: number; rect: Rect }[];
   cursor: Rect | null;
   /** Plain text of each entry, in order, for the screen-reader mirror. */
   plain: string[];
+  /** The visible window (page px): text is clipped above y0 and fades in over `fade` below it. */
+  window: { y0: number; y1: number; fade: number } | null;
+  /** How far the history can be scrolled back (page px). */
+  scrollMax: number;
 }
 
 // ---------------------------------------------------------------- style
@@ -60,13 +68,15 @@ const STACKS: Record<Lang, Record<Family, string>> = {
 
 interface Metrics { narr: number; mono: number; label: number; tag: number; roll: number; res: number; lineHeight: number }
 /**
- * The M0 board's proportions (serif 22 / mono 20 / labels 16, line height 1.65) scaled
- * down so the whole study.clock log fits on the torn sheet under the tear, about the
- * size of the reference book's text relative to its page.
+ * Sized for the screen, not the canvas. Under the camera the text window is foreshortened
+ * to 0.57 (just below the fade) .. 0.77 (bottom) screen px per page px vertically, about
+ * 1.0-1.1 horizontally; CJK glyphs have about 0.9 em of ink. So 31.5 page px gives
+ * narration glyphs of 16-22 px on screen and a 44 page px line pitch of 25-34 px.
+ * The M0 board's proportions between the styles are kept.
  */
 const SIZES: Record<Lang, Metrics> = {
-  zh: { narr: 17, mono: 15.5, label: 12.4, tag: 12.4, roll: 14.7, res: 13.2, lineHeight: 25.5 },
-  en: { narr: 17.5, mono: 13.8, label: 10.2, tag: 10.2, roll: 13.2, res: 10.6, lineHeight: 23 },
+  zh: { narr: 31.5, mono: 28, label: 22.5, tag: 22.5, roll: 26.5, res: 24, lineHeight: 44 },
+  en: { narr: 32, mono: 24.5, label: 18, tag: 18, roll: 23.5, res: 19, lineHeight: 41.5 },
 };
 
 const font = (lang: Lang, s: Style) => `${s.weight} ${s.size}px ${STACKS[lang][s.family]}`;
@@ -202,7 +212,7 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
   const options: PageLayout['options'] = [];
   const plain: string[] = [];
   let cursor: Rect | null = null;
-  let y = col.y0;
+  let y = 0; // laid out from the top, anchored to the bottom of the window afterwards
 
   entries.forEach((e, idx) => {
     // older entries fade: past choices to 0.75, everything before the last choice to 0.84
@@ -229,12 +239,15 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
       const tb = m.baseline(lang, tagSkill, box.y + 1 + padT, S.tag);
       pushText(items, lang, x + 1 + padX, tb, skill, tagSkill, alpha);
       pushText(items, lang, x + 1 + padX + wSkill + gap, tb, dc, tagDc, alpha);
-      x += boxW + sep;
-      const rb = m.baseline(lang, roll, mid - lh / 2, lh);
-      pushText(items, lang, x, rb, rollText, roll, alpha);
-      x += m.width(lang, roll, rollText) + sep;
-      pushText(items, lang, x, m.baseline(lang, res, mid - lh / 2, lh), resText, res, alpha);
-      y = top + lh + 4;
+      // the roll and the result follow the tag, or drop to a second row when they do not fit
+      const wRoll = m.width(lang, roll, rollText), wRes = m.width(lang, res, resText);
+      let rowMid = mid;
+      if (boxW + sep + wRoll + sep + wRes > maxW) { x = col.x0 + padX; rowMid = mid + lh * 0.85; }
+      else x += boxW + sep;
+      pushText(items, lang, x, m.baseline(lang, roll, rowMid - lh / 2, lh), rollText, roll, alpha);
+      x += wRoll + sep;
+      pushText(items, lang, x, m.baseline(lang, res, rowMid - lh / 2, lh), resText, res, alpha);
+      y = rowMid + lh / 2 + 4;
       plain.push(`${skill} ${dc} ${rollText} ${resText}`);
       return;
     }
@@ -314,17 +327,17 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
     y += 2;
   });
 
-  // overflow: the log scrolls, the oldest lines leave the top of the column
-  const overflow = y - 2 - col.y1;
-  if (overflow > 0) {
-    for (const it of items) {
-      it.box.y -= overflow; // the cursor rect is its item's box, so it moves too
-      if (it.t === 'text') it.y -= overflow;
-    }
-    for (const o of options) o.rect.y -= overflow;
+  // bottom-anchored: the newest line sits at the bottom of the window; older lines rise
+  // toward the tear, fade, and are clipped there (scroll back with the wheel to read them)
+  const content = y - 2;
+  const shift = col.y1 - content;
+  for (const it of items) {
+    it.box.y += shift; // the cursor rect is its item's box, so it moves too
+    if (it.t === 'text') it.y += shift;
   }
-  const visible = items.filter((it) => it.box.y >= col.y0 - 6);
-  return { items: visible, options, cursor, plain };
+  for (const o of options) o.rect.y += shift;
+  const room = col.y1 - col.y0 - FADE * 0.6;
+  return { items, options, cursor, plain, window: { y0: col.y0, y1: col.y1, fade: FADE }, scrollMax: Math.max(0, content - room) };
 }
 
 function pushText(items: DrawItem[], lang: Lang, x: number, y: number, text: string, s: Style, alpha: number, option?: number) {
@@ -344,6 +357,6 @@ export function layoutRightPage(lang: Lang, m: Measurer, moraleLabel: string, he
   pushText(items, lang, 1180 - 670 - 12 - w, m.baseline(lang, label, heartsTop + 1, 16), moraleLabel, label, 0.72);
   const pno: Style = { family: 'serif', size: 12, weight: 400, color: '#2B2622', ls: 12 * 0.2, stroke: 0 };
   const pw = m.width(lang, pno, '18');
-  pushText(items, lang, PAGE.w - 48 - pw, m.baseline(lang, pno, 578, 16), '18', pno, 0.45);
-  return { items, options: [], cursor: null, plain: [] };
+  pushText(items, lang, PAGE.w - 48 - pw, m.baseline(lang, pno, PAGE.h - 22, 16), '18', pno, 0.45);
+  return { items, options: [], cursor: null, plain: [], window: null, scrollMax: 0 };
 }

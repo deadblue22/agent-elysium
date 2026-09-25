@@ -11,18 +11,18 @@ import { PagePainter } from './page/painter';
 import { createBook } from './scene/book';
 import { FRAME, createCameraRig } from './scene/camera';
 import { createLights } from './scene/lights';
-import { candleFlamePosition, candleLightPosition, createPopup, windowGlowPosition } from './scene/popup';
+import { createPopup, roomLights } from './scene/popup';
 import { createPost } from './scene/post';
-import { HEARTS_SHIFT, createStage } from './scene/puppets';
+import { createStage, heartsTop } from './scene/puppets';
 import { createSnow } from './scene/snow';
-import { SHEET_Y, wx, wz } from './scene/space';
+import { LEAN, SHEET_Y, wx, wz } from './scene/space';
 import { createTable } from './scene/table';
 
 declare global {
   interface Window {
     __ready?: boolean;
-    /** For tools/shot.mjs: frame-space rects and renderer facts. */
-    __shot?: { page: Rect; column: Rect; renderer: string; webgl2: boolean; anisotropy: number; ink: { w: number; h: number } };
+    /** For tools/shot.mjs: frame-space rects, composition metrics and renderer facts. */
+    __shot?: { page: Rect; column: Rect; renderer: string; webgl2: boolean; anisotropy: number; ink: { w: number; h: number }; metrics: Record<string, number> };
   }
 }
 
@@ -38,8 +38,13 @@ function frameSize() {
   return { w, h: Math.round((w * 9) / 16) };
 }
 
-/** Canvas px per page px: twice the page's on-screen size (the page is ~1:1 with the 1600 frame). */
-const inkScale = (w: number, pr: number) => Math.min(3.5, Math.max(2, (2 * w * pr) / FRAME.w));
+/**
+ * Canvas px per page px for the log: the page is about 1:1 with the 1600 frame across and
+ * foreshortened to 0.55-0.77 along; 3x keeps the foreshortened glyphs crisp at 1:1.
+ * The right page only carries two small labels.
+ */
+const inkScale = (w: number, pr: number) => Math.min(4, Math.max(3, (3 * w * pr) / FRAME.w));
+const labelScale = (w: number, pr: number) => Math.min(3, Math.max(1.5, (1.5 * w * pr) / FRAME.w));
 
 /** Frame-space bounding box of a rect on the top sheets. */
 function projectRect(camera: PerspectiveCamera, bx0: number, by0: number, bx1: number, by1: number): Rect {
@@ -74,20 +79,21 @@ async function main() {
   const { w: w0 } = frameSize();
   const pr0 = Math.min(devicePixelRatio, 2);
   const leftInk = new PagePainter(anisotropy, inkScale(w0, pr0));
-  const rightInk = new PagePainter(anisotropy, inkScale(w0, pr0));
+  const rightInk = new PagePainter(anisotropy, labelScale(w0, pr0));
 
   const scene = new Scene();
   const book = createBook(art, leftInk.texture, rightInk.texture);
-  const lights = createLights({ candleLight: candleLightPosition(), candleFlame: candleFlamePosition(), windowGlow: windowGlowPosition() });
+  const fold = art.floor.meta.fold;
+  const lights = createLights(roomLights(fold));
   const cam = createCameraRig();
-  scene.add(createTable(art), book.group, createPopup(art).group, createStage(art).group, lights.group, cam.rig);
+  scene.add(createTable(art), book.group, createPopup(art, fold).group, createStage(art).group, lights.group, cam.rig);
 
   // the log starts under the left sheet's tear (its extent comes from the SVG, via the manifest)
   const tear = art['page-left'].meta;
   const col = textColumn(tear.columnY0);
   const column = projectRect(cam.camera, col.x0, col.y0, col.x1, col.y1);
   const pageRect = projectRect(cam.camera, 0, tear.tearMin - 14, PAGE.w, PAGE.h);
-  const snow = createSnow(cam.camera, column);
+  const snow = createSnow(cam.camera, cam.lens, column);
   scene.add(snow.points);
   const post = createPost(renderer, scene, cam.camera);
   post.uniforms.uExposure.value = 1.08;
@@ -108,7 +114,7 @@ async function main() {
     document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
     layout = layoutLog(clockMoment, lang, measurer, col);
     leftInk.setLayout(layout);
-    rightInk.setLayout(layoutRightPage(lang, measurer, chrome.morale[lang], art.hearts.viewBox[1] + 5 + HEARTS_SHIFT));
+    rightInk.setLayout(layoutRightPage(lang, measurer, chrome.morale[lang], heartsTop(art)));
     document.getElementById('title')!.textContent = chrome.title[lang];
     document.getElementById('chapter')!.textContent = chrome.chapter[lang];
     document.getElementById('log-heading')!.textContent = chrome.logHeading[lang];
@@ -128,10 +134,17 @@ async function main() {
   applyLang();
   document.getElementById('lang')!.addEventListener('click', () => { lang = lang === 'zh' ? 'en' : 'zh'; applyLang(); });
 
-  const hit = new PageHit(canvas, cam.camera, book.leftPage, () => layout, {
+  const hit = new PageHit(canvas, cam.camera, book.leftPage, () => leftInk.optionRects(), {
     hover: (i) => { leftInk.setHover(i); invalidate(); },
     click: choose,
   });
+  // the wheel over the left page scrolls the log's history (older lines come down out of the tear)
+  canvas.addEventListener('wheel', (e) => {
+    if (!hit.pagePoint(e)) return;
+    e.preventDefault();
+    const px = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
+    if (leftInk.scrollBy(-px * 0.6)) { invalidate(); hit.refresh(); }
+  }, { passive: false });
   if (!STILL) {
     let on = true;
     setInterval(() => { on = !on; leftInk.setCursor(on); invalidate(); }, 500);
@@ -156,7 +169,7 @@ async function main() {
     post.setSize(w, h, pr);
     snow.setScale((w * pr) / FRAME.w);
     leftInk.setScale(inkScale(w, pr));
-    rightInk.setScale(inkScale(w, pr));
+    rightInk.setScale(labelScale(w, pr));
     invalidate();
   }
   resize();
@@ -169,6 +182,7 @@ async function main() {
     webgl2: renderer.capabilities.isWebGL2,
     anisotropy,
     ink: { w: leftInk.size.w, h: leftInk.size.h },
+    metrics: composition(cam.camera, fold, art),
   };
   if (params.has('debug')) Object.assign(window, { __debug: { leftInk, rightInk, scene, renderer, cam, post, lights, layout: () => layout } });
 
@@ -196,6 +210,21 @@ async function main() {
     if (!window.__ready) requestAnimationFrame(() => { window.__ready = true; });
   };
   requestAnimationFrame(frame);
+}
+
+/** Frame rows of the composition's landmarks, and the resulting band heights (px). */
+function composition(camera: PerspectiveCamera, fold: number, art: Awaited<ReturnType<typeof loadArt>>) {
+  const y = (bx: number, by: number, up = 0, h = SHEET_Y) => {
+    const v = new Vector3(wx(bx), h + (up / 100) * Math.cos(LEAN), wz(by) - (up / 100) * Math.sin(LEAN)).project(camera);
+    return Math.round(((1 - v.y) / 2) * FRAME.h);
+  };
+  const L = art['page-left'].meta, R = art['page-right'].meta;
+  const wallTop = y(670, fold, 418), wallBase = y(670, fold, 0);
+  const floorTop = y(1090, fold + 26, 0), tongue = y(1090, R.tearMax), leftTear = y(335, L.tearMax), near = y(670, PAGE.h);
+  return {
+    wallTop, wallBase, floorTop, tongue, leftTear, nearEdge: near,
+    wall: wallBase - wallTop, floorAtTongue: tongue - floorTop, floorAtLeft: leftTear - y(335, fold + 62), pages: near - leftTear,
+  };
 }
 
 function rendererName(r: WebGLRenderer): string {

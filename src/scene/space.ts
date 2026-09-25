@@ -2,16 +2,18 @@
 //
 // The legacy board's layout (docs/style-board.png) is kept: art is authored in its CSS px,
 // and 100 px = 1 world unit. "Book space" (bx, by) is the open book seen from above:
-// bx 0..1340 left to right (gutter at 670), by 0..600 from the far edge (where the
-// pop-up stands) to the near edge. World: Y up, the table is Y = 0, +Z toward the viewer.
+// bx 0..1340 left to right (gutter at 670), by 0..BOOK_H from the far edge to the near
+// edge; the pop-up stands on its fold line part-way in. World: Y up, the table is Y = 0,
+// +Z toward the viewer.
 import { DoubleSide, FrontSide, Group, Mesh, MeshStandardMaterial, PlaneGeometry, type Material, type Texture } from 'three';
 import type { ArtPiece } from '../assets';
+import { PAGE } from '../page/layout';
 
 export const UNIT = 100;
 export const DEG = Math.PI / 180;
 export const GUTTER = 670;
 export const BOOK_W = 1340;
-export const BOOK_H = 600;
+export const BOOK_H = PAGE.h;
 
 /** Top of the cover board. */
 export const COVER_TOP = 0.05;
@@ -22,8 +24,8 @@ export const COVER_TOP = 0.05;
  */
 export const BASE_Y = 0.2;
 export const SHEET_Y = BASE_Y + 0.02;
-/** Pop-up planes and puppets rise at this angle from the page (the M0 board's --phi). */
-export const HINGE_DEG = 70;
+/** Pop-up planes and puppets rise at this angle from the page (M0: 70; steeper for the lower camera). */
+export const HINGE_DEG = 74;
 export const LEAN = (90 - HINGE_DEG) * DEG;
 
 export const wx = (bx: number) => (bx - GUTTER) / UNIT;
