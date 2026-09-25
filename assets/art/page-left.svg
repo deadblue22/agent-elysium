@@ -169,9 +169,6 @@
               <ellipse cx="972" cy="316" rx="112" ry="30" stroke="#5a2a1c" stroke-width=".9"/>
               <ellipse cx="972" cy="316" rx="46" ry="12" stroke="#1f2a44" stroke-width="1"/>
             </g>
-<path d="M855,320 L905,320 L902,326 L858,326 Z M1045,306 L1091,306 L1088,312 L1048,312 Z" fill="#c9b898" opacity=".6"/>
-<path d="M855,320.4 H905 M1045,306.4 H1091" stroke="#2e2116" stroke-width="1.4" opacity=".8"/>
-<path d="M858,326 H902 M1048,312 H1088" stroke="#6b5a44" stroke-width=".8" opacity=".4"/>
 </g>
 <g transform="translate(0 7)">
 <g filter="url(#tearInner)">

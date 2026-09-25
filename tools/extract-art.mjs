@@ -10,7 +10,8 @@
 //     contact shadows): the Three.js scene produces those with real lights,
 //   - crops the viewBox to the piece.
 //
-// assets/art/*.svg are the sources from now on; re-running this overwrites them.
+// assets/art/*.svg are the sources from now on; re-running this overwrites the pieces it
+// generates. The puppets (harry.svg, kim.svg) are drawn by hand and are not touched.
 // Usage: node tools/extract-art.mjs
 import { chromium } from 'playwright-core';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -55,7 +56,7 @@ const TEAR = {
 const DISP = { left: 7, right: 8.5 };
 /** Width of the exposed-core fringe between the torn edge and the printed paper. */
 const FRINGE = 7;
-/** The puppets (and their printed stand tabs and rug) stand this much nearer than on the M0 board, below the tongue. */
+/** The puppets (and the rug printed under them) stand this much nearer than on the M0 board, below the tongue. */
 const PUPPET_SHIFT = 40;
 /** Depth of the floor sheet from the fold: past the deepest point of the tongue. */
 const FLOOR_H = 300;
@@ -189,15 +190,6 @@ const PIECES = [
     },
   },
   {
-    name: 'villon', src: '.pup.villon svg', viewBox: [0, 0, 120, 200],
-    note: 'Detective August Villon, profile puppet. Soles at y=196.5.',
-    remove: ['circle[fill="url(#ember)"]'],
-  },
-  {
-    name: 'kask', src: '.pup.kask svg', viewBox: [0, 0, 110, 190],
-    note: 'Lieutenant Elena Kask, profile puppet. Soles at y=186.5.',
-  },
-  {
     name: 'hearts', src: '#pageArt', viewBox: [1184, 130, 136, 36],
     note: 'Morale: four paper hearts, the last one gone pale. Lies on the right page.',
     edit: (svg) => {
@@ -209,7 +201,7 @@ const PIECES = [
   },
   ...['left', 'right'].map((side) => ({
     name: `page-${side}`, src: '#pageArt', viewBox: side === 'left' ? [0, 0, 670, BOOK_H] : [670, 0, 670, BOOK_H],
-    note: `The ${side} top sheet: its upper part torn away (tear between y=${tears[side].min} and y=${tears[side].max}), a lighter fringe of exposed paper core along the tear with a faint line of thickness inside it; fibre, mottling, foxing, toned edges${side === 'right' ? ', the faint printed rug and the puppets\' stand tabs' : ' (kept quiet under the text column)'}. Text is painted at runtime.`,
+    note: `The ${side} top sheet: its upper part torn away (tear between y=${tears[side].min} and y=${tears[side].max}), a lighter fringe of exposed paper core along the tear with a faint line of thickness inside it; fibre, mottling, foxing, toned edges${side === 'right' ? ', the faint printed rug under the puppets' : ' (kept quiet under the text column)'}. Text is painted at runtime.`,
     attrs: {
       'data-page-h': BOOK_H, 'data-tear-min': tears[side].min, 'data-tear-max': tears[side].max, 'data-column-y0': COLUMN_Y0,
       ...(side === 'right' ? { 'data-puppet-shift': PUPPET_SHIFT, 'data-hearts-y': HEARTS_Y } : {}),
@@ -220,12 +212,10 @@ const PIECES = [
     edit: (svg, d) => {
       const NS = 'http://www.w3.org/2000/svg';
       const defs = svg.querySelector('defs');
-      // the printed rug and the stand tabs follow the puppets, who stand below the tongue now
-      if (d.shift) {
-        for (const e of [svg.querySelector('g[opacity=".2"]'), ...svg.querySelectorAll('path[d^="M855,32"], path[d^="M858,326"]')]) {
-          if (e) e.setAttribute('transform', `translate(0 ${d.shift})`);
-        }
-      }
+      // the printed rug follows the puppets, who stand below the tongue now; their stand tabs
+      // are paper in the scene (src/scene/puppets.ts), sized to each puppet's feet
+      if (d.shift) svg.querySelector('g[opacity=".2"]')?.setAttribute('transform', `translate(0 ${d.shift})`);
+      svg.querySelectorAll('path[d^="M855,32"], path[d^="M858,326"]').forEach((e) => e.remove());
       // the M0 page was 600 deep: stretch its paper layers to the deeper page
       const k = d.H / 600;
       svg.querySelectorAll('rect[filter="url(#pageTex)"], rect[filter="url(#pageMottle)"], #quietCol > rect:not([filter])').forEach((r) => r.setAttribute('height', d.H));

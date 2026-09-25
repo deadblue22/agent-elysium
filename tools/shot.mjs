@@ -4,6 +4,8 @@
 //   docs/style-board-three-text.png    a 1:1 crop of the left page
 //   docs/style-board-three-gutter.png  420 x 260 around the gutter at the near edge
 //   docs/style-board-three-edge.png    360 x 240 at the right page's near outer corner
+//   docs/style-board-three-puppets.png the two puppets, rendered at 2x
+// With --lang en only the frame and the text crop are written (-en suffix).
 // Fails on console errors or page errors.
 //
 // Usage: node tools/shot.mjs [--no-build] [--lang en] [--hover]
@@ -54,16 +56,33 @@ const crop = join(root, 'docs', `style-board-three-text${suffix}.png`);
 await page.screenshot({ path: crop, clip, timeout: 120_000 });
 console.log(`saved ${full}\nsaved ${crop} (${clip.width}x${clip.height} at ${clip.x},${clip.y})`);
 
-// close-ups of the book's construction, 1:1
+// close-ups of the book's construction (1:1) and of the puppets (2x); they do not change
+// with the language, so only the default (zh) run writes them
 const clamp = (c) => ({ x: Math.max(0, Math.min(1600 - c.width, Math.round(c.x))), y: Math.max(0, Math.min(900 - c.height, Math.round(c.y))), width: c.width, height: c.height });
 const g = info.points.gutter, k = info.points.corner;
-for (const [name, c] of [['gutter', { x: g.x - 210, y: g.y - 170, width: 420, height: 260 }], ['edge', { x: k.x - 250, y: k.y - 150, width: 360, height: 240 }]]) {
+for (const [name, c] of lang === 'zh' ? [['gutter', { x: g.x - 210, y: g.y - 170, width: 420, height: 260 }], ['edge', { x: k.x - 250, y: k.y - 150, width: 360, height: 240 }]] : []) {
   const file = join(root, 'docs', `style-board-three-${name}${suffix}.png`);
   await page.screenshot({ path: file, clip: clamp(c), timeout: 120_000 });
   console.log(`saved ${file}`);
 }
 const ms = await page.evaluate(() => window.__bench?.(4));
 if (ms) console.log(`frame time (this renderer, 1600x900, 4x MSAA + post): ${ms.toFixed(0)} ms`);
+
+// the puppets at twice the resolution (a real render, not an upscale): the frame fits the
+// window, so a 3200 x 1800 viewport renders the same frame at 2x
+if (lang === 'zh') {
+  const hi = await browser.newPage({ viewport: { width: 3200, height: 1800 }, deviceScaleFactor: 1 });
+  hi.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') problems.push(`console.${m.type()} (2x): ${m.text()}`); });
+  hi.on('pageerror', (e) => problems.push(`pageerror (2x): ${e.message}`));
+  await hi.goto(`${url}?still${lang === 'zh' ? '' : `&lang=${lang}`}`, { waitUntil: 'load' });
+  await hi.waitForFunction(() => window.__ready === true, null, { timeout: 300_000, polling: 250 });
+  const r = info.puppets, m = 24;
+  const c = clamp({ x: r.x - m, y: r.y - m, width: Math.ceil(r.w + 2 * m), height: Math.ceil(r.h + 2 * m) });
+  const file = join(root, 'docs', `style-board-three-puppets${suffix}.png`);
+  await hi.screenshot({ path: file, clip: { x: 2 * c.x, y: 2 * c.y, width: 2 * c.width, height: 2 * c.height }, timeout: 180_000 });
+  console.log(`saved ${file} (${2 * c.width}x${2 * c.height}, rendered at 2x)`);
+  await hi.close();
+}
 
 if (args.includes('--hover')) {
   // hover the current option: it repaints in a brighter rust

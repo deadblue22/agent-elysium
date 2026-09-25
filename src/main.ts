@@ -1,7 +1,7 @@
 // 雪落之前 · the study.clock moment rendered with Three.js.
 // URL flags: ?still freezes time (snow, grain, flicker, cursor) for screenshots; ?lang=en;
 // ?debug exposes the painters, scene and renderer on window.__debug.
-import { NoToneMapping, PCFShadowMap, PMREMGenerator, SRGBColorSpace, Scene, Vector3, WebGLRenderer, type PerspectiveCamera } from 'three';
+import { Box3, NoToneMapping, PCFShadowMap, PMREMGenerator, SRGBColorSpace, Scene, Vector3, WebGLRenderer, type PerspectiveCamera } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { loadArt, loadFonts } from './assets';
 import type { Lang } from './content/schema';
@@ -28,6 +28,8 @@ declare global {
       metrics: Record<string, number>;
       /** Frame points for the close-up crops: the gutter at the near edge, the right page's near outer corner. */
       points: { gutter: { x: number; y: number }; corner: { x: number; y: number } };
+      /** Frame rect around the two puppets. */
+      puppets: Rect;
     };
     /** Renders n frames synchronously and returns the mean ms per frame (for tools/shot.mjs). */
     __bench?: (n: number) => number;
@@ -58,6 +60,20 @@ const labelScale = (w: number, pr: number) => Math.min(3, Math.max(1.5, (1.5 * w
 function onFrame(camera: PerspectiveCamera, bx: number, by: number, h = sheetY(bx, by)) {
   const v = new Vector3(wx(bx), h, wz(by)).project(camera);
   return { x: ((v.x + 1) / 2) * FRAME.w, y: ((1 - v.y) / 2) * FRAME.h };
+}
+
+/** Frame-space bounding box of world-space boxes. */
+function frameRect(camera: PerspectiveCamera, boxes: Box3[]): Rect {
+  const xs: number[] = [], ys: number[] = [];
+  for (const b of boxes) {
+    for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) {
+      const v = new Vector3(x, y, z).project(camera);
+      xs.push(((v.x + 1) / 2) * FRAME.w);
+      ys.push(((1 - v.y) / 2) * FRAME.h);
+    }
+  }
+  const x = Math.min(...xs), y = Math.min(...ys);
+  return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
 }
 
 /** Frame-space bounding box of a rect on the top sheets (sampled along its edges: the sheets are curved). */
@@ -207,6 +223,7 @@ async function main() {
     ink: { w: leftInk.size.w, h: leftInk.size.h },
     metrics: { ...composition(cam.camera, art, layout), buildMs: Math.round(buildMs) },
     points: { gutter: onFrame(cam.camera, 670, PAGE.h), corner: onFrame(cam.camera, 2 * 670, PAGE.h) },
+    puppets: frameRect(cam.camera, ['harry', 'kim'].map((n) => new Box3().setFromObject(scene.getObjectByName(n)!))),
   };
   window.__bench = (n: number) => {
     const gl = renderer.getContext(), px = new Uint8Array(4);
@@ -264,7 +281,7 @@ function composition(camera: PerspectiveCamera, art: Awaited<ReturnType<typeof l
   };
   const w = log.window!;
   // narration and voice text (the serif body), fully visible below the fade: baselines and em size
-  const body = log.items.filter((i): i is Extract<typeof i, { t: 'text' }> => i.t === 'text' && /Serif|Garamond/.test(i.font) && i.box.y >= w.y0 + FADE);
+  const body = log.items.filter((i): i is Extract<typeof i, { t: 'text' }> => i.t === 'text' && /px "(Elysium Serif SC|EB Garamond)"/.test(i.font) && i.box.y >= w.y0 + FADE);
   const em = Math.max(...body.map((i) => Number(/(\d+(?:\.\d+)?)px/.exec(i.font)![1])));
   const baselines = [...new Set(body.map((i) => Math.round(i.y)))].sort((a, b) => a - b);
   const top = baselines[0] - em * 0.4, bottom = baselines[baselines.length - 1] - em * 0.4, mid = scale((top + bottom) / 2);

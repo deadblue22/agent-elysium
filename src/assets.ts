@@ -36,12 +36,12 @@ export async function loadArt(anisotropy: number): Promise<Art> {
   return Object.fromEntries(entries);
 }
 
+/** The subsets written by tools/subset-fonts.mjs (npm run fonts). */
 const FACES: [family: string, file: string, weight: string][] = [
   ['Elysium Serif SC', 'serif-sc-400.woff2', '400'],
   ['Elysium Serif SC', 'serif-sc-600.woff2', '600'],
   ['Elysium Sans SC', 'sans-sc-600.woff2', '600'],
   ['Elysium Mono SC', 'mono-sc-400.woff2', '400'],
-  ['Elysium Mono', 'mono-400.woff2', '400'],
   ['EB Garamond', 'eb-garamond-400.woff2', '400'],
   ['EB Garamond', 'eb-garamond-600.woff2', '600'],
   ['Inter', 'inter-600.woff2', '600'],

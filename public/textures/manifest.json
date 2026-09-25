@@ -133,6 +133,31 @@
       ],
       "scale": 2
     },
+    "harry": {
+      "file": "textures/harry.png",
+      "px": [
+        208,
+        440
+      ],
+      "viewBox": [
+        30,
+        5,
+        104,
+        220
+      ],
+      "world": [
+        1.04,
+        2.2
+      ],
+      "scale": 2,
+      "meta": {
+        "soles": 219,
+        "feetX0": 46,
+        "feetX1": 124,
+        "emberX": 97.9,
+        "emberY": 48.6
+      }
+    },
     "hearts": {
       "file": "textures/hearts.png",
       "px": [
@@ -151,23 +176,28 @@
       ],
       "scale": 2
     },
-    "kask": {
-      "file": "textures/kask.png",
+    "kim": {
+      "file": "textures/kim.png",
       "px": [
-        220,
-        380
+        144,
+        386
       ],
       "viewBox": [
-        0,
-        0,
-        110,
-        190
+        12,
+        10,
+        72,
+        193
       ],
       "world": [
-        1.1,
-        1.9
+        0.72,
+        1.93
       ],
-      "scale": 2
+      "scale": 2,
+      "meta": {
+        "soles": 201,
+        "feetX0": 32,
+        "feetX1": 72
+      }
     },
     "page-left": {
       "file": "textures/page-left.png",
@@ -236,24 +266,6 @@
         4.8
       ],
       "scale": 1
-    },
-    "villon": {
-      "file": "textures/villon.png",
-      "px": [
-        240,
-        400
-      ],
-      "viewBox": [
-        0,
-        0,
-        120,
-        200
-      ],
-      "world": [
-        1.2,
-        2
-      ],
-      "scale": 2
     },
     "wall": {
       "file": "textures/wall.png",

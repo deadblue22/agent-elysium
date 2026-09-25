@@ -1,24 +1,26 @@
-// The right page's stage, on the torn top sheet below the floor's tongue: the two profile
-// puppets (hinged like the pop-up planes), two paper dice showing 4 and 5, the morale hearts.
+// The right page's stage, on the torn top sheet below the floor's tongue: Harry and Kim as
+// profile puppets facing each other (hinged like the pop-up planes, each on a paper stand tab),
+// two paper dice showing 4 and 5, the morale hearts.
 import {
   AdditiveBlending, BoxGeometry, CanvasTexture, Color, Group, Mesh, MeshStandardMaterial, SRGBColorSpace, Sprite,
   SpriteMaterial, Vector3,
 } from 'three';
 import type { Art } from '../assets';
-import { contactSquare, decal, standingContact } from './paper';
+import { contactSquare, decal, standTab, standingContact } from './paper';
 import { DEG, leanNormal, paperMaterial, pointOnStanding, rectUV, standing, surfaceGrid, wx, wz, xSamples, ySamples, type StandOptions } from './space';
 
 /** The puppets lean back a little so the high camera does not flatten them into slivers. */
 const PUPPET_LEAN = 15;
 
 /**
- * Placement from the M0 board (0.95 scale, soles on the fold line, about 1.3x the desk's
- * height), moved toward the reader by the right sheet's `puppetShift` so both stand on the
- * cream below the tongue (their printed stand tabs and rug moved with them in the art).
+ * Where the puppets stand (book px, 0.95 scale, about 1.3x the desk's height as on the M0
+ * board): Harry on the left facing right, Kim on the right facing left. The fold lines move
+ * toward the reader by the right sheet's `puppetShift`, below the tongue. Each puppet's SVG
+ * says where its soles are (data-soles) and what its stand tab must cover (data-feet-x0/x1).
  */
-const PUPPETS: Record<'villon' | 'kask', StandOptions> = {
-  villon: { hinge: 318, baseY: 196.5, x0: 817, scale: 0.95, lean: PUPPET_LEAN },
-  kask: { hinge: 304, baseY: 186.5, x0: 1015, scale: 0.95, lean: PUPPET_LEAN },
+const PUPPETS: Record<'harry' | 'kim', { hinge: number; x0: number; scale: number }> = {
+  harry: { hinge: 318, x0: 801, scale: 0.95 },
+  kim: { hinge: 304, x0: 996, scale: 0.95 },
 };
 
 /** Faces per die in BoxGeometry order: +x (right), -x (left), +y (top), -y (bottom), +z (near), -z (far). */
@@ -38,29 +40,43 @@ export function createStage(art: Art, sheet: (bx: number, by: number) => number)
   const shift = art['page-right'].meta.puppetShift;
   const pageH = art['page-right'].meta.pageH;
 
-  const puppets = Object.fromEntries(Object.entries(PUPPETS).map(([k, o]) => [k, { ...o, hinge: o.hinge + shift }]));
+  const puppets = Object.fromEntries(Object.entries(PUPPETS).map(([k, p]): [string, StandOptions] =>
+    [k, { hinge: p.hinge + shift, x0: p.x0, scale: p.scale, baseY: art[k].meta.soles, lean: PUPPET_LEAN }]));
+  /** the book x range of a puppet's feet */
+  const feet = (name: string) => {
+    const o = puppets[name], m = art[name].meta;
+    return [o.x0! + m.feetX0 * o.scale!, o.x0! + m.feetX1 * o.scale!];
+  };
   /** a puppet stands where the sheet is under the middle of its feet */
-  const footY = (o: StandOptions, piece: string) => sheet((o.x0 ?? 0) + (art[piece].viewBox[2] / 2) * (o.scale ?? 1), o.hinge) - 0.002;
+  const footY = (name: string) => { const [a, b] = feet(name); return sheet((a + b) / 2, puppets[name].hinge) - 0.002; };
+  const tabTexture = standTab();
   for (const [name, o] of Object.entries(puppets)) {
     const material = paperMaterial(art[name].texture, 0.9);
     // light bouncing off the bright page onto the puppets' fronts (the direct lights miss it)
     material.emissive.setRGB(0.2, 0.18, 0.15);
     material.emissiveMap = art[name].texture;
-    const { group: g, mesh } = standing(art[name], material, { ...o, y: footY(o, name) });
+    const { group: g, mesh } = standing(art[name], material, { ...o, y: footY(name) });
     mesh.name = name;
     group.add(g);
+    // the stand tab: the flap folded forward under the feet and glued to the page
+    const [a, b] = feet(name), bx0 = a - 4, bx1 = b + 4, by0 = o.hinge, by1 = o.hinge + 7;
+    const tab = new Mesh(surfaceGrid(xSamples(bx0, bx1), ySamples(by0, by1, 3), (bx, by) => sheet(bx, by) + 0.002, rectUV(bx0, bx1, by0, by1)),
+      new MeshStandardMaterial({ map: tabTexture, roughness: 0.95, alphaToCoverage: true }));
+    tab.receiveShadow = true;
+    tab.name = `tab-${name}`;
+    group.add(tab);
     const contact = standingContact(art[name], o, sheet, { opacity: 0.75, behind: 12, front: 8 });
     contact.name = `contact-${name}`;
     group.add(contact);
   }
 
-  // the ember of Villon's cigarette
-  const v = puppets.villon;
-  const e = pointOnStanding({ ...v, svgX: 95.8, svgY: 49.6 }, footY(v, 'villon'));
-  const ember = new Sprite(new SpriteMaterial({ map: glowTexture('255,170,90'), color: new Color(1.6, 1.3, 1.1), blending: AdditiveBlending, depthWrite: false, transparent: true }));
+  // the ember of Harry's cigarette
+  const h = puppets.harry, hm = art.harry.meta;
+  const e = pointOnStanding({ ...h, svgX: hm.emberX, svgY: hm.emberY }, footY('harry'));
+  const ember = new Sprite(new SpriteMaterial({ map: glowTexture('255,170,90'), color: new Color(1.4, 1.1, 0.9), blending: AdditiveBlending, depthWrite: false, transparent: true }));
   const n = leanNormal(PUPPET_LEAN);
   ember.position.set(e.x, e.y, e.z).addScaledVector(new Vector3(n.x, n.y, n.z), 0.01);
-  ember.scale.setScalar(0.2);
+  ember.scale.setScalar(0.075); // a point of orange at the cigarette's tip, not a halo over the face
   group.add(ember);
 
   const atlas = art.dice.texture;

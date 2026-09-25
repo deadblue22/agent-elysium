@@ -1,9 +1,12 @@
-// Lays out the log on the left page: line breaking (CJK per character with kinsoku,
-// Latin per word), indents, colours, the boxed check label and the cursor.
+// Lays out the log on the left page in the original's dialogue-log format: every line starts
+// with its speaker's name (sans, letterspaced; EN in capitals) and an em dash; inner voices
+// carry their result tag ([极易：成功]); the dice line is a boxed check tag and the roll;
+// the current options are numbered, in rust, with the cursor after the last one.
+// Line breaking: CJK per character with kinsoku, Latin per word.
 // Everything is in page px (the legacy board's CSS px; the page is 670 x 600).
 // The painter scales it to the canvas.
 import type { Lang, LogEntry } from '../content/schema';
-import { ATTRIBUTE_INK, DIFFICULTY, RESULT, SKILLS, SPEAKERS } from '../content/skills';
+import { checkTag, resultTag, speakerInk, speakerName } from '../content/skills';
 
 /** One page in book px (the legacy board's CSS px). Must match tools/extract-art.mjs BOOK_H. */
 export const PAGE = { w: 670, h: 600 };
@@ -44,29 +47,33 @@ export interface PageLayout {
 
 export const INK = {
   log: '#1E1A16',
-  rust: '#B04F28',     // past options: #C2562B 88% + #2b1a12
-  now: '#A74824',      // the current option: #C2562B 80% + #3a1206
+  name: '#4F4943',     // one neutral colour for people, objects, places and 你 / YOU
+  muted: '#6E655C',    // result tags and the check tag's brackets and tier
+  rust: '#B04F28',     // the player's past words: #C2562B 88% + #2b1a12
+  now: '#A74824',      // the current options: #C2562B 80% + #3a1206
   hover: '#CC5A2A',    // hovered option: brighter rust
   cursor: '#C2562B',
-  kask: '#465349',     // grey-green pushed to ink
-  teal: '#38625D',     // success
-  red: '#8E2A24',      // failure
-  dc: '#3D3630',
+  red: '#8E2A24',      // red checks
 };
 
 type Family = 'serif' | 'sans' | 'mono';
 interface Style { family: Family; size: number; weight: number; color: string; ls: number; stroke: number }
 
+/**
+ * Font stacks. The sans and mono CJK subsets hold only the characters of their roles
+ * (labels, options; tools/subset-fonts.mjs), so the serif subset, which holds every
+ * character of the script, is their last resort: a stray character never draws as tofu.
+ */
 const STACKS: Record<Lang, Record<Family, string>> = {
   zh: {
     serif: '"Elysium Serif SC", "EB Garamond", serif',
-    sans: '"Elysium Sans SC", "Inter", sans-serif',
-    mono: '"Elysium Mono", "Elysium Mono SC", monospace',
+    sans: '"Elysium Sans SC", "Inter", "Elysium Serif SC", sans-serif',
+    mono: '"JetBrains Mono", "Elysium Mono SC", "Elysium Serif SC", monospace',
   },
   en: {
     serif: '"EB Garamond", "Elysium Serif SC", serif',
-    sans: '"Inter", "Elysium Sans SC", sans-serif',
-    mono: '"JetBrains Mono", "Elysium Mono", monospace',
+    sans: '"Inter", "Elysium Sans SC", "Elysium Serif SC", sans-serif',
+    mono: '"JetBrains Mono", "Elysium Mono SC", "Elysium Serif SC", monospace',
   },
 };
 
@@ -94,8 +101,11 @@ const SENTENCE_END = /[。！？]$/;
 /** Full-width closing marks that may hang past the right edge of the column (行尾标点悬挂). */
 const HANG = new Set('。，、：；！？」』）》'.split(''));
 
-/** pad: horizontal margins; rule: draw a horizontal rule of this length instead of the text. */
-interface Run { text: string; style: Style; glue?: boolean; option?: number; pad?: [number, number]; rule?: number }
+/**
+ * glue: no break before the run; keep: no break inside it; pad: horizontal margins;
+ * rule: draw a horizontal rule of this length instead of the text.
+ */
+interface Run { text: string; style: Style; glue?: boolean; keep?: boolean; option?: number; pad?: [number, number]; rule?: number }
 interface Atom { text: string; style: Style; space: boolean; glueBefore: boolean; option?: number; pad?: [number, number]; rule?: number }
 
 /** Splits runs into unbreakable atoms. Breaks are allowed before an atom unless glueBefore. */
@@ -103,8 +113,10 @@ function atomize(runs: Run[]): Atom[] {
   const atoms: Atom[] = [];
   for (const run of runs) {
     let first = true;
+    const from = atoms.length;
+    // a run's margins belong to its first and last atoms
     const push = (text: string, space = false) => {
-      atoms.push({ text, style: run.style, space, glueBefore: first && !!run.glue, option: run.option, pad: run.pad, rule: run.rule });
+      atoms.push({ text, style: run.style, space, glueBefore: first ? !!run.glue : !!run.keep, option: run.option, pad: run.pad && first ? [run.pad[0], 0] : undefined, rule: run.rule });
       first = false;
     };
     for (const c of run.text) {
@@ -115,6 +127,10 @@ function atomize(runs: Run[]): Atom[] {
       if (prevOwn && !prevOwn.space && OPEN.has(prevOwn.text[prevOwn.text.length - 1])) { prevOwn.text += c; continue; } // never ends one
       if (!isCJK(c) && prevOwn && !prevOwn.space && !isCJK(prevOwn.text[prevOwn.text.length - 1])) { prevOwn.text += c; continue; } // Latin word
       push(c);
+    }
+    if (run.pad && atoms.length > from) {
+      const last = atoms[atoms.length - 1];
+      last.pad = [last.pad?.[0] ?? 0, run.pad[1]];
     }
   }
   return atoms;
@@ -152,15 +168,16 @@ export class Measurer {
 
 interface Placed { atom: Atom; x: number; w: number }
 
+/** indent: where the first line starts; hang: where the following lines start. */
 function breakLines(lang: Lang, m: Measurer, atoms: Atom[], maxW: number, indent: number,
-  styleFor: (a: Atom, line: number) => Style, forced = new Set<number>()): Placed[][] {
+  styleFor: (a: Atom, line: number) => Style, forced = new Set<number>(), hang = 0): Placed[][] {
   const lines: Placed[][] = [];
   let start = 0;
   while (start < atoms.length) {
     while (start < atoms.length && atoms[start].space) start++;
     if (start >= atoms.length) break;
     const li = lines.length;
-    let x = li === 0 ? indent : 0;
+    let x = li === 0 ? indent : hang;
     let end = atoms.length, lastOk = -1;
     const placed: Placed[] = [];
     for (let i = start; i < atoms.length; i++) {
@@ -203,15 +220,22 @@ function keepLastSentence(lang: Lang, m: Measurer, atoms: Atom[], lines: Placed[
 
 // ---------------------------------------------------------------- the log
 
+const lastIndex = <T>(xs: T[], f: (x: T) => boolean) => { for (let i = xs.length - 1; i >= 0; i--) if (f(xs[i])) return i; return -1; };
+
 export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Column): PageLayout {
   const S = SIZES[lang];
   const maxW = col.x1 - col.x0;
   const narr: Style = { family: 'serif', size: S.narr, weight: 400, color: INK.log, ls: 0, stroke: 0 };
   const mono = (color: string, stroke: number): Style => ({ family: 'mono', size: S.mono, weight: 400, color, ls: S.mono * 0.02, stroke });
-  const label = (color: string): Style => ({ family: 'sans', size: S.label, weight: 600, color, ls: S.label * 0.16, stroke: 0.2 });
+  const label = (color: string): Style => ({ family: 'sans', size: S.label, weight: 600, color, ls: S.label * (lang === 'zh' ? 0.1 : 0.12), stroke: 0.2 });
+  const result: Style = { family: 'sans', size: S.label * 0.94, weight: 600, color: INK.muted, ls: S.label * 0.04, stroke: 0 };
   const dash: Style = { family: 'sans', size: S.label, weight: 600, color: INK.log, ls: 0, stroke: 0 };
+  const caps = (t: string) => (lang === 'en' ? t.toUpperCase() : t);
+  const nbsp = (t: string) => t.replace(/ /g, '\u00a0');
 
-  const lastChoice = entries.map((e) => e.kind).lastIndexOf('choice');
+  const isYou = (e: LogEntry) => e.kind === 'line' && e.line.speaker === 'you';
+  const lastYou = lastIndex(entries, isYou);
+  const lastOption = lastIndex(entries, (e) => e.kind === 'option');
   const items: DrawItem[] = [];
   const options: PageLayout['options'] = [];
   const plain: string[] = [];
@@ -219,76 +243,78 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
   let y = 0; // laid out from the top, anchored to the bottom of the window afterwards
 
   entries.forEach((e, idx) => {
-    // older entries fade: past choices to 0.75, everything before the last choice to 0.84
-    const alpha = e.kind === 'choice' ? 0.75 : idx < lastChoice ? 0.84 : 1;
+    // older entries fade: the player's past words to 0.75, everything before the last of them to 0.84
+    const alpha = isYou(e) ? 0.75 : idx < lastYou ? 0.84 : 1;
 
     if (e.kind === 'check') {
+      // the dice line: a boxed check tag, then the roll; the result tag rides on the voice's line
       const lh = S.narr * 1.5;
       y += 3;
       const top = y, mid = top + lh / 2;
-      const sk = SKILLS[e.check.skill];
-      const tagSkill: Style = { family: 'sans', size: S.tag, weight: 600, color: ATTRIBUTE_INK[sk.attribute], ls: S.tag * 0.12, stroke: 0.2 };
-      const tagDc: Style = { family: 'sans', size: S.tag, weight: 600, color: INK.dc, ls: S.tag * 0.05, stroke: 0 };
+      const tag = checkTag(e.check, lang);
+      const tagMuted: Style = { family: 'sans', size: S.tag, weight: 600, color: INK.muted, ls: S.tag * 0.05, stroke: 0 };
+      const tagSkill: Style = { ...tagMuted, color: speakerInk(e.check.skill, INK.name), ls: S.tag * 0.1, stroke: 0.2 };
       const roll: Style = { family: 'mono', size: S.roll, weight: 400, color: INK.log, ls: S.roll * 0.05, stroke: 0.25 };
-      const res: Style = { family: 'sans', size: S.res, weight: 600, color: e.success ? INK.teal : INK.red, ls: S.res * 0.3, stroke: 0.2 };
-      const skill = sk.name[lang], dc = `[${DIFFICULTY[e.check.dc][lang]} ${e.check.dc}]`;
-      const rollText = `${e.dice[0]} + ${e.dice[1]} + ${sk.value} = ${e.total}`;
-      const resText = (e.success ? RESULT.success : RESULT.failure)[lang];
-      const wSkill = m.width(lang, tagSkill, skill), wDc = m.width(lang, tagDc, dc), gap = S.tag * 0.3;
-      const padX = S.tag * 0.62, padT = S.tag * 0.38, padB = S.tag * 0.31, sep = S.narr * 0.64;
-      const boxW = 1 + padX + wSkill + gap + wDc + padX + 1, boxH = 1 + padT + S.tag + padB + 1;
+      const rollText = `${e.dice[0]} + ${e.dice[1]} + ${e.total - e.dice[0] - e.dice[1]} = ${e.total}`;
+      const wOpen = m.width(lang, tagMuted, tag.open), wSkill = m.width(lang, tagSkill, tag.skill), wRest = m.width(lang, tagMuted, tag.rest);
+      const padX = S.tag * 0.55, padT = S.tag * 0.38, padB = S.tag * 0.31, sep = S.narr * 0.7;
+      const boxW = 1 + padX + wOpen + wSkill + wRest + padX + 1, boxH = 1 + padT + S.tag + padB + 1;
       let x = col.x0;
       const box = { x, y: mid - boxH / 2, w: boxW, h: boxH };
       items.push({ t: 'tag', alpha, box });
       const tb = m.baseline(lang, tagSkill, box.y + 1 + padT, S.tag);
-      pushText(items, lang, x + 1 + padX, tb, skill, tagSkill, alpha);
-      pushText(items, lang, x + 1 + padX + wSkill + gap, tb, dc, tagDc, alpha);
-      // the roll and the result follow the tag, or drop to a second row when they do not fit
-      const wRoll = m.width(lang, roll, rollText), wRes = m.width(lang, res, resText);
+      pushText(items, lang, x + 1 + padX, tb, tag.open, tagMuted, alpha);
+      pushText(items, lang, x + 1 + padX + wOpen, tb, tag.skill, tagSkill, alpha);
+      pushText(items, lang, x + 1 + padX + wOpen + wSkill, tb, tag.rest, tagMuted, alpha);
+      // the roll follows the tag, or drops to a second row when it does not fit
       let rowMid = mid;
-      if (boxW + sep + wRoll + sep + wRes > maxW) { x = col.x0 + padX; rowMid = mid + lh * 0.85; }
+      if (boxW + sep + m.width(lang, roll, rollText) > maxW) { x = col.x0 + padX; rowMid = mid + lh * 0.85; }
       else x += boxW + sep;
       pushText(items, lang, x, m.baseline(lang, roll, rowMid - lh / 2, lh), rollText, roll, alpha);
-      x += wRoll + sep;
-      pushText(items, lang, x, m.baseline(lang, res, rowMid - lh / 2, lh), resText, res, alpha);
       y = rowMid + lh / 2 + 4;
-      plain.push(`${skill} ${dc} ${rollText} ${resText}`);
+      plain.push(`${tag.open}${tag.skill}${tag.rest} ${rollText}`);
       return;
     }
 
     let runs: Run[];
     let base: Style = narr;
-    let indent = 0;
+    let indent = 0, hang = 0;
     let firstBold = false;
     let optionIndex: number | undefined;
-    if (e.kind === 'choice' || e.kind === 'option') {
-      const now = e.kind === 'option';
-      optionIndex = now ? e.index : undefined;
-      base = mono(now ? INK.now : INK.rust, now ? 0.5 : 0.3);
-      const text = now ? e.option.text[lang] : e.text[lang];
-      runs = [
-        { text: '>', style: { ...base, ls: 0 }, option: optionIndex },
-        { text: ' ' + text, style: base, option: optionIndex },
-      ];
-      plain.push('> ' + text);
+    if (e.kind === 'option') {
+      // a current option: its number, its check tag if it has one, its words
+      optionIndex = e.index;
+      base = mono(INK.now, 0.5);
+      const num = `${e.number}.`;
+      runs = [{ text: num, style: base, option: optionIndex, keep: true }];
+      let words = e.option.text[lang];
+      if (e.option.check) {
+        const t = checkTag(e.option.check, lang);
+        const tagText = `${t.open}${t.skill}${t.rest}`;
+        runs.push({ text: ' ' + nbsp(tagText), style: e.option.check.kind === 'red' ? mono(INK.red, 0.5) : base, option: optionIndex, keep: true });
+        words = `${tagText} ${words}`;
+      }
+      runs.push({ text: ' ' + e.option.text[lang], style: base, option: optionIndex });
+      hang = m.width(lang, base, `${num} `);
+      plain.push(`${num} ${words}`);
     } else {
-      const { speaker, text } = e.line;
-      if (speaker === 'narrator') {
-        runs = [{ text: text[lang], style: narr }];
+      const { line } = e;
+      if (line.speaker === 'narrator') {
+        runs = [{ text: line.text[lang], style: narr }];
         indent = lang === 'zh' ? S.narr * 2 : S.narr * 1.2;
         firstBold = lang === 'zh';
-        plain.push(text[lang]);
+        plain.push(line.text[lang]);
       } else {
-        const name = speaker === 'kask' ? SPEAKERS.kask[lang] : SKILLS[speaker].name[lang];
-        const color = speaker === 'kask' ? INK.kask : ATTRIBUTE_INK[SKILLS[speaker].attribute];
-        // the M0 board's .who: label, then a dimmed dash with .25em / .45em margins
-        // (drawn as a rule so its length does not depend on which font supplies the glyph)
-        runs = [
-          { text: name.replace(/ /g, '\u00a0'), style: label(color) },
-          { text: '—', style: dash, glue: true, pad: [S.label * 0.25, S.label * 0.45], rule: S.label * 0.8 },
-          { text: text[lang], style: narr },
-        ];
-        plain.push(`${name} — ${text[lang]}`);
+        // speaker, [result tag], em dash (drawn as a rule so its length does not depend on the font), words
+        const name = speakerName(line, lang);
+        runs = [{ text: nbsp(caps(name)), style: label(speakerInk(line.speaker, INK.name)), keep: true }];
+        const tag = line.result ? resultTag(line.result, lang) : '';
+        if (tag) runs.push({ text: nbsp(tag), style: result, glue: true, keep: true, pad: [S.label * 0.4, 0] });
+        runs.push({ text: '—', style: dash, glue: true, pad: [S.label * 0.3, S.label * 0.45], rule: S.label * 0.8 });
+        // the player's own past words stay in the options' face and rust, dimmed
+        if (line.speaker === 'you') base = mono(INK.rust, 0.3);
+        runs.push({ text: line.text[lang], style: base });
+        plain.push(`${caps(name)}${tag ? ' ' + tag : ''} — ${line.text[lang]}`);
       }
     }
 
@@ -297,14 +323,14 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
     for (const a of atoms) a.text = a.text.replace(/\u00a0/g, ' ');
     const bold = (s: Style): Style => ({ ...s, weight: 600 });
     const styleFor = (a: Atom, line: number) => (firstBold && line === 0 && a.style === narr ? bold(a.style) : a.style);
-    let lines = breakLines(lang, m, atoms, maxW, indent, styleFor);
+    let lines = breakLines(lang, m, atoms, maxW, indent, styleFor, undefined, hang);
     const keep = keepLastSentence(lang, m, atoms, lines, maxW, styleFor);
-    if (keep !== null) lines = breakLines(lang, m, atoms, maxW, indent, styleFor, new Set([keep]));
+    if (keep !== null) lines = breakLines(lang, m, atoms, maxW, indent, styleFor, new Set([keep]), hang);
 
     const lh = S.lineHeight;
     lines.forEach((line, li) => {
       const bl = m.baseline(lang, base, y, lh);
-      let prevEnd = col.x0 + (li === 0 ? indent : 0);
+      let prevEnd = col.x0 + (li === 0 ? indent : hang);
       for (const p of line) {
         if (p.atom.space) continue;
         const st = styleFor(p.atom, li);
@@ -317,7 +343,7 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
         pushText(items, lang, x, bl, p.atom.text, st, alpha, p.atom.option);
         prevEnd = col.x0 + p.x + p.w;
       }
-      if (e.kind === 'option' && li === lines.length - 1) {
+      if (idx === lastOption && li === lines.length - 1) {
         const em = base.size;
         cursor = { x: prevEnd + em * 0.35, y: bl + em * 0.2 - em * 1.08, w: em * 0.6, h: em * 1.08 };
         items.push({ t: 'cursor', color: INK.cursor, box: cursor });
