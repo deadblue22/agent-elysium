@@ -6,7 +6,8 @@
 // docs/design.md §4.4, so the rest of chapter 1 needs no re-subset. They are split by role:
 //   serif (Noto Serif SC 400)   every character: dialogue, objects, places, chrome
 //   serif (Noto Serif SC 600)   narration (first lines are set bold)
-//   sans  (Noto Sans SC 600)    labels: speaker names, skills, result and check tags, chrome labels
+//   sans  (Noto Sans SC 600)    labels: speaker names, skills, result and check tags, chrome labels,
+//                               the play's interface strings (src/content/ui.ts), evidence labels
 //   mono  (LXGW WenKai Mono TC) the player's words: options and 你 / YOU lines
 //   EB Garamond 400/600, Inter 600, JetBrains Mono 400: every non-CJK character, plus printable ASCII
 // The app's font stacks end in the serif subset, so a character missing from a role's
@@ -61,8 +62,10 @@ for (const f of files) {
   for (const [name, v] of Object.entries(mod)) {
     // skills.ts: names, tiers, results, senses are labels, and appear in options' check tags
     if (/skills\.ts$/.test(f)) every(v, (x) => { add('sans', x); add('mono', x); });
-    // chrome: page furniture labels (士气 / MORALE) are set in the sans
-    if (name === 'chrome') every(v, (x) => add('sans', x));
+    // chrome: page furniture labels (士气 / MORALE) are set in the sans; so is the play's
+    // interface (ui.ts: the check tooltip, the evidence slip's label, the greyed reason), and
+    // the evidence labels, which the tooltip lists as modifiers (「+1 指针被拨过」)
+    if (name === 'chrome' || name === 'ui' || name === 'EVIDENCE_LABELS') every(v, (x) => add('sans', x));
     classify(v);
   }
 }

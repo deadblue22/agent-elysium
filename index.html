@@ -10,7 +10,7 @@
   :root{
     --paper:#E8DCC4; --rust:#C2562B;
     --serif:"Elysium Serif SC","EB Garamond",serif;
-    --sans:"Elysium Sans SC","Inter",sans-serif;
+    --sans:"Elysium Sans SC","Inter","Elysium Serif SC",sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;background:#0b0806;overflow:hidden}
@@ -32,6 +32,25 @@
   .lang .on{color:rgba(232,220,196,.9)}
   .lang .sep{margin:0 .4em;opacity:.6}
 
+  /* the flashback's time marker (stage cue flashback), centred over the book */
+  .when{position:absolute;left:50%;top:calc(9px * var(--s));transform:translateX(-50%);font-family:var(--serif);font-size:calc(17px * var(--s));letter-spacing:.3em;
+    color:rgba(206,219,232,.86);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .9s ease;text-shadow:0 0 calc(12px * var(--s)) rgba(0,0,0,.6)}
+  .when::after{content:"";position:absolute;left:50%;top:calc(29px * var(--s));width:calc(40px * var(--s));height:1px;margin-left:calc(-20px * var(--s));background:rgba(194,86,43,.75)}
+  .when.on{opacity:1}
+  :lang(en) .when{font-family:"EB Garamond",serif;letter-spacing:.14em;font-size:calc(18px * var(--s))}
+
+  /* an option's tooltip: a check's chance and modifiers, or why a greyed option waits */
+  .tip{position:absolute;left:0;top:0;pointer-events:none;z-index:2;max-width:calc(300px * var(--s));padding:calc(8px * var(--s)) calc(11px * var(--s)) calc(9px * var(--s));
+    background:rgba(242,236,222,.96);color:#1E1A16;border:1px solid rgba(30,26,22,.55);box-shadow:calc(2px * var(--s)) calc(3px * var(--s)) 0 rgba(0,0,0,.35);
+    font-family:var(--sans);font-weight:600;font-size:calc(13px * var(--s));line-height:1.45;letter-spacing:.04em}
+  .tip[hidden]{display:none}
+  .tip .skill{font-size:.86em;color:#6E655C;letter-spacing:.1em}
+  .tip .head{font-size:1.2em;color:#A74824}
+  .tip.greyed .head{font-size:1em;color:#6E655C;font-weight:600}
+  .tip .mod{color:#2F6A81}
+  .tip .red{color:#A3232B;font-size:.9em}
+  @media (prefers-reduced-motion: reduce){ .when{transition:none} }
+
   /* the log mirrored for screen readers */
   .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   .sr-only:focus-within{position:absolute;left:8px;bottom:8px;width:auto;height:auto;clip-path:none;white-space:normal;background:#0b0806;color:#e8dcc4;padding:8px;font:14px/1.5 var(--serif);max-width:480px}
@@ -47,6 +66,8 @@
     <div class="title"><span id="title">《雪落之前》</span><span class="ch" id="chapter">第一章</span></div>
     <button class="lang" id="lang" type="button" aria-label="切换语言 / Switch language"><span data-lang="zh" class="on">中</span><span class="sep">/</span><span data-lang="en">EN</span></button>
   </header>
+  <div class="when" id="when" aria-hidden="true">昨晚 22:30</div>
+  <div class="tip" id="tip" role="tooltip" hidden></div>
   <section class="sr-only" aria-live="polite">
     <h2 id="log-heading">日志</h2>
     <ol id="log"></ol>

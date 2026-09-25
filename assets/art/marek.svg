@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 4 64 198" width="64" height="198" data-soles="198" data-feet-x="42">
+<!-- Marek, the nephew, as the reconstruction imagines him: a dark paper silhouette in profile,
+     facing right, flat cap, long coat with the collar up, hands in the pockets, mid-stride.
+     No face. data-feet-x: the middle of his stride, which the climb follows. -->
+<defs>
+<filter id="cutS" x="-15%" y="-15%" width="135%" height="140%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" seed="9" result="tE"/>
+  <feDisplacementMap in="SourceGraphic" in2="tE" scale="2.4" xChannelSelector="R" yChannelSelector="G" result="shape"/>
+  <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="13" result="tF"/>
+  <feDiffuseLighting in="tF" surfaceScale="1.3" diffuseConstant="1" lighting-color="#fff" result="fib">
+    <feDistantLight azimuth="235" elevation="58"/>
+  </feDiffuseLighting>
+  <feComposite in="fib" in2="shape" operator="arithmetic" k1="0.55" k2="0" k3="0.5" k4="0" result="tex"/>
+  <feGaussianBlur in="shape" stdDeviation="2.4" result="sb"/>
+  <feComposite in="shape" in2="sb" operator="out" result="rimM"/>
+  <feFlood flood-color="#050508" flood-opacity="0.38"/>
+  <feComposite in2="rimM" operator="in" result="burn"/>
+  <feOffset in="shape" dx="0.4" dy="1.1" result="sOff"/>
+  <feComposite in="shape" in2="sOff" operator="out" result="edgeM"/>
+  <feFlood flood-color="#f1e5c8" flood-opacity="0.38"/>
+  <feComposite in2="edgeM" operator="in" result="edge"/>
+  <feGaussianBlur in="shape" stdDeviation="1.3" result="shB"/>
+  <feOffset in="shB" dx="1" dy="1.8" result="shO"/>
+  <feFlood flood-color="#060403" flood-opacity="0.55"/>
+  <feComposite in2="shO" operator="in" result="drop"/>
+  <feMerge><feMergeNode in="drop"/><feMergeNode in="tex"/><feMergeNode in="burn"/><feMergeNode in="edge"/></feMerge>
+</filter>
+</defs>
+<g filter="url(#cutS)">
+  <path fill="#1b191e" d="M27,146 L37,146 L34,190 L24,190 Z"/>
+  <path fill="#151418" d="M17,190 L35.5,190 L36,198 L15.5,198 C15.5,194 16,191.5 17,190 Z"/>
+</g>
+<g filter="url(#cutS)">
+  <path fill="#211f25" d="M40,146 L52,146 L60,188 L49.5,190 Z"/>
+  <path fill="#151418" d="M48,188.5 L63,188.5 C67.5,190.5 68.5,195 66.5,198 L47.5,198 Z"/>
+</g>
+<g filter="url(#cutS)">
+  <path fill="#221f26" d="M30,48 C25.5,56 23.5,71 23.5,90 C23.5,110 21.5,130 19.5,148 L25,146 L31,149 L37,146 L43,149 L49,146 L55,149 L61,147 C58.5,129 57,110 58,92 C59.5,76 58,60 52,48 Z"/>
+</g>
+<g filter="url(#cutS)">
+  <path fill="#2a2730" d="M43,54 C50,62 52.5,76 50.5,92 L44,95 C44.5,80 42.5,66 37.5,58 Z"/>
+</g>
+<path d="M44.5,94 L53,93" stroke="#0e0d10" stroke-width="1.4"/>
+<path d="M25,62 C24,76 24,94 23.5,110" stroke="#4a4652" stroke-width=".9" fill="none" opacity=".6"/>
+<g filter="url(#cutS)">
+  <path fill="#1e1c21" d="M33,39 L50,39 L53,51 L31,51 Z"/>
+  <path fill="#2b282e" d="M35,22 L56,22 C57,26 58,29 59,31 L62,33.5 L59,34.5 C59,37.5 58,40 55,42 C50,45 44,45 40,43 C36,40 34.5,34 34.5,28 Z"/>
+  <path fill="#141317" d="M30,20.5 C30,12.5 38,8.5 46,9 C54,9.5 58,13.5 58.5,18.5 L67,20.5 C67.5,23 63,24 56,23.2 L30,23.2 Z"/>
+</g>
+<path d="M31,17 C33,12 39,9.8 45,10" stroke="#4a4652" stroke-width=".8" fill="none" opacity=".7"/>
+</svg>

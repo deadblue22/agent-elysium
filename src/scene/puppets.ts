@@ -1,6 +1,7 @@
 // The right page's stage, on the torn top sheet below the floor's tongue: Harry and Kim as
 // profile puppets facing each other (hinged like the pop-up planes, each on a paper stand tab),
-// two paper dice showing 4 and 5, the morale hearts.
+// two paper dice showing 4 and 5 (they roll: src/scene/dice.ts). The morale hearts are
+// src/scene/hearts.ts.
 import {
   AdditiveBlending, BoxGeometry, CanvasTexture, Color, Group, Mesh, MeshStandardMaterial, SRGBColorSpace, Sprite,
   SpriteMaterial, Vector3,
@@ -40,17 +41,18 @@ export function createStage(art: Art, sheet: (bx: number, by: number) => number)
   const shift = art['page-right'].meta.puppetShift;
   const pageH = art['page-right'].meta.pageH;
 
-  const puppets = Object.fromEntries(Object.entries(PUPPETS).map(([k, p]): [string, StandOptions] =>
+  const place = Object.fromEntries(Object.entries(PUPPETS).map(([k, p]): [string, StandOptions] =>
     [k, { hinge: p.hinge + shift, x0: p.x0, scale: p.scale, baseY: art[k].meta.soles, lean: PUPPET_LEAN }]));
   /** the book x range of a puppet's feet */
   const feet = (name: string) => {
-    const o = puppets[name], m = art[name].meta;
+    const o = place[name], m = art[name].meta;
     return [o.x0! + m.feetX0 * o.scale!, o.x0! + m.feetX1 * o.scale!];
   };
   /** a puppet stands where the sheet is under the middle of its feet */
-  const footY = (name: string) => { const [a, b] = feet(name); return sheet((a + b) / 2, puppets[name].hinge) - 0.002; };
+  const footY = (name: string) => { const [a, b] = feet(name); return sheet((a + b) / 2, place[name].hinge) - 0.002; };
   const tabTexture = standTab();
-  for (const [name, o] of Object.entries(puppets)) {
+  const puppets = {} as Record<'harry' | 'kim', { group: Group; mesh: Mesh; lean: number; y: number }>;
+  for (const [name, o] of Object.entries(place)) {
     const material = paperMaterial(art[name].texture, 0.9);
     // light bouncing off the bright page onto the puppets' fronts (the direct lights miss it)
     material.emissive.setRGB(0.2, 0.18, 0.15);
@@ -58,6 +60,7 @@ export function createStage(art: Art, sheet: (bx: number, by: number) => number)
     const { group: g, mesh } = standing(art[name], material, { ...o, y: footY(name) });
     mesh.name = name;
     group.add(g);
+    puppets[name as 'harry' | 'kim'] = { group: g, mesh, lean: PUPPET_LEAN, y: mesh.position.y };
     // the stand tab: the flap folded forward under the feet and glued to the page
     const [a, b] = feet(name), bx0 = a - 4, bx1 = b + 4, by0 = o.hinge, by1 = o.hinge + 7;
     const tab = new Mesh(surfaceGrid(xSamples(bx0, bx1), ySamples(by0, by1, 3), (bx, by) => sheet(bx, by) + 0.002, rectUV(bx0, bx1, by0, by1)),
@@ -71,7 +74,7 @@ export function createStage(art: Art, sheet: (bx: number, by: number) => number)
   }
 
   // the ember of Harry's cigarette
-  const h = puppets.harry, hm = art.harry.meta;
+  const h = place.harry, hm = art.harry.meta;
   const e = pointOnStanding({ ...h, svgX: hm.emberX, svgY: hm.emberY }, footY('harry'));
   const ember = new Sprite(new SpriteMaterial({ map: glowTexture('255,170,90'), color: new Color(1.4, 1.1, 0.9), blending: AdditiveBlending, depthWrite: false, transparent: true }));
   const n = leanNormal(PUPPET_LEAN);
@@ -80,6 +83,7 @@ export function createStage(art: Art, sheet: (bx: number, by: number) => number)
   group.add(ember);
 
   const atlas = art.dice.texture;
+  const dice: DieRig[] = [];
   for (const d of DICE) {
     const mats = d.faces.map((f) => {
       const t = atlas.clone();
@@ -94,6 +98,8 @@ export function createStage(art: Art, sheet: (bx: number, by: number) => number)
     die.castShadow = die.receiveShadow = true;
     die.name = 'die';
     group.add(die);
+    const rig: DieRig = { mesh: die, faces: d.faces, yaw: d.rot * DEG, rest: die.position.clone() };
+    dice.push(rig);
     // contact occlusion under the die
     const r = DIE * 100; // footprint, book px; the decal is twice as wide
     const under = decal(surfaceGrid(xSamples(d.bx - r, d.bx + r), ySamples(by - r, by + r, 8), (bx, y) => sheet(bx, y) + 0.004, rectUV(d.bx - r, d.bx + r, by - r, by + r)), contactSquare(), 0.8);
@@ -102,18 +108,14 @@ export function createStage(art: Art, sheet: (bx: number, by: number) => number)
     under.rotation.y = d.rot * DEG;
     under.name = 'contact-die';
     group.add(under);
+    rig.contact = under;
   }
 
-  const [hx, hy, hw, hh] = art.hearts.viewBox;
-  const dy = heartsTop(art) - (hy + 5); // the hearts are drawn from y + 5 in their SVG
-  const hearts = new Mesh(surfaceGrid(xSamples(hx, hx + hw), ySamples(hy + dy, hy + hh + dy, 6), (bx, by) => sheet(bx, by) + 0.003,
-    rectUV(hx, hx + hw, hy + dy, hy + hh + dy)), paperMaterial(art.hearts.texture));
-  hearts.receiveShadow = true;
-  hearts.name = 'hearts';
-  group.add(hearts);
-
-  return { group };
+  return { group, puppets, dice, ember };
 }
+
+/** A die at rest: its mesh, the values on its faces (+x, -x, +y, -y, +z, -z), its yaw and position. */
+export interface DieRig { mesh: Mesh; faces: number[]; yaw: number; rest: Vector3; contact?: Mesh }
 
 /** A soft radial glow (for embers and the candle's halo). */
 export function glowTexture(rgb: string, size = 64): CanvasTexture {

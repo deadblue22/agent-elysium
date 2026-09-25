@@ -14,6 +14,8 @@ const FilmShader = {
     uTime: { value: 0 },
     uExposure: { value: 1 },
     uGrade: { value: 1 },
+    /** 0 the present; 1 last night: colder, less saturated (the reconstruction's flashback). */
+    uNight: { value: 0 },
     uVignette: { value: 1 },
     uGrain: { value: 0.1 },
     /** grain grid in cells across the frame; setSize keeps one cell at GRAIN_PX css px */
@@ -27,7 +29,7 @@ const FilmShader = {
     void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
-    uniform float uTime, uExposure, uGrade, uVignette, uGrain;
+    uniform float uTime, uExposure, uGrade, uVignette, uGrain, uNight;
     uniform vec2 uGrainCells;
     uniform vec4 uQuiet;
     uniform float uQuietGrain;
@@ -68,6 +70,10 @@ const FilmShader = {
       s = mix(s, softLight(s, g.rgb), g.a * uGrade);
       float l = dot(s, vec3(0.2126, 0.7152, 0.0722));
       s = mix(s, s * vec3(0.95, 0.99, 1.06), (1.0 - smoothstep(0.04, 0.45, l)) * 0.3 * uGrade);
+      // last night: drained of warmth, shifted to blue, a little darker; highlights keep some warmth
+      float ln = dot(s, vec3(0.2126, 0.7152, 0.0722));
+      vec3 cold = mix(vec3(ln), s, 0.5) * vec3(0.8, 0.92, 1.12) * 0.9;
+      s = mix(s, mix(cold, s, smoothstep(0.55, 0.95, ln) * 0.5), uNight);
 
       // vignette: ellipse 80% x 78% at (50%, 56%)
       float r = length((vUv - vec2(0.5, 0.44)) / vec2(0.8, 0.78));

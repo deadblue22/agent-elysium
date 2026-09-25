@@ -60,6 +60,7 @@ export function createSnow(camera: PerspectiveCamera, lens: { focal: number; pri
       uFocal: { value: lens.focal },
       uPrincipal: { value: new Vector2(lens.principal.x, lens.principal.y) },
       uColor: { value: new Vector3(0.855, 0.888, 0.896) }, // #eef2f3, linear
+      uOpacity: { value: 1 },
     },
     vertexShader: /* glsl */ `
       attribute vec4 aSeed;  // frame x, frame y, view depth, kind
@@ -84,6 +85,7 @@ export function createSnow(camera: PerspectiveCamera, lens: { focal: number; pri
       }`,
     fragmentShader: /* glsl */ `
       uniform vec3 uColor;
+      uniform float uOpacity;
       varying float vAlpha, vKind;
       void main() {
         float r = length(gl_PointCoord - 0.5) * 2.0;
@@ -92,7 +94,7 @@ export function createSnow(camera: PerspectiveCamera, lens: { focal: number; pri
         if (vKind < 0.5) a = 1.0 - smoothstep(0.55, 1.0, r);
         else if (vKind < 1.5) a = r < 0.45 ? mix(1.0, 0.8, r / 0.45) : mix(0.8, 0.0, (r - 0.45) / 0.55);
         else a = r < 0.2 ? mix(1.0, 0.8, r / 0.2) : mix(0.8, 0.0, (r - 0.2) / 0.8);
-        gl_FragColor = vec4(uColor, a * vAlpha);
+        gl_FragColor = vec4(uColor, a * vAlpha * uOpacity);
       }`,
   });
   const points = new Points(geometry, material);
@@ -102,6 +104,8 @@ export function createSnow(camera: PerspectiveCamera, lens: { focal: number; pri
   return {
     points,
     update(t: number) { material.uniforms.uTime.value = t; },
+    /** 0: no snow (last night, before 23:00); 1: snowing. */
+    setOpacity(o: number) { material.uniforms.uOpacity.value = o; points.visible = o > 0.001; },
     /** Device px per frame px. */
     setScale(s: number) { material.uniforms.uScale.value = s; },
   };

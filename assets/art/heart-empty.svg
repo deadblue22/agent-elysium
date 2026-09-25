@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-3 -4 28 29" width="28" height="29" data-bake-scale="3">
+<!-- One morale heart, lost: a pale ghost of the heart with a dashed cut line. -->
+<path d="M0,6 C0,-1 9,-3 11,4 C13,-3 22,-1 22,6 C22,13 14,17 11,22 C8,17 0,13 0,6 Z" fill="#b89c86" opacity=".35"/>
+<path d="M0,6 C0,-1 9,-3 11,4 C13,-3 22,-1 22,6 C22,13 14,17 11,22 C8,17 0,13 0,6 Z" fill="none" stroke="#7c2a22" stroke-width="1.2" stroke-dasharray="2.4 2" opacity=".7"/>
+</svg>

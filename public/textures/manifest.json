@@ -1,6 +1,71 @@
 {
   "unit": 100,
   "textures": {
+    "casement": {
+      "file": "textures/casement.png",
+      "px": [
+        222,
+        352
+      ],
+      "viewBox": [
+        -2,
+        -2,
+        111,
+        176
+      ],
+      "world": [
+        1.11,
+        1.76
+      ],
+      "scale": 2,
+      "meta": {
+        "hingeX": 0
+      }
+    },
+    "clock-hour": {
+      "file": "textures/clock-hour.png",
+      "px": [
+        48,
+        120
+      ],
+      "viewBox": [
+        -3,
+        -12,
+        6,
+        15
+      ],
+      "world": [
+        0.06,
+        0.15
+      ],
+      "scale": 8,
+      "meta": {
+        "pivotX": 0,
+        "pivotY": 0
+      }
+    },
+    "clock-minute": {
+      "file": "textures/clock-minute.png",
+      "px": [
+        48,
+        152
+      ],
+      "viewBox": [
+        -3,
+        -16,
+        6,
+        19
+      ],
+      "world": [
+        0.06,
+        0.19
+      ],
+      "scale": 8,
+      "meta": {
+        "pivotX": 0,
+        "pivotY": 0
+      }
+    },
     "desk": {
       "file": "textures/desk.png",
       "px": [
@@ -37,8 +102,71 @@
       ],
       "scale": 3
     },
+    "dog": {
+      "file": "textures/dog.png",
+      "px": [
+        184,
+        60
+      ],
+      "viewBox": [
+        -2,
+        8,
+        92,
+        30
+      ],
+      "world": [
+        0.92,
+        0.3
+      ],
+      "scale": 2,
+      "meta": {
+        "soles": 35,
+        "neckX": 27,
+        "neckY": 18
+      }
+    },
+    "dog-head": {
+      "file": "textures/dog-head.png",
+      "px": [
+        108,
+        78
+      ],
+      "viewBox": [
+        -31,
+        -18,
+        36,
+        26
+      ],
+      "world": [
+        0.36,
+        0.26
+      ],
+      "scale": 3,
+      "meta": {
+        "pivotX": 0,
+        "pivotY": 0
+      }
+    },
     "far": {
       "file": "textures/far.png",
+      "px": [
+        776,
+        728
+      ],
+      "viewBox": [
+        296,
+        40,
+        388,
+        364
+      ],
+      "world": [
+        3.88,
+        3.64
+      ],
+      "scale": 2
+    },
+    "far-snow": {
+      "file": "textures/far-snow.png",
       "px": [
         776,
         728
@@ -158,23 +286,41 @@
         "emberY": 48.6
       }
     },
-    "hearts": {
-      "file": "textures/hearts.png",
+    "heart": {
+      "file": "textures/heart.png",
       "px": [
-        272,
-        72
+        84,
+        87
       ],
       "viewBox": [
-        1184,
-        130,
-        136,
-        36
+        -3,
+        -4,
+        28,
+        29
       ],
       "world": [
-        1.36,
-        0.36
+        0.28,
+        0.29
       ],
-      "scale": 2
+      "scale": 3
+    },
+    "heart-empty": {
+      "file": "textures/heart-empty.png",
+      "px": [
+        84,
+        87
+      ],
+      "viewBox": [
+        -3,
+        -4,
+        28,
+        29
+      ],
+      "world": [
+        0.28,
+        0.29
+      ],
+      "scale": 3
     },
     "kim": {
       "file": "textures/kim.png",
@@ -197,6 +343,54 @@
         "soles": 201,
         "feetX0": 32,
         "feetX1": 72
+      }
+    },
+    "marek": {
+      "file": "textures/marek.png",
+      "px": [
+        128,
+        396
+      ],
+      "viewBox": [
+        10,
+        4,
+        64,
+        198
+      ],
+      "world": [
+        0.64,
+        1.98
+      ],
+      "scale": 2,
+      "meta": {
+        "soles": 198,
+        "feetX": 42
+      }
+    },
+    "page-end": {
+      "file": "textures/page-end.png",
+      "px": [
+        1340,
+        1200
+      ],
+      "viewBox": [
+        670,
+        0,
+        670,
+        600
+      ],
+      "world": [
+        6.7,
+        6
+      ],
+      "scale": 2,
+      "meta": {
+        "pageH": 600,
+        "tearMin": 183,
+        "tearMax": 290,
+        "columnY0": 196,
+        "puppetShift": 40,
+        "heartsY": 282
       }
     },
     "page-left": {
@@ -247,6 +441,90 @@
         "columnY0": 196,
         "puppetShift": 40,
         "heartsY": 282
+      }
+    },
+    "pendulum": {
+      "file": "textures/pendulum.png",
+      "px": [
+        96,
+        186
+      ],
+      "viewBox": [
+        -8,
+        -1,
+        16,
+        31
+      ],
+      "world": [
+        0.16,
+        0.31
+      ],
+      "scale": 6,
+      "meta": {
+        "pivotX": 0,
+        "pivotY": 0
+      }
+    },
+    "sill-snow": {
+      "file": "textures/sill-snow.png",
+      "px": [
+        440,
+        32
+      ],
+      "viewBox": [
+        376,
+        304,
+        220,
+        16
+      ],
+      "world": [
+        2.2,
+        0.16
+      ],
+      "scale": 2
+    },
+    "slip": {
+      "file": "textures/slip.png",
+      "px": [
+        564,
+        114
+      ],
+      "viewBox": [
+        -4,
+        -4,
+        188,
+        38
+      ],
+      "world": [
+        1.88,
+        0.38
+      ],
+      "scale": 3
+    },
+    "stairs": {
+      "file": "textures/stairs.png",
+      "px": [
+        488,
+        464
+      ],
+      "viewBox": [
+        0,
+        -30,
+        244,
+        232
+      ],
+      "world": [
+        2.44,
+        2.32
+      ],
+      "scale": 2,
+      "meta": {
+        "soles": 200,
+        "pathX0": -40,
+        "pathX1": 186,
+        "pathY1": 47,
+        "footX": 16,
+        "landingX": 222
       }
     },
     "table": {

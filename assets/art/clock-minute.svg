@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-3 -16 6 19" width="6" height="19" data-bake-scale="8" data-pivot-x="0" data-pivot-y="0">
+<!-- The mantel clock's minute hand, pointing to 12 from its pivot (0, 0), with the centre cap.
+     Laid over the clock face of furniture.svg at (970, 157.5); the scene turns it. -->
+<path fill="#1d1712" d="M-0.75,1.6 L0.75,1.6 L0.34,-14.4 L0,-15 L-0.34,-14.4 Z"/>
+<circle r="1.7" fill="#1d1712"/>
+<circle cx="-.4" cy="-.4" r=".5" fill="#8a7a5e"/>
+</svg>

@@ -1,0 +1,92 @@
+<svg viewBox="376 304 220 16" xmlns="http://www.w3.org/2000/svg" width="220" height="16">
+<!-- The untouched snow on the window sill, laid on the wall (same coordinates). It fades in when the snow starts (stage cue snow-start). -->
+<defs>
+<filter id="cutS" x="-15%" y="-15%" width="135%" height="140%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" seed="9" result="tE"/>
+      <feDisplacementMap in="SourceGraphic" in2="tE" scale="2.4" xChannelSelector="R" yChannelSelector="G" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="13" result="tF"/>
+      <feDiffuseLighting in="tF" surfaceScale="1.3" diffuseConstant="1" lighting-color="#fff" result="fib">
+        <feDistantLight azimuth="235" elevation="58"/>
+      </feDiffuseLighting>
+      <feComposite in="fib" in2="shape" operator="arithmetic" k1="0.55" k2="0" k3="0.5" k4="0" result="tex"/>
+      <feGaussianBlur in="shape" stdDeviation="2.4" result="sb"/>
+      <feComposite in="shape" in2="sb" operator="out" result="rimM"/>
+      <feFlood flood-color="#050508" flood-opacity="0.38"/>
+      <feComposite in2="rimM" operator="in" result="burn"/>
+      <feOffset in="shape" dx="0.4" dy="1.1" result="sOff"/>
+      <feComposite in="shape" in2="sOff" operator="out" result="edgeM"/>
+      <feFlood flood-color="#f1e5c8" flood-opacity="0.38"/>
+      <feComposite in2="edgeM" operator="in" result="edge"/>
+      <feGaussianBlur in="shape" stdDeviation="1.3" result="shB"/>
+      <feOffset in="shB" dx="1" dy="1.8" result="shO"/>
+      <feFlood flood-color="#060403" flood-opacity="0.55"/>
+      <feComposite in2="shO" operator="in" result="drop"/>
+      <feMerge>
+<feMergeNode in="drop"/>
+<feMergeNode in="tex"/>
+<feMergeNode in="burn"/>
+<feMergeNode in="edge"/>
+</feMerge>
+    </filter>
+</defs>
+          <defs>
+            <pattern id="wp" width="46" height="64" patternUnits="userSpaceOnUse">
+              <rect width="46" height="64" fill="#27314a"/>
+              <rect x="30" width="16" height="64" fill="#222a40"/>
+              <rect x="31.5" width="1" height="64" fill="#36425f" opacity=".7"/>
+              <rect x="43.5" width="1" height="64" fill="#36425f" opacity=".7"/>
+              <path d="M15,12 l5,9 l-5,9 l-5,-9 Z" fill="#35426a"/>
+              <path d="M15,48 c3,-4 3,-9 0,-13 c-3,4 -3,9 0,13 Z" fill="#324066"/>
+              <circle cx="15" cy="57" r="1.3" fill="#3b4865"/>
+            </pattern>
+            <clipPath id="wallClip">
+<path id="wallShapeClip" clip-rule="evenodd" d="M0,440 V38 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 a33.500,16 0 0 1 67.000,0 V440 Z M378,92 H592 V318 H378 Z"/>
+</clipPath>
+            <radialGradient id="winSpill" cx="486" cy="230" r="260" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#b9cbd6" stop-opacity=".5"/>
+<stop offset=".4" stop-color="#8ea4b4" stop-opacity=".14"/>
+<stop offset="1" stop-color="#8ea4b4" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="candleSpill" cx="770" cy="300" r="440" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#f3ad62" stop-opacity=".5"/>
+<stop offset=".35" stop-color="#d98c49" stop-opacity=".2"/>
+<stop offset="1" stop-color="#d98c49" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="wallV" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#030409" stop-opacity=".78"/>
+<stop offset=".3" stop-color="#030409" stop-opacity=".22"/>
+              <stop offset=".8" stop-color="#030409" stop-opacity=".1"/>
+<stop offset="1" stop-color="#030409" stop-opacity=".5"/>
+            </linearGradient>
+            <linearGradient id="wallH" x1="0" x2="1">
+              <stop offset="0" stop-color="#030409" stop-opacity=".7"/>
+<stop offset=".2" stop-color="#030409" stop-opacity="0"/>
+              <stop offset=".8" stop-color="#030409" stop-opacity="0"/>
+<stop offset="1" stop-color="#030409" stop-opacity=".75"/>
+            </linearGradient>
+            <linearGradient id="casing" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#9b9a90"/>
+<stop offset=".6" stop-color="#7c7c74"/>
+<stop offset="1" stop-color="#5a5b56"/>
+            </linearGradient>
+          </defs>
+          
+          <!-- window casing, reveals, transom, sill, the untouched snow on it -->
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          <!-- a small framed photograph, slightly crooked -->
+          
+          <!-- calendar pinned above the radiator -->
+          
+        <g filter="url(#cutS)">
+<path fill="#e2e8e9" d="M381,318 C383,311 391,309.5 402,309.6 C446,308.6 520,308.8 570,309.4 C583,309.8 589,312 590,318 Z"/>
+</g>
+<path d="M386,316 C430,314.5 530,314.6 586,316" stroke="#9fb1bd" stroke-width="1.2" opacity=".6" fill="none"/>
+</svg>

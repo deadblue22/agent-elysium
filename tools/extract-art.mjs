@@ -95,13 +95,22 @@ const HEARTS_Y = Math.ceil(Math.max(...tears.right.pts.filter(([x]) => x >= 1180
 const PIECES = [
   {
     name: 'far', src: '#farSvg', viewBox: [296, 40, 388, 364],
-    note: 'Layer 0, outside the window: sky, roofs, the building across the yard, fire escape, snow. Hinge at y=400. Cropped below the wall\'s top so it never peeks over it.',
+    note: 'Layer 0, outside the window: sky, roofs, the building across the yard, the fire escape, as they were before the snow (the snow is far-snow.svg, laid over it). Hinge at y=400. Cropped below the wall\'s top so it never peeks over it.',
+    remove: ['path[stroke="#e8eeef"]', 'path[fill="#d9e0e2"]'],
+  },
+  {
+    name: 'far-snow', src: '#farSvg', viewBox: [296, 40, 388, 364],
+    note: 'The snow of the window view, laid over far.svg: caps on the roofs, a line along every rail of the fire escape, one still frame of falling flakes. It fades in when the snow starts (stage cue snow-start).',
     edit: (svg) => {
-      // bake one static tile of the falling snow that the legacy page animated
       const NS = 'http://www.w3.org/2000/svg';
-      const defs = svg.querySelector('defs');
+      [...svg.children].forEach((c) => { if (c.tagName !== 'defs') c.remove(); });
+      const caps = document.createElementNS(NS, 'g'); caps.setAttribute('filter', 'url(#cutS)');
+      document.querySelectorAll('#farSvg path[fill="#d9e0e2"]').forEach((e) => caps.appendChild(e.cloneNode()));
+      svg.appendChild(caps);
+      document.querySelectorAll('#farSvg path[stroke="#e8eeef"]').forEach((e) => svg.appendChild(e.cloneNode()));
       const cp = document.createElementNS(NS, 'clipPath'); cp.id = 'skyClip';
-      cp.innerHTML = '<rect x="300" y="0" width="380" height="400"/>'; defs.appendChild(cp);
+      cp.innerHTML = '<rect x="300" y="0" width="380" height="400"/>';
+      svg.querySelector('defs').appendChild(cp);
       const g = document.createElementNS(NS, 'g'); g.setAttribute('clip-path', 'url(#skyClip)');
       for (const c of document.querySelectorAll('#farSnow circle')) if (+c.getAttribute('cy') < 400) g.appendChild(c.cloneNode());
       svg.appendChild(g);
@@ -109,13 +118,30 @@ const PIECES = [
   },
   {
     name: 'wall', src: '#wallSvg', viewBox: [-12, 6, 1364, 438],
-    note: 'Layer 1, the back wall: scalloped cornice edge, wallpaper, window hole, photograph, calendar. Hinge at y=440.',
-    remove: ['rect[fill="url(#winSpill)"]', 'rect[fill="url(#candleSpill)"]', 'rect[fill="url(#wallH)"]', 'rect[height="440"][fill="url(#wallV)"]'],
+    note: 'Layer 1, the back wall: scalloped cornice edge, wallpaper, window hole, photograph, calendar. Hinge at y=440. The snow on the sill is sill-snow.svg.',
+    remove: ['rect[fill="url(#winSpill)"]', 'rect[fill="url(#candleSpill)"]', 'rect[fill="url(#wallH)"]', 'rect[height="440"][fill="url(#wallV)"]',
+      'path[fill="#e2e8e9"]', 'path[d^="M386,316"]'],
+  },
+  {
+    name: 'sill-snow', src: '#wallSvg', viewBox: [376, 304, 220, 16],
+    note: 'The untouched snow on the window sill, laid on the wall (same coordinates). It fades in when the snow starts (stage cue snow-start).',
+    edit: (svg) => {
+      const NS = 'http://www.w3.org/2000/svg';
+      const snow = document.querySelector('#wallSvg path[fill="#e2e8e9"]'), line = document.querySelector('#wallSvg path[d^="M386,316"]');
+      [...svg.children].forEach((c) => { if (c.tagName !== 'defs') c.remove(); });
+      const g = document.createElementNS(NS, 'g'); g.setAttribute('filter', 'url(#cutS)');
+      g.appendChild(snow.cloneNode());
+      svg.append(g, line.cloneNode());
+    },
   },
   {
     name: 'furniture', src: '#furnSvg', viewBox: [40, 48, 1272, 386],
-    note: 'Layer 2: bookshelf, casements and curtain, mirror, fireplace, mantel clock (23:40), radiator. Hinge at y=430.',
-    remove: ['rect[fill="url(#coldGlow)"]', 'path[fill="url(#shaft)"]', 'path[fill="url(#shelfDark)"]', 'rect[fill="url(#clockHalo)"]'],
+    note: 'Layer 2: bookshelf, curtain, mirror, fireplace, mantel clock, radiator. Hinge at y=430. The clock\'s hands and pendulum (clock-hour, clock-minute, pendulum.svg) and the window\'s casements (casement.svg) are separate pieces laid over it, so they can move.',
+    remove: ['rect[fill="url(#coldGlow)"]', 'path[fill="url(#shaft)"]', 'path[fill="url(#shelfDark)"]', 'rect[fill="url(#clockHalo)"]',
+      // the clock's hands, their cap, the pendulum rod and bob
+      'path[d^="M0,-97 L"]', 'circle[cx="0"][cy="-97"][r="2"]', 'path[d="M0,-60 V-33"]', 'circle[cx="0"][cy="-30"][r="8"]',
+      // the open casements and their glass, bars and glint
+      'path[d^="M378,86 L334"]', 'path[d^="M592,86 L636"]', 'path[fill="url(#glassG)"]', 'path[d^="M372,168"]', 'path[d^="M345,90"]'],
   },
   {
     name: 'desk', src: '#deskSvg', viewBox: [392, 44, 424, 210],
@@ -189,24 +215,16 @@ const PIECES = [
       }
     },
   },
-  {
-    name: 'hearts', src: '#pageArt', viewBox: [1184, 130, 136, 36],
-    note: 'Morale: four paper hearts, the last one gone pale. Lies on the right page.',
-    edit: (svg) => {
-      const h = svg.querySelector('#hearts');
-      [...svg.children].forEach((c) => { if (c.tagName !== 'defs') c.remove(); });
-      svg.querySelectorAll('defs > *').forEach((d) => d.remove());
-      svg.appendChild(h);
-    },
-  },
-  ...['left', 'right'].map((side) => ({
-    name: `page-${side}`, src: '#pageArt', viewBox: side === 'left' ? [0, 0, 670, BOOK_H] : [670, 0, 670, BOOK_H],
+  // page-end: the sheet under the right one, torn the same way (the whole stack was), blank:
+  // the page turn at the end of the chapter reveals it
+  ...['left', 'right', 'end'].map((variant) => ({ variant, side: variant === 'end' ? 'right' : variant })).map(({ variant, side }) => ({
+    name: `page-${variant}`, src: '#pageArt', viewBox: side === 'left' ? [0, 0, 670, BOOK_H] : [670, 0, 670, BOOK_H],
     note: `The ${side} top sheet: its upper part torn away (tear between y=${tears[side].min} and y=${tears[side].max}), a lighter fringe of exposed paper core along the tear with a faint line of thickness inside it; fibre, mottling, foxing, toned edges${side === 'right' ? ', the faint printed rug under the puppets' : ' (kept quiet under the text column)'}. Text is painted at runtime.`,
     attrs: {
       'data-page-h': BOOK_H, 'data-tear-min': tears[side].min, 'data-tear-max': tears[side].max, 'data-column-y0': COLUMN_Y0,
       ...(side === 'right' ? { 'data-puppet-shift': PUPPET_SHIFT, 'data-hearts-y': HEARTS_Y } : {}),
     },
-    data: { H: BOOK_H, shape: tears[side].shape, line: tears[side].line, whiskers: tears[side].whiskers, disp: DISP[side], fringe: FRINGE, seed: side === 'left' ? 17 : 29, colY0: COLUMN_Y0, shift: side === 'right' ? PUPPET_SHIFT : 0 },
+    data: { H: BOOK_H, shape: tears[side].shape, line: tears[side].line, whiskers: tears[side].whiskers, disp: DISP[side], fringe: FRINGE, seed: side === 'left' ? 17 : 29, colY0: COLUMN_Y0, shift: side === 'right' ? PUPPET_SHIFT : 0, blank: variant === 'end' },
     remove: ['use', 'ellipse[fill="#140c06"]', 'g[fill="#120a05"]', '#hearts', 'path[fill="#a9c0cf"]', 'ellipse[fill="url(#warmGlow)"]',
       'path[d^="M1340,560"]', 'path[d^="M1340,558"]', 'path[d^="M1306,566"]'],
     edit: (svg, d) => {
@@ -214,7 +232,8 @@ const PIECES = [
       const defs = svg.querySelector('defs');
       // the printed rug follows the puppets, who stand below the tongue now; their stand tabs
       // are paper in the scene (src/scene/puppets.ts), sized to each puppet's feet
-      if (d.shift) svg.querySelector('g[opacity=".2"]')?.setAttribute('transform', `translate(0 ${d.shift})`);
+      if (d.blank) svg.querySelector('g[opacity=".2"]')?.remove();
+      else if (d.shift) svg.querySelector('g[opacity=".2"]')?.setAttribute('transform', `translate(0 ${d.shift})`);
       svg.querySelectorAll('path[d^="M855,32"], path[d^="M858,326"]').forEach((e) => e.remove());
       // the M0 page was 600 deep: stretch its paper layers to the deeper page
       const k = d.H / 600;

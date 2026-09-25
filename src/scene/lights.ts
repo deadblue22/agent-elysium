@@ -75,14 +75,21 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
   group.add(flameSprite, halo);
 
   const base = flame.intensity;
+  /** Stage cues drive these: the candle brighter in the flashback, flickering hard at the blow. */
+  const candle = { boost: 1, flicker: 0.05 };
+  const apply = (t: number) => {
+    const f = Math.sin(t * 7.3) * 0.5 + Math.sin(t * 13.1 + 1.7) * 0.3 + Math.sin(t * 2.1) * 0.2;
+    const hard = candle.flicker > 0.1 ? Math.sin(t * 31 + 0.7) * 0.6 + Math.sin(t * 53) * 0.4 : 0; // gusts
+    const k = 1 + candle.flicker * (f + hard);
+    flame.intensity = base * candle.boost * Math.max(0.15, k);
+    flameSprite.scale.set(0.2, 0.36 * candle.boost ** 0.5 * (1 + 0.8 * candle.flicker * (f + hard)), 1);
+  };
   return {
-    group, hemi, key, flame, lamp, windowGlow,
-    /** A slow, small flicker. */
-    update(t: number) {
-      const f = Math.sin(t * 7.3) * 0.5 + Math.sin(t * 13.1 + 1.7) * 0.3 + Math.sin(t * 2.1) * 0.2;
-      flame.intensity = base * (1 + 0.05 * f);
-      flameSprite.scale.set(0.2, 0.36 * (1 + 0.04 * f), 1);
-    },
+    group, hemi, key, flame, lamp, windowGlow, candle,
+    /** A slow, small flicker (t in seconds). */
+    update(t: number) { apply(t); },
+    /** Applies the candle's boost and flicker without animating it (a still frame). */
+    settle() { apply(0); },
   };
 }
 

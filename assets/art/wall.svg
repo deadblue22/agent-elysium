@@ -1,5 +1,5 @@
 <svg viewBox="-12 6 1364 438" xmlns="http://www.w3.org/2000/svg" width="1364" height="438">
-<!-- Layer 1, the back wall: scalloped cornice edge, wallpaper, window hole, photograph, calendar. Hinge at y=440. -->
+<!-- Layer 1, the back wall: scalloped cornice edge, wallpaper, window hole, photograph, calendar. Hinge at y=440. The snow on the sill is sill-snow.svg. -->
 <defs>
 <filter id="cutS" x="-15%" y="-15%" width="135%" height="140%" color-interpolation-filters="sRGB">
       <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" seed="9" result="tE"/>
@@ -283,9 +283,9 @@
           <g filter="url(#cutS)">
             <path fill="#a09e93" d="M346,318 H624 L628,330 H342 Z"/>
             <path fill="#56554f" d="M342,330 H628 V338 H342 Z"/>
-            <path fill="#e2e8e9" d="M381,318 C383,311 391,309.5 402,309.6 C446,308.6 520,308.8 570,309.4 C583,309.8 589,312 590,318 Z"/>
+            
           </g>
-          <path d="M386,316 C430,314.5 530,314.6 586,316" stroke="#9fb1bd" stroke-width="1.2" opacity=".6" fill="none"/>
+          
           <!-- a small framed photograph, slightly crooked -->
           <g transform="rotate(2.2 700 146)">
             <circle cx="700" cy="140" r="2" fill="#0b0b0d"/>

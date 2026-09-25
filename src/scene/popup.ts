@@ -2,7 +2,7 @@
 // its own fold line (docs/design.md §6.1), spread across the floor so the floor and the rows'
 // shadows show between them. The row depths come with the floor sheet (tools/extract-art.mjs
 // FOLD and ROWS); the wall leans back most, rows nearer the reader stand more upright.
-import { Group, MeshBasicMaterial, Vector3 } from 'three';
+import { Group, MeshBasicMaterial, Vector3, type Mesh } from 'three';
 import type { Art } from '../assets';
 import { standingContact } from './paper';
 import { BASE_Y, baseY, envelope, leanNormal, lift, paperMaterial, pointOnStanding, standing, type StandOptions } from './space';
@@ -57,18 +57,23 @@ export function roomLights(floor: Record<string, number>) {
   };
 }
 
+export interface PieceHandle { group: Group; mesh: Mesh; opts: StandOptions }
+
 export function createPopup(art: Art) {
   const group = new Group();
   group.name = 'popup';
+  const pieces: Record<string, PieceHandle> = {};
   for (const [name, o] of Object.entries(layers(art.floor.meta))) {
     const piece = art[name];
     const material = name === 'far'
       ? new MeshBasicMaterial({ map: piece.texture, alphaToCoverage: true, color: '#d8dde0' })
       : paperMaterial(piece.texture);
-    const { group: g, mesh } = standing(piece, material, { ...o, y: LAYER_Y });
+    const opts = { ...o, y: LAYER_Y };
+    const { group: g, mesh } = standing(piece, material, opts);
     mesh.name = name;
     if (name === 'far') mesh.receiveShadow = false;
     group.add(g);
+    pieces[name] = { group: g, mesh, opts };
     if (name === 'far') continue; // stands behind the wall
     // baked contact occlusion on the floor where the card meets it
     const contact = standingContact(piece, o, (bx, by) => baseY(bx, by) + 0.003, {
@@ -77,5 +82,5 @@ export function createPopup(art: Art) {
     contact.name = `contact-${name}`;
     group.add(contact);
   }
-  return { group };
+  return { group, pieces };
 }

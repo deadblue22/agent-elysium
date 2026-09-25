@@ -9,14 +9,35 @@
 //   - the two torn top sheets on the base page, lifting and curling up over the last few
 //     percent before their tear, with a thin side face at the tear;
 //   - baked ambient occlusion: vertex colours in the gutter, a contact shadow on the table.
-import { BoxGeometry, BufferGeometry, DoubleSide, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, PlaneGeometry, Vector2, type Texture } from 'three';
+import {
+  BackSide, Box3, BoxGeometry, BufferGeometry, DoubleSide, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, PlaneGeometry, Vector2, Vector3,
+  type Object3D, type Texture,
+} from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { Art } from '../assets';
 import { clothColor, clothWeave, contactBook, decal, pageEdges, paperTooth } from './paper';
 import {
-  BOOK_H, COVER_T, GUTTER, PAGE_W, SQUARE, UNIT, baseY, gutterAO, paperMaterial, rectUV, sheetY, surfaceGrid, wx, wz,
+  BOOK_H, COVER_T, GUTTER, PAGE_W, SHEET_Y, SQUARE, UNIT, baseY, gutterAO, paperMaterial, rectUV, sheetY, surfaceGrid, wx, wz,
   xSamples, ySamples,
 } from './space';
+
+/**
+ * The chapter's last page turn: the right top sheet turns over the gutter onto the left page.
+ * Each point of the sheet turns about the spine by its own angle: the fore-edge leads by up to
+ * TURN_LAG of the turn, so the sheet curls as it lifts and drapes as it lands. Mid-turn the
+ * sheet stands flat; landed, it takes the left page's shape, TURN_LIFT above it.
+ */
+const TURN_LAG = 0.18;
+const TURN_LIFT = 0.035;
+const smoothstep = (t: number) => t * t * (3 - 2 * t);
+/** The angle (0..π) of the point u world units from the spine at turn progress p. */
+export const turnAngle = (p: number, u: number) =>
+  Math.PI * smoothstep(Math.min(1, Math.max(0, p * (1 + TURN_LAG) - TURN_LAG * (1 - Math.min(1, u / PAGE_W)))));
+/** Where a point (x, y) of the right half lands at turn angle θ (world units; z does not change). */
+function turned(x: number, y: number, θ: number): [number, number] {
+  const h = y - SHEET_Y, s = Math.cos(θ);
+  return [x * Math.cos(θ) - s * h * Math.sin(θ), SHEET_Y + x * Math.sin(θ) + s * h * Math.cos(θ) + TURN_LIFT * (1 - Math.cos(θ)) / 2];
+}
 
 export interface PageUniforms {
   tInk: { value: Texture };
@@ -156,7 +177,7 @@ function blockEdges(bx0: number, bx1: number, top: (bx: number, by: number) => n
   return g;
 }
 
-export function createBook(art: Art, inkLeft: Texture, inkRight: Texture) {
+export function createBook(art: Art, inkLeft: Texture, inkRight: Texture, inkEnd: Texture) {
   const group = new Group();
   group.name = 'book';
   const tooth = paperTooth();
@@ -247,10 +268,81 @@ export function createBook(art: Art, inkLeft: Texture, inkRight: Texture) {
     group.add(face);
   }
 
+  // ---- the page turn
+  const right = pages.right.mesh;
+  const flipGeo = right.geometry;
+  const rest = Float32Array.from(flipGeo.attributes.position.array as Float32Array);
+  // the back of the sheet: plain paper, torn the same way (the blank sheet's paper)
+  const backMat = new MeshStandardMaterial({
+    map: art['page-end'].texture, roughness: 0.92, alphaToCoverage: true, side: BackSide, vertexColors: true,
+    normalMap: tiled(tooth, PAGE_W, BOOK_H / UNIT, 1.2), normalScale: new Vector2(0.45, 0.45), color: '#f1ebe0',
+  });
+  const back = new Mesh(flipGeo, backMat);
+  back.name = 'page-right-back';
+  back.receiveShadow = true;
+  back.visible = false;
+  group.add(back);
+  // the blank sheet under it, torn the same way, with 「第一章 完」
+  const end = pageMaterial(art['page-end'].texture, inkEnd, tiled(tooth, PAGE_W, BOOK_H / UNIT, 1.2));
+  const tr = tears.right, trLo = Math.min(...tr.smooth), trHi = Math.max(...tr.smooth);
+  const endSheet = new Mesh(surfaceGrid(xSamples(GUTTER, 2 * GUTTER), ySamples(0, BOOK_H, 12, [trLo - 8, trHi + CURL + 8]), (bx, by) => sheetAt('right')(bx, by) - 0.003,
+    rectUV(GUTTER, 2 * GUTTER, 0, BOOK_H), gutterAO), end.material);
+  endSheet.name = 'page-end';
+  endSheet.receiveShadow = true;
+  endSheet.visible = false;
+  group.add(endSheet);
+  const carried: { pivot: Group; anchor: Vector3; hideAt: number }[] = [];
+  let turnP = 0;
+  const tearRight = group.getObjectByName('tear-edge-right')!;
+
   return {
     group,
     leftPage: pages.left.mesh, rightPage: pages.right.mesh,
-    uniforms: { left: pages.left.uniforms, right: pages.right.uniforms },
+    uniforms: { left: pages.left.uniforms, right: pages.right.uniforms, end: end.uniforms },
+    /**
+     * Makes something lying or standing on the right sheet turn with it (puppets, dice, hearts):
+     * it turns rigidly with the sheet at its own place and hides once the sheet covers it.
+     */
+    carry(obj: Object3D, hideAt = 0.5 * Math.PI) {
+      const box = new Box3().setFromObject(obj);
+      const c = box.getCenter(new Vector3());
+      const bx = c.x * UNIT + GUTTER, by = c.z * UNIT + BOOK_H / 2;
+      const anchor = new Vector3(c.x, sheetAt('right')(Math.min(2 * GUTTER, Math.max(GUTTER, bx)), Math.min(BOOK_H, Math.max(0, by))), c.z);
+      const pivot = new Group();
+      pivot.position.copy(anchor);
+      obj.parent!.add(pivot);
+      obj.position.sub(anchor);
+      pivot.add(obj);
+      carried.push({ pivot, anchor, hideAt });
+    },
+    /** Turn progress 0..1 (0: the sheet lies on the right page; 1: it lies on the left). */
+    setTurn(p: number) {
+      if (p === turnP) return;
+      turnP = p;
+      const pos = flipGeo.attributes.position;
+      const a = pos.array as Float32Array;
+      for (let i = 0; i < a.length; i += 3) {
+        const θ = turnAngle(p, rest[i]);
+        const [x, y] = turned(rest[i], rest[i + 1], θ);
+        a[i] = x; a[i + 1] = y; a[i + 2] = rest[i + 2];
+      }
+      pos.needsUpdate = true;
+      flipGeo.computeVertexNormals();
+      flipGeo.computeBoundingSphere();
+      back.visible = endSheet.visible = p > 0;
+      tearRight.visible = p === 0;
+      for (const c of carried) {
+        // lying on the curled sheet: at the sheet's point under it, turned to the sheet's slope
+        // there (the turn angle plus the curl: u·dθ/du), and gone once the sheet's back faces up
+        const u = c.anchor.x, θ = turnAngle(p, u);
+        const dθ = (turnAngle(p, u + 0.02) - turnAngle(p, u - 0.02)) / 0.04;
+        const φ = θ + Math.atan(u * dθ);
+        const [x, y] = turned(u, c.anchor.y, θ);
+        c.pivot.position.set(x, y, c.anchor.z);
+        c.pivot.rotation.z = φ;
+        c.pivot.visible = φ < c.hideAt;
+      }
+    },
     /** World height of the right top sheet (with its curl), for what stands on it. */
     rightSheet: sheetAt('right'),
     tooth,

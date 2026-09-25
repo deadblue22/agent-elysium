@@ -7,6 +7,7 @@
 // The painter scales it to the canvas.
 import type { Lang, LogEntry } from '../content/schema';
 import { checkTag, resultTag, speakerInk, speakerName } from '../content/skills';
+import { CRIT } from '../content/ui';
 
 /** One page in book px (the legacy board's CSS px). Must match tools/extract-art.mjs BOOK_H. */
 export const PAGE = { w: 670, h: 600 };
@@ -23,17 +24,26 @@ export const textColumn = (y0: number): Column => ({ x0: 30, x1: 596, y0, y1: PA
 /** Old lines fade out over this many page px as they rise into the tear. */
 export const FADE = 44;
 
+/**
+ * Everything drawn carries `entry`, the index of the log entry it belongs to. Body text also
+ * carries `from`, its first character's offset in the entry's body, so the typewriter can
+ * reveal a line character by character without re-flowing it (labels have no `from`: they
+ * appear with the entry).
+ */
 export type DrawItem =
-  | { t: 'text'; x: number; y: number; text: string; font: string; color: string; alpha: number; ls: number; stroke: number; option?: number; box: Rect }
-  | { t: 'tag'; alpha: number; box: Rect }
-  | { t: 'rule'; color: string; alpha: number; box: Rect }
-  | { t: 'cursor'; color: string; box: Rect };
+  | { t: 'text'; x: number; y: number; text: string; font: string; color: string; alpha: number; ls: number; stroke: number; option?: number; entry?: number; from?: number; box: Rect }
+  | { t: 'tag'; alpha: number; entry?: number; box: Rect }
+  | { t: 'rule'; color: string; alpha: number; entry?: number; box: Rect }
+  | { t: 'mark'; color: string; alpha: number; entry?: number; box: Rect }
+  | { t: 'cursor'; color: string; entry?: number; box: Rect };
 
 export interface PageLayout {
   /** Positions with the log scrolled to its newest line (scroll = 0). */
   items: DrawItem[];
-  /** Hit boxes of the currently available options (at scroll = 0). */
-  options: { index: number; rect: Rect }[];
+  /** Hit boxes of the options shown (at scroll = 0); greyed ones are shown but not choosable. */
+  options: { index: number; number: number; greyed: boolean; rect: Rect }[];
+  /** Body characters of each entry (what the typewriter reveals). */
+  chars: number[];
   cursor: Rect | null;
   /** Plain text of each entry, in order, for the screen-reader mirror. */
   plain: string[];
@@ -41,6 +51,8 @@ export interface PageLayout {
   window: { y0: number; y1: number; fade: number } | null;
   /** How far the history can be scrolled back (page px). */
   scrollMax: number;
+  /** Height of everything laid out (page px): a new entry pushes the log up by the difference. */
+  height: number;
 }
 
 // ---------------------------------------------------------------- style
@@ -54,6 +66,8 @@ export const INK = {
   hover: '#CC5A2A',    // hovered option: brighter rust
   cursor: '#C2562B',
   red: '#8E2A24',      // red checks
+  redMark: '#A3232B',  // the red check marker (§6.2 红色检定)
+  greyed: '#8C8378',   // a failed white check, waiting for new information
 };
 
 type Family = 'serif' | 'sans' | 'mono';
@@ -105,8 +119,8 @@ const HANG = new Set('。，、：；！？」』）》'.split(''));
  * glue: no break before the run; keep: no break inside it; pad: horizontal margins;
  * rule: draw a horizontal rule of this length instead of the text.
  */
-interface Run { text: string; style: Style; glue?: boolean; keep?: boolean; option?: number; pad?: [number, number]; rule?: number }
-interface Atom { text: string; style: Style; space: boolean; glueBefore: boolean; option?: number; pad?: [number, number]; rule?: number }
+interface Run { text: string; style: Style; glue?: boolean; keep?: boolean; option?: number; pad?: [number, number]; rule?: number; body?: boolean }
+interface Atom { text: string; style: Style; space: boolean; glueBefore: boolean; option?: number; pad?: [number, number]; rule?: number; body?: boolean }
 
 /** Splits runs into unbreakable atoms. Breaks are allowed before an atom unless glueBefore. */
 function atomize(runs: Run[]): Atom[] {
@@ -116,7 +130,7 @@ function atomize(runs: Run[]): Atom[] {
     const from = atoms.length;
     // a run's margins belong to its first and last atoms
     const push = (text: string, space = false) => {
-      atoms.push({ text, style: run.style, space, glueBefore: first ? !!run.glue : !!run.keep, option: run.option, pad: run.pad && first ? [run.pad[0], 0] : undefined, rule: run.rule });
+      atoms.push({ text, style: run.style, space, glueBefore: first ? !!run.glue : !!run.keep, option: run.option, pad: run.pad && first ? [run.pad[0], 0] : undefined, rule: run.rule, body: run.body });
       first = false;
     };
     for (const c of run.text) {
@@ -233,6 +247,7 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
   const caps = (t: string) => (lang === 'en' ? t.toUpperCase() : t);
   const nbsp = (t: string) => t.replace(/ /g, '\u00a0');
 
+  const chars: number[] = [];
   const isYou = (e: LogEntry) => e.kind === 'line' && e.line.speaker === 'you';
   const lastYou = lastIndex(entries, isYou);
   const lastOption = lastIndex(entries, (e) => e.kind === 'option');
@@ -245,6 +260,9 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
   entries.forEach((e, idx) => {
     // older entries fade: the player's past words to 0.75, everything before the last of them to 0.84
     const alpha = isYou(e) ? 0.75 : idx < lastYou ? 0.84 : 1;
+    const first = items.length;
+    chars[idx] = 0;
+    const tagItems = () => { for (let k = first; k < items.length; k++) items[k].entry = idx; };
 
     if (e.kind === 'check') {
       // the dice line: a boxed check tag, then the roll; the result tag rides on the voice's line
@@ -271,8 +289,15 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
       if (boxW + sep + m.width(lang, roll, rollText) > maxW) { x = col.x0 + padX; rowMid = mid + lh * 0.85; }
       else x += boxW + sep;
       pushText(items, lang, x, m.baseline(lang, roll, rowMid - lh / 2, lh), rollText, roll, alpha);
+      // snake eyes, boxcars: the fixed phrase after the roll (§5.3)
+      const crit = e.dice[0] + e.dice[1] === 2 ? CRIT.snake[lang] : e.dice[0] + e.dice[1] === 12 ? CRIT.boxcars[lang] : '';
+      if (crit) {
+        const critStyle: Style = { ...narr, color: e.success ? INK.log : INK.red };
+        pushText(items, lang, x + m.width(lang, roll, rollText) + sep, m.baseline(lang, critStyle, rowMid - lh / 2, lh), crit, critStyle, alpha);
+      }
       y = rowMid + lh / 2 + 4;
-      plain.push(`${tag.open}${tag.skill}${tag.rest} ${rollText}`);
+      plain.push(`${tag.open}${tag.skill}${tag.rest} ${rollText}${crit ? ' ' + crit : ''}`);
+      tagItems();
       return;
     }
 
@@ -281,17 +306,22 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
     let indent = 0, hang = 0;
     let firstBold = false;
     let optionIndex: number | undefined;
+    const greyed = e.kind === 'option' && e.state === 'greyed';
+    let redMark = false;
     if (e.kind === 'option') {
-      // a current option: its number, its check tag if it has one, its words
+      // a current option: its number, its check tag if it has one, its words; a failed white
+      // check waits greyed, a red check carries a red marker on its tag
       optionIndex = e.index;
-      base = mono(INK.now, 0.5);
+      base = mono(greyed ? INK.greyed : INK.now, greyed ? 0.2 : 0.5);
       const num = `${e.number}.`;
       runs = [{ text: num, style: base, option: optionIndex, keep: true }];
       let words = e.option.text[lang];
       if (e.option.check) {
         const t = checkTag(e.option.check, lang);
         const tagText = `${t.open}${t.skill}${t.rest}`;
-        runs.push({ text: ' ' + nbsp(tagText), style: e.option.check.kind === 'red' ? mono(INK.red, 0.5) : base, option: optionIndex, keep: true });
+        redMark = e.option.check.kind === 'red';
+        runs.push({ text: ' ', style: base, option: optionIndex });
+        runs.push({ text: nbsp(tagText), style: redMark && !greyed ? mono(INK.red, 0.5) : base, option: optionIndex, keep: true, glue: true, pad: redMark ? [S.mono * 0.7, 0] : undefined });
         words = `${tagText} ${words}`;
       }
       runs.push({ text: ' ' + e.option.text[lang], style: base, option: optionIndex });
@@ -300,7 +330,7 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
     } else {
       const { line } = e;
       if (line.speaker === 'narrator') {
-        runs = [{ text: line.text[lang], style: narr }];
+        runs = [{ text: line.text[lang], style: narr, body: true }];
         indent = lang === 'zh' ? S.narr * 2 : S.narr * 1.2;
         firstBold = lang === 'zh';
         plain.push(line.text[lang]);
@@ -313,7 +343,7 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
         runs.push({ text: '—', style: dash, glue: true, pad: [S.label * 0.3, S.label * 0.45], rule: S.label * 0.8 });
         // the player's own past words stay in the options' face and rust, dimmed
         if (line.speaker === 'you') base = mono(INK.rust, 0.3);
-        runs.push({ text: line.text[lang], style: base });
+        runs.push({ text: line.text[lang], style: base, body: true });
         plain.push(`${caps(name)}${tag ? ' ' + tag : ''} — ${line.text[lang]}`);
       }
     }
@@ -327,6 +357,10 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
     const keep = keepLastSentence(lang, m, atoms, lines, maxW, styleFor);
     if (keep !== null) lines = breakLines(lang, m, atoms, maxW, indent, styleFor, new Set([keep]), hang);
 
+    // body character offsets, in order (spaces count: the typewriter reveals them too)
+    const offset = new Map<Atom, number>();
+    for (const a of atoms) if (a.body) { offset.set(a, chars[idx]); chars[idx] += [...a.text].length; }
+
     const lh = S.lineHeight;
     lines.forEach((line, li) => {
       const bl = m.baseline(lang, base, y, lh);
@@ -335,26 +369,34 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
         if (p.atom.space) continue;
         const st = styleFor(p.atom, li);
         const x = col.x0 + p.x + (p.atom.pad?.[0] ?? 0);
+        if (redMark && p.atom.pad && p.atom.text.startsWith('[')) {
+          // the red check marker: a small red diamond before the tag
+          const d = S.mono * 0.42;
+          items.push({ t: 'mark', color: greyed ? INK.greyed : INK.redMark, alpha, box: { x: x - d * 1.35, y: bl - S.mono * 0.36 - d / 2, w: d, h: d } });
+        }
         if (p.atom.rule) {
           const h = Math.max(1, S.label * 0.07);
           items.push({ t: 'rule', color: st.color, alpha: alpha * 0.55, box: { x, y: bl - S.narr * 0.36 - h / 2, w: p.atom.rule, h } });
           continue;
         }
         pushText(items, lang, x, bl, p.atom.text, st, alpha, p.atom.option);
+        const from = offset.get(p.atom);
+        if (from !== undefined) (items[items.length - 1] as Extract<DrawItem, { t: 'text' }>).from = from;
         prevEnd = col.x0 + p.x + p.w;
       }
-      if (idx === lastOption && li === lines.length - 1) {
+      if (idx === lastOption && li === lines.length - 1 && !greyed) {
         const em = base.size;
         cursor = { x: prevEnd + em * 0.35, y: bl + em * 0.2 - em * 1.08, w: em * 0.6, h: em * 1.08 };
         items.push({ t: 'cursor', color: INK.cursor, box: cursor });
       }
       y += lh;
     });
-    if (optionIndex !== undefined) {
+    if (optionIndex !== undefined && e.kind === 'option') {
       const top = y - lines.length * lh;
-      options.push({ index: optionIndex, rect: { x: col.x0 - 10, y: top, w: maxW + 20, h: lines.length * lh } });
+      options.push({ index: optionIndex, number: e.number, greyed, rect: { x: col.x0 - 10, y: top, w: maxW + 20, h: lines.length * lh } });
     }
     y += 2;
+    tagItems();
   });
 
   // bottom-anchored: the newest line sits at the bottom of the window; older lines rise
@@ -367,7 +409,7 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
   }
   for (const o of options) o.rect.y += shift;
   const room = col.y1 - col.y0 - FADE * 0.6;
-  return { items, options, cursor, plain, window: { y0: col.y0, y1: col.y1, fade: FADE }, scrollMax: Math.max(0, content - room) };
+  return { items, options, chars, cursor, plain, window: { y0: col.y0, y1: col.y1, fade: FADE }, scrollMax: Math.max(0, content - room), height: Math.max(0, content) };
 }
 
 function pushText(items: DrawItem[], lang: Lang, x: number, y: number, text: string, s: Style, alpha: number, option?: number) {
@@ -379,6 +421,22 @@ function pushText(items: DrawItem[], lang: Lang, x: number, y: number, text: str
   });
 }
 
+/**
+ * The blank page the chapter's last page turn reveals: one line in its middle, 「第一章 完」 /
+ * "End of Chapter One", over a short rust rule. `top` is where the paper starts (its tear).
+ */
+export function layoutEndPage(lang: Lang, m: Measurer, text: string, top: number): PageLayout {
+  const items: DrawItem[] = [];
+  const size = lang === 'zh' ? 30 : 29;
+  const s: Style = { family: 'serif', size, weight: 400, color: INK.log, ls: size * (lang === 'zh' ? 0.32 : 0.08), stroke: 0.3 };
+  const w = m.width(lang, s, text) - s.ls; // no tracking after the last character
+  // centred on the flat part of the page, between the crest by the gutter and the fore-edge
+  const mid = (top + PAGE.h) / 2 - 10, cx = (0.12 * PAGE.w + PAGE.w) / 2;
+  pushText(items, lang, cx - w / 2, m.baseline(lang, s, mid - size, size * 1.4), text, s, 0.88);
+  items.push({ t: 'rule', color: INK.cursor, alpha: 0.75, box: { x: cx - 22, y: mid + size * 0.62, w: 44, h: 1.4 } });
+  return { items, options: [], chars: [], cursor: null, plain: [text], window: null, scrollMax: 0, height: 0 };
+}
+
 /** Page furniture on the right page: the morale label and the page number. */
 export function layoutRightPage(lang: Lang, m: Measurer, moraleLabel: string, heartsTop: number): PageLayout {
   const items: DrawItem[] = [];
@@ -388,5 +446,5 @@ export function layoutRightPage(lang: Lang, m: Measurer, moraleLabel: string, he
   const pno: Style = { family: 'serif', size: 12, weight: 400, color: '#2B2622', ls: 12 * 0.2, stroke: 0 };
   const pw = m.width(lang, pno, '18');
   pushText(items, lang, PAGE.w - 48 - pw, m.baseline(lang, pno, PAGE.h - 22, 16), '18', pno, 0.45);
-  return { items, options: [], cursor: null, plain: [], window: null, scrollMax: 0 };
+  return { items, options: [], chars: [], cursor: null, plain: [], window: null, scrollMax: 0, height: 0 };
 }

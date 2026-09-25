@@ -1,5 +1,5 @@
 <svg viewBox="40 48 1272 386" xmlns="http://www.w3.org/2000/svg" width="1272" height="386">
-<!-- Layer 2: bookshelf, casements and curtain, mirror, fireplace, mantel clock (23:40), radiator. Hinge at y=430. -->
+<!-- Layer 2: bookshelf, curtain, mirror, fireplace, mantel clock, radiator. Hinge at y=430. The clock's hands and pendulum (clock-hour, clock-minute, pendulum.svg) and the window's casements (casement.svg) are separate pieces laid over it, so they can move. -->
 <defs>
 <radialGradient id="brassBob" cx=".38" cy=".35" r=".7">
       <stop offset="0" stop-color="#f6dc9a"/>
@@ -244,13 +244,13 @@
 
           <!-- open casements swung inward, and the paper curtain -->
           <g filter="url(#cutS)">
-            <path fill="#838479" d="M378,86 L334,72 L334,318 L378,306 Z"/>
-            <path fill="#76776e" d="M592,86 L636,72 L636,318 L592,306 Z"/>
+            
+            
           </g>
-          <path fill="url(#glassG)" d="M372,94 L341,84 L341,306 L372,298 Z"/>
-          <path fill="url(#glassG)" d="M598,94 L629,84 L629,306 L598,298 Z" transform="matrix(-1 0 0 1 1227 0)"/>
-          <path d="M372,168 L341,163 M372,236 L341,236 M598,168 L629,163 M598,236 L629,236" stroke="#838479" stroke-width="4"/>
-          <path d="M345,90 L352,92 L344,210 L341,212 Z" fill="#fff" opacity=".12"/>
+          
+          
+          
+          
           <path d="M310,60 H660" stroke="#2c241a" stroke-width="3.2" stroke-linecap="round"/>
           <circle cx="309" cy="60" r="4" fill="#6e5530"/>
 <circle cx="661" cy="60" r="4" fill="#6e5530"/>
@@ -337,8 +337,8 @@
               <circle cx="0" cy="-143" r="4.5" fill="url(#brassBob)"/>
             </g>
             <rect x="-27" y="-62" width="54" height="44" rx="2" fill="#15110d"/>
-            <path d="M0,-60 V-33" stroke="#b58f4c" stroke-width="1.8"/>
-            <circle cx="0" cy="-30" r="8" fill="url(#brassBob)"/>
+            
+            
             <path d="M-25,-61 L-12,-61 L-25,-28 Z" fill="#fff" opacity=".12"/>
             <path d="M8,-61 L12,-61 L-2,-19 L-6,-19 Z" fill="#fff" opacity=".07"/>
             <circle cx="0" cy="-97" r="26" fill="#6b4c20"/>
@@ -360,9 +360,9 @@
 <line x1="-8.25" y1="-111.29" x2="-9.30" y2="-113.11" stroke-width="0.9"/>
 </g>
             <!-- 23:40 → hour hand at 350°, minute hand at 240° -->
-            <path d="M0,-97 L-1.9,-108.8" stroke="#1d1712" stroke-width="2.6" stroke-linecap="round"/>
-            <path d="M0,-97 L-14.7,-88.5" stroke="#1d1712" stroke-width="1.6" stroke-linecap="round"/>
-            <circle cx="0" cy="-97" r="2" fill="#1d1712"/>
+            
+            
+            
             <path d="M-20,-111 A24,24 0 0 1 4,-121" stroke="#fff" stroke-width="2" fill="none" opacity=".35"/>
           </g>
 

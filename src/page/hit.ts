@@ -1,10 +1,12 @@
 // Pointer -> ray -> left page mesh -> UV -> page px -> option line box -> option index.
+// Hover reports the pointer too (for the tooltip); click reports every click, on an option
+// or not (a click anywhere completes the line being typed).
 import { Raycaster, Vector2, type Camera, type Mesh } from 'three';
 import { PAGE, type Rect } from './layout';
 
 export interface HitHandlers {
-  hover: (index: number | null) => void;
-  click: (index: number) => void;
+  hover: (index: number | null, at: { clientX: number; clientY: number } | null) => void;
+  click: (index: number | null) => void;
 }
 
 export class PageHit {
@@ -23,10 +25,7 @@ export class PageHit {
   ) {
     el.addEventListener('pointermove', (e) => this.update(e));
     el.addEventListener('pointerleave', () => { this.last = null; this.set(null); });
-    el.addEventListener('click', (e) => {
-      const i = this.pick(e);
-      if (i !== null) this.on.click(i);
-    });
+    el.addEventListener('click', (e) => this.on.click(this.pick(e)));
   }
 
   /** The point on the page (page px) under a client-space point, or null off the page. */
@@ -51,15 +50,21 @@ export class PageHit {
     if (this.last) this.set(this.pick(this.last));
   }
 
+  /** Whether the option under the pointer can be chosen (greyed ones cannot); sets the cursor. */
+  choosable: (index: number) => boolean = () => true;
+
   private update(e: PointerEvent) {
     this.last = { clientX: e.clientX, clientY: e.clientY };
-    this.set(this.pick(e));
+    const i = this.pick(e);
+    const moved = i === this.current;
+    this.set(i);
+    if (moved && i !== null) this.on.hover(i, this.last); // the tooltip follows the pointer
   }
 
   private set(i: number | null) {
     if (i === this.current) return;
     this.current = i;
-    this.el.style.cursor = i === null ? '' : 'pointer';
-    this.on.hover(i);
+    this.el.style.cursor = i === null ? '' : this.choosable(i) ? 'pointer' : 'not-allowed';
+    this.on.hover(i, this.last);
   }
 }

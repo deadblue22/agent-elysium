@@ -1,20 +1,36 @@
-// 雪落之前 · the study.clock moment rendered with Three.js.
-// URL flags: ?still freezes time (snow, grain, flicker, cursor) for screenshots; ?lang=en;
-// ?debug exposes the painters, scene and renderer on window.__debug.
+// 雪落之前 · chapter one, playable, rendered with Three.js.
+// URL flags:
+//   ?still        the style board: the study.clock moment, frozen (snow, grain, flicker,
+//                 cursor), no playing; for npm run shot
+//   ?lang=en      start in English
+//   ?seed=N       seed the dice;  ?dice=4-5,3-3,5-6  force the next rolls (then the seed's)
+//   ?speed=N      play animations and the typewriter N times faster (test harness)
+//   ?debug        expose the painters, scene and renderer on window.__debug
+// prefers-reduced-motion: every tween jumps to its end, the snow and grain hold still.
 import { Box3, NoToneMapping, PCFShadowMap, PMREMGenerator, SRGBColorSpace, Scene, Vector3, WebGLRenderer, type PerspectiveCamera } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { loadArt, loadFonts } from './assets';
 import type { Lang } from './content/schema';
+import { study } from './content/study';
 import { chrome, clockMoment } from './content/study-clock';
+import { ui } from './content/ui';
+import { Runner, optionId } from './engine';
 import { PageHit } from './page/hit';
-import { FADE, Measurer, PAGE, layoutLog, layoutRightPage, textColumn, type PageLayout, type Rect } from './page/layout';
+import { FADE, Measurer, PAGE, layoutEndPage, layoutRightPage, textColumn, type PageLayout, type Rect } from './page/layout';
 import { PagePainter } from './page/painter';
+import { Clock } from './play/clock';
+import { Director } from './play/director';
+import { LogView, renderTooltip } from './play/log';
 import { createBook } from './scene/book';
 import { FRAME, createCameraRig } from './scene/camera';
+import { createCues } from './scene/cues';
+import { createDice } from './scene/dice';
+import { createHearts } from './scene/hearts';
 import { createLights } from './scene/lights';
 import { createPopup, layers, roomLights } from './scene/popup';
 import { createPost } from './scene/post';
 import { createStage, heartsTop } from './scene/puppets';
+import { createSlip } from './scene/slip';
 import { createSnow } from './scene/snow';
 import { BASE_Y, DEG, envelope, sheetY, wx, wz } from './scene/space';
 import { createTable } from './scene/table';
@@ -33,15 +49,41 @@ declare global {
     };
     /** Renders n frames synchronously and returns the mean ms per frame (for tools/shot.mjs). */
     __bench?: (n: number) => number;
+    /** For tools/play.mjs: the state of play, and ways to stop time at a chosen moment. */
+    __play?: {
+      options(): { number: number; id: string; state: 'enabled' | 'greyed' }[];
+      readonly idle: boolean;
+      readonly ended: boolean;
+      readonly node: string;
+      readonly morale: number;
+      readonly flags: string[];
+      /** The log as the screen-reader mirror has it. */
+      log(): string[];
+      /** Pause after a beat (`line:narrator:2`, `stage:snow-start`, …) until resume(). */
+      pauseAfter(key: string): void;
+      readonly paused: string | null;
+      resume(): void;
+      /** Freeze time when the next tween called `name` reaches `at` (0..1), until release(). */
+      hold(name: string, at: number): void;
+      readonly held: string | null;
+      release(): void;
+      /** Frames rendered so far. */
+      readonly frames: number;
+    };
   }
 }
 
 const params = new URLSearchParams(location.search);
-const STILL = params.has('still') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+const STILL = params.has('still');
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+/** No ambient motion: snow, grain, candle flicker and the cursor hold still. */
+const FROZEN = STILL || REDUCED;
 let lang: Lang = params.get('lang') === 'en' ? 'en' : 'zh';
 
 const frameEl = document.getElementById('frame') as HTMLDivElement;
 const canvas = document.getElementById('gl') as HTMLCanvasElement;
+const tipEl = document.getElementById('tip') as HTMLDivElement;
+const whenEl = document.getElementById('when') as HTMLDivElement;
 
 function frameSize() {
   const w = Math.max(320, Math.floor(Math.min(innerWidth, (innerHeight * 16) / 9)));
@@ -89,6 +131,12 @@ function projectRect(camera: PerspectiveCamera, bx0: number, by0: number, bx1: n
   return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
 }
 
+/** ?dice=4-5,3-3 → [[4, 5], [3, 3]] */
+function parseDice(s: string | null): [number, number][] {
+  if (!s) return [];
+  return s.split(',').map((p) => p.split('-').map(Number)).filter((d) => d.length === 2 && d.every((v) => v >= 1 && v <= 6)) as [number, number][];
+}
+
 async function main() {
   let renderer: WebGLRenderer;
   try {
@@ -101,25 +149,35 @@ async function main() {
   renderer.toneMapping = NoToneMapping; // exposure and the shoulder live in the post pass
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = PCFShadowMap; // soft: r186's PCF samples a Vogel disk scaled by shadow.radius
-  renderer.shadowMap.autoUpdate = false; // nothing that casts moves; render the maps once
+  renderer.shadowMap.autoUpdate = false; // re-rendered only while something that casts moves
   renderer.setClearColor('#0b0806');
   const anisotropy = renderer.capabilities.getMaxAnisotropy();
 
   const [art] = await Promise.all([loadArt(anisotropy), loadFonts()]);
 
+  const clock = new Clock();
+  clock.speed = Math.max(0.1, Number(params.get('speed')) || 1);
+  clock.reduced = FROZEN;
+
   const { w: w0 } = frameSize();
   const pr0 = Math.min(devicePixelRatio, 2);
   const leftInk = new PagePainter(anisotropy, inkScale(w0, pr0));
   const rightInk = new PagePainter(anisotropy, labelScale(w0, pr0));
+  const endInk = new PagePainter(anisotropy, labelScale(w0, pr0));
 
   const scene = new Scene();
   const t0 = performance.now();
-  const book = createBook(art, leftInk.texture, rightInk.texture);
+  const book = createBook(art, leftInk.texture, rightInk.texture, endInk.texture);
   const popup = createPopup(art), stage = createStage(art, book.rightSheet);
+  const top = heartsTop(art);
+  const hearts = createHearts(art, top, book.rightSheet, clock, study.morale.max);
+  const slip = createSlip(art, top + 34, book.rightSheet, clock);
+  stage.group.add(hearts.group);
+  const dice = createDice(stage.dice, clock);
   const buildMs = performance.now() - t0; // geometry, procedural textures and the baked occlusion
   const lights = createLights(roomLights(art.floor.meta));
   const cam = createCameraRig();
-  scene.add(createTable(art), book.group, popup.group, stage.group, lights.group, cam.rig);
+  scene.add(createTable(art), book.group, popup.group, stage.group, slip.mesh, lights.group, cam.rig);
   // a soft, low environment light, so curved paper, page edges and board edges read through
   // gentle shading gradients and not only through the direct lights
   const pmrem = new PMREMGenerator(renderer);
@@ -138,44 +196,103 @@ async function main() {
   post.uniforms.uExposure.value = 1.08;
   post.uniforms.uQuiet.value.set(column.x / FRAME.w, 1 - (column.y + column.h) / FRAME.h, (column.x + column.w) / FRAME.w, 1 - column.y / FRAME.h);
 
+  // ---- the stage cues; everything on the right sheet turns with it at the end
+  let carried = false;
+  const cues = createCues({
+    art, clock, popup, stage, lights, post, snow,
+    marker: (on) => { whenEl.classList.toggle('on', on); whenEl.setAttribute('aria-hidden', String(!on)); },
+    turn: (p) => {
+      if (!carried) { carried = true; for (const o of [...stage.group.children]) book.carry(o); }
+      book.setTurn(p);
+    },
+  });
+
   // ---- the pages
   const measurer = new Measurer();
-  let layout: PageLayout = layoutLog(clockMoment, lang, measurer, col);
   let needsRender = true;
   const invalidate = () => { needsRender = true; };
-
   const a11y = document.getElementById('log') as HTMLOListElement;
-  const choose = (index: number) => {
-    const e = clockMoment.find((x) => x.kind === 'option' && x.index === index);
-    console.info(`[study.clock] option ${index}`, e?.kind === 'option' ? e.option.text[lang] : '');
-  };
+
+  const runner = new Runner(study, { seed: params.has('seed') ? Number(params.get('seed')) >>> 0 : undefined, forcedDice: parseDice(params.get('dice')) });
+  let director: Director | null = null;
+  const log = new LogView(leftInk, measurer, col, clock, a11y, lang, (n) => { director?.choose(n); }, () => !!director?.idle);
+
+  // who bobs while their line types (Harry for 你 lines, Kim for his)
+  let speaker: 'harry' | 'kim' | null = null;
+  const bob = { harry: 0, kim: 0 };
+
+  if (STILL) {
+    // the style board: study.clock right after Visual Calculus passes; morale 3 of 4
+    log.showFixed(clockMoment);
+    hearts.set(3);
+  } else {
+    hearts.set(study.morale.start);
+    director = new Director(runner, clock, log, {
+      dice, hearts, cues,
+      slip: { show: (text) => slip.show(text) },
+      speaking: (who) => { speaker = who; },
+    });
+    director.onIdle = () => { hit.refresh(); invalidate(); };
+  }
+
   function applyLang() {
     document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
-    layout = layoutLog(clockMoment, lang, measurer, col);
-    leftInk.setLayout(layout);
-    rightInk.setLayout(layoutRightPage(lang, measurer, chrome.morale[lang], heartsTop(art)));
+    log.setLang(lang);
+    rightInk.setLayout(layoutRightPage(lang, measurer, chrome.morale[lang], top));
+    endInk.setLayout(layoutEndPage(lang, measurer, ui.chapterEnd[lang], art['page-end'].meta.tearMax));
+    slip.setLang(lang);
     document.getElementById('title')!.textContent = chrome.title[lang];
     document.getElementById('chapter')!.textContent = chrome.chapter[lang];
     document.getElementById('log-heading')!.textContent = chrome.logHeading[lang];
+    whenEl.textContent = ui.lastNight[lang];
     for (const s of document.querySelectorAll<HTMLElement>('#lang [data-lang]')) s.classList.toggle('on', s.dataset.lang === lang);
-    a11y.replaceChildren(...clockMoment.map((e, i) => {
-      const li = document.createElement('li');
-      if (e.kind === 'option') {
-        const b = document.createElement('button');
-        b.textContent = layout.plain[i];
-        b.addEventListener('click', () => choose(e.index));
-        li.append(b);
-      } else li.textContent = layout.plain[i];
-      return li;
-    }));
+    tipEl.hidden = true;
     invalidate();
   }
   applyLang();
-  document.getElementById('lang')!.addEventListener('click', () => { lang = lang === 'zh' ? 'en' : 'zh'; applyLang(); });
+  document.getElementById('lang')!.addEventListener('click', (e) => {
+    e.stopPropagation();
+    lang = lang === 'zh' ? 'en' : 'zh';
+    applyLang();
+  });
 
+  // ---- input: number keys and clicks choose; a click or Space completes the line being typed
+  const chooseIndex = (index: number) => {
+    if (STILL) {
+      const e = clockMoment.find((x) => x.kind === 'option' && x.index === index);
+      console.info(`[study.clock] option ${index}`, e?.kind === 'option' ? e.option.text[lang] : '');
+      return;
+    }
+    const view = log.optionAt(index);
+    if (view) director?.choose(view.number);
+  };
   const hit = new PageHit(canvas, cam.camera, book.leftPage, () => leftInk.optionRects(), {
-    hover: (i) => { leftInk.setHover(i); invalidate(); },
-    click: choose,
+    hover: (index, at) => {
+      leftInk.setHover(index !== null && (STILL || director?.idle) ? index : null);
+      const view = index !== null && !STILL ? log.optionAt(index) : undefined;
+      renderTooltip(tipEl, view, lang);
+      if (view && at && !tipEl.hidden) {
+        const r = frameEl.getBoundingClientRect();
+        const x = Math.min(at.clientX - r.left + 18, r.width - tipEl.offsetWidth - 8);
+        const y = at.clientY - r.top + 20 + tipEl.offsetHeight > r.height - 8 ? at.clientY - r.top - tipEl.offsetHeight - 14 : at.clientY - r.top + 20;
+        tipEl.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+      }
+      invalidate();
+    },
+    click: (index) => {
+      if (log.typing) { director?.skip(); return; }
+      if (index !== null) chooseIndex(index);
+    },
+  });
+  hit.choosable = (index) => STILL || (!!director?.idle && log.optionAt(index)?.state === 'enabled');
+  addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey || !director) return;
+    if (/^[1-9]$/.test(e.key)) {
+      director.choose(Number(e.key));
+    } else if (e.key === ' ' && !(e.target instanceof HTMLButtonElement)) {
+      e.preventDefault();
+      director.skip();
+    }
   });
   // the wheel over the left page scrolls the log's history (older lines come down out of the tear)
   canvas.addEventListener('wheel', (e) => {
@@ -184,7 +301,7 @@ async function main() {
     const px = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
     if (leftInk.scrollBy(-px * 0.6)) { invalidate(); hit.refresh(); }
   }, { passive: false });
-  if (!STILL) {
+  if (!FROZEN) {
     let on = true;
     setInterval(() => { on = !on; leftInk.setCursor(on); invalidate(); }, 500);
   }
@@ -194,7 +311,7 @@ async function main() {
     const r = frameEl.getBoundingClientRect();
     cam.setPointer(Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width - 0.5) * 2)), Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height - 0.5) * 2)));
   });
-  frameEl.addEventListener('pointerleave', () => cam.setPointer(0, 0));
+  frameEl.addEventListener('pointerleave', () => { cam.setPointer(0, 0); tipEl.hidden = true; });
 
   // ---- size
   function resize() {
@@ -209,6 +326,7 @@ async function main() {
     snow.setScale((w * pr) / FRAME.w);
     leftInk.setScale(inkScale(w, pr));
     rightInk.setScale(labelScale(w, pr));
+    endInk.setScale(labelScale(w, pr));
     invalidate();
   }
   resize();
@@ -221,42 +339,95 @@ async function main() {
     webgl2: renderer.capabilities.isWebGL2,
     anisotropy,
     ink: { w: leftInk.size.w, h: leftInk.size.h },
-    metrics: { ...composition(cam.camera, art, layout), buildMs: Math.round(buildMs) },
+    metrics: { ...(STILL ? composition(cam.camera, art, log.layout) : {}), buildMs: Math.round(buildMs) },
     points: { gutter: onFrame(cam.camera, 670, PAGE.h), corner: onFrame(cam.camera, 2 * 670, PAGE.h) },
     puppets: frameRect(cam.camera, ['harry', 'kim'].map((n) => new Box3().setFromObject(scene.getObjectByName(n)!))),
   };
+  let t = 0;
   window.__bench = (n: number) => {
     const gl = renderer.getContext(), px = new Uint8Array(4);
     const tb = performance.now();
     for (let i = 0; i < n; i++) { post.render(t); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); }
     return (performance.now() - tb) / n;
   };
-  if (params.has('debug')) Object.assign(window, { __debug: { leftInk, rightInk, scene, renderer, cam, post, lights, layout: () => layout } });
+  if (params.has('debug')) Object.assign(window, { __debug: { leftInk, rightInk, scene, renderer, cam, post, lights, clock, cues, book, layout: () => log.layout } });
+
+  let frames = 0;
+  if (director) {
+    const d = director;
+    window.__play = {
+      options: () => {
+        const node = study.nodes[runner.state.node];
+        return runner.options().map((o) => ({ number: o.number, id: optionId(node, o.index), state: o.state }));
+      },
+      get idle() { return d.idle; },
+      get ended() { return d.ended && !clock.busy; },
+      get node() { return runner.state.node; },
+      get morale() { return runner.state.morale; },
+      get flags() { return [...runner.state.flags]; },
+      log: () => [...a11y.children].map((li) => li.textContent ?? ''),
+      pauseAfter: (key) => d.pauseAfter(key),
+      get paused() { return d.paused; },
+      resume: () => d.continue(),
+      hold: (name, at) => clock.hold(name, at),
+      get held() { return clock.held; },
+      release: () => clock.release(),
+      get frames() { return frames; },
+    };
+  }
 
   // ---- loop
+  if (director) cues.flatten(); // the first frame shows the book with its pop-up folded flat
   renderer.shadowMap.needsUpdate = true;
   let last = performance.now();
-  let t = 0;
+  let shadowFrames = 0, changes = clock.changes;
   const frame = (now: number) => {
     requestAnimationFrame(frame);
+    clock.tick();
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     if (cam.update(dt)) {
       needsRender = true;
       hit.refresh();
     }
-    if (!STILL) {
+    const ct = clock.now() / 1000;
+    // the speaking puppet bobs about 2 px while its line types
+    let bobbing = false;
+    for (const name of ['harry', 'kim'] as const) {
+      const target = speaker === name ? 1 : 0;
+      bob[name] += (target - bob[name]) * Math.min(1, dt * 12);
+      if (bob[name] < 0.002 && target === 0) bob[name] = 0;
+      const p = stage.puppets[name];
+      p.mesh.position.y = p.y + bob[name] * 0.02 * Math.abs(Math.sin(ct * Math.PI * 2.4 + (name === 'kim' ? 1 : 0)));
+      bobbing ||= bob[name] > 0;
+    }
+    cues.update(ct);
+    if (!FROZEN) {
       t = now / 1000;
       snow.update(t);
       lights.update(t);
       needsRender = true;
     }
+    // shadows follow what moves, and a few frames more: a tween's last step, and what its
+    // continuation changes (a card hidden once it has folded), land after it stops
+    if (clock.moving || bobbing || clock.changes !== changes) shadowFrames = 3;
+    changes = clock.changes;
+    if (shadowFrames > 0) { renderer.shadowMap.needsUpdate = true; shadowFrames--; needsRender = true; }
+    // while playing, every frame: the log, the stage and the hearts change on their own
+    if (director || clock.busy || bobbing || cues.animating) needsRender = true;
     if (!needsRender) return;
     needsRender = false;
     post.render(t);
+    frames++;
     if (!window.__ready) requestAnimationFrame(() => { window.__ready = true; });
   };
   requestAnimationFrame(frame);
+
+  if (director) {
+    // wait for the first frame, so the book is on screen before the pop-up rises
+    await new Promise<void>((r) => { const check = () => (frames > 0 ? r() : setTimeout(check, 30)); check(); });
+    void director.start();
+  }
 }
 
 /**
