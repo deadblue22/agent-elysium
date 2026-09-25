@@ -261,7 +261,8 @@ study.intro ─┬─ study.clock ──── [见微知著 10 白] ───�
 : AUTHORITY [Medium: Failure] — You hold out your hand. It stays in the air for too long.
 : 金·曷城 — 「不行。」笔记本回到了他的口袋里。「你有自己的笔记本，警探。」
 : KIM KITSURAGI — "No." The notebook goes back into his pocket. "You have your own notebook, detective."
-: 你没有自己的笔记本。你连警徽都没有。/ You do not have your own notebook. You don't even have your badge.
+: 争强好胜 — 你没有自己的笔记本。你连警徽都没有。
+: AUTHORITY — You do not have your own notebook. You don't even have your badge.
 : 士气 -1。红色检定，不可重试。
 
 好警察
@@ -283,7 +284,8 @@ study.intro ─┬─ study.clock ──── [见微知著 10 白] ───�
 闻一闻
 : 金·曷城 — 「警探。」只有这两个字。
 : KIM KITSURAGI — "Detective." That's all he says.
-: 你把瓶盖拧了回去。/ You screw the cap back on.
+: 食髓知味 — 你把瓶盖拧了回去。下次吧。下次一定。
+: ELECTROCHEMISTRY — You screw the cap back on. Next time. Definitely next time.
 
 #### study.reconstruct
 
@@ -327,6 +329,17 @@ study.intro ─┬─ study.clock ──── [见微知著 10 白] ───�
 
 白色检定，获得新证据后可重试。回到 study.intro。
 
+#### 再次进入
+
+再次检查同一物件或再找金说话时，不重复完整描述，只显示一句短句；被动检定也只触发一次。「回到房间中央」直接回到选项，不重复书房描述。
+
+| 节点 | 短句 |
+|---|---|
+| study.clock | 黄铜座钟 — 指针依然停在 23:40。钟摆一动不动。/ The hands still read 23:40. The pendulum does not move. |
+| study.window | 窗户 — 冷风还在往屋里灌。纸做的窗帘拍着墙。/ The cold keeps pouring in. The paper curtain slaps the wall. |
+| study.kim | 金·曷城 — 警督抬起眼睛，等你开口。/ The lieutenant looks up and waits. |
+| study.brandy | 梨子白兰地 — 还剩三分之一。它哪儿也不去。/ A third left. It isn't going anywhere. |
+
 #### study.end
 
 右页翻过，露出一张空白纸页，中央一行字：「第一章 完」/ "End of Chapter One"。
@@ -358,7 +371,7 @@ Demo 不做角色创建，使用固定角色卡：
 - 公式：2d6 + 技能值 + 修正值 ≥ 难度阈值。
 - 掷出 2 必定失败，掷出 12 必定成功。
 - 难度分级沿用原作中文版：极易 6、容易 8、中等 10、挑战 12、困难 13、极难 14、专家 15、噩梦 16、炼狱 18。Demo 只用到 6、8、10、12。
-- 白色检定：失败后选项变灰，获得新旗标后重新亮起。
+- 白色检定：成功后选项消失。失败后选项变灰；获得任何新旗标，或此后又做了 3 次选择，选项重新亮起。后一条保证本章不会卡关。
 - 红色检定：一次性，失败后选项消失。
 - 被动检定：按原作规则不掷骰，6 + 技能值 ≥ 阈值即触发，成功时插入对应内心声音。
 - 修正值来源：旗标。显示格式为「+1 指针被拨过」，与原作的提示方式一致。
