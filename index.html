@@ -51,6 +51,15 @@
   .tip .red{color:#A3232B;font-size:.9em}
   @media (prefers-reduced-motion: reduce){ .when{transition:none} }
 
+  /* a hover tip on the stage: a small paper tag, the name set like a speaker in the log */
+  .hot{position:absolute;left:0;top:0;pointer-events:none;z-index:2;max-width:calc(320px * max(var(--s), .8));padding:calc(7px * var(--s)) calc(11px * var(--s)) calc(8px * var(--s));
+    background:rgba(240,232,214,.97);color:#1E1A16;border:1px solid rgba(30,26,22,.45);box-shadow:calc(2px * var(--s)) calc(3px * var(--s)) 0 rgba(0,0,0,.32)}
+  .hot[hidden]{display:none}
+  .hot .name{font-family:var(--sans);font-weight:600;font-size:max(12px, calc(12.5px * var(--s)));letter-spacing:.12em;color:#4F4943;margin-bottom:.25em}
+  :lang(en) .hot .name{text-transform:uppercase;letter-spacing:.14em}
+  .hot .line{font-family:var(--serif);font-size:max(16px, calc(16.5px * var(--s)));line-height:1.45}
+  :lang(en) .hot .line{font-family:"EB Garamond","Elysium Serif SC",serif;font-size:max(16.5px, calc(17.5px * var(--s)))}
+
   /* the log mirrored for screen readers */
   .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   .sr-only:focus-within{position:absolute;left:8px;bottom:8px;width:auto;height:auto;clip-path:none;white-space:normal;background:#0b0806;color:#e8dcc4;padding:8px;font:14px/1.5 var(--serif);max-width:480px}
@@ -68,6 +77,7 @@
   </header>
   <div class="when" id="when" aria-hidden="true">昨晚 22:30</div>
   <div class="tip" id="tip" role="tooltip" hidden></div>
+  <div class="hot" id="hot" role="tooltip" hidden><div class="name"></div><div class="line"></div></div>
   <section class="sr-only" aria-live="polite">
     <h2 id="log-heading">日志</h2>
     <ol id="log"></ol>

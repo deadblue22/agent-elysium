@@ -144,7 +144,7 @@ export function createCues(d: Deps) {
     const opts = { ...o, baseY: piece.meta.soles, y: LAYER_Y };
     const { group, mesh } = standing(piece, paperMaterial(piece.texture, 0.92), opts);
     mesh.name = name;
-    const contact = standingContact(piece, opts, floorAt, { opacity: 0.72, behind: 16, front: 12 });
+    const contact = standingContact(piece, opts, floorAt, { opacity: 0.9, behind: 16, front: 12 });
     contact.name = `contact-${name}`;
     stage.add(group, contact);
     const handle: PieceHandle & { contact: Mesh; lean: number } = { group, mesh, opts, contact, lean: o.lean };
@@ -177,7 +177,8 @@ export function createCues(d: Deps) {
   marek.add(marekMesh);
   stage.add(marek);
   /** Where Marek can be: on the stair track (stair x; height from the treads) or on the floor by the desk, by the clock. */
-  const TRACK = fold0 + 98, SPOTS = { desk: { bx: 356, hinge: fold0 + 101 }, clock: { bx: 900, hinge: fold0 + 101 } };
+  const deskRow = art.floor.meta.rowDesk;
+  const TRACK = fold0 + 98, SPOTS = { desk: { bx: 356, hinge: fold0 + deskRow - 4 }, clock: { bx: 900, hinge: fold0 + 101 } };
   const treadH = (sx: number) => (sx < 16 ? 0 : sx < 186 ? (sx - 16) * 0.9 : 153);
   const place = (bx: number, hinge: number, h: number, face: 'left' | 'right') => {
     const l = M_LEAN * DEG;
@@ -190,10 +191,10 @@ export function createCues(d: Deps) {
   const rise = async (g: Group, deg: number, ms: number, contact?: Mesh) => {
     g.visible = true;
     if (contact) contact.visible = true;
-    await clock.tween(ms, (p) => { lean(g, deg, p); if (contact) (contact.material as MeshBasicMaterial).opacity = 0.72 * Math.min(1, Math.max(0, p)); }, ease.back);
+    await clock.tween(ms, (p) => { lean(g, deg, p); if (contact) (contact.material as MeshBasicMaterial).opacity = 0.9 * Math.min(1, Math.max(0, p)); }, ease.back);
   };
   const lay = async (g: Group, deg: number, ms: number, contact?: Mesh) => {
-    await clock.tween(ms, (p) => { lean(g, deg, 1 - p); if (contact) (contact.material as MeshBasicMaterial).opacity = 0.72 * (1 - p); }, ease.in);
+    await clock.tween(ms, (p) => { lean(g, deg, 1 - p); if (contact) (contact.material as MeshBasicMaterial).opacity = 0.9 * (1 - p); }, ease.in);
     g.visible = false;
     if (contact) contact.visible = false;
   };
@@ -375,6 +376,14 @@ export function createCues(d: Deps) {
 
   return {
     group: stage,
+    /** The moving parts, for the hover tips (src/scene/hotspots.ts). */
+    parts: {
+      window: [...casements.map((c) => c.mesh), ...casements.flatMap((c) => c.pivot.children.filter((o): o is Mesh => o.name === 'pane')), farSnow.mesh, sill.mesh],
+      clock: [pendulum.mesh, hour.mesh, minute.mesh],
+      stairs: [stairs.mesh],
+      dog: [dog.mesh, head.mesh],
+      marek: [marekMesh],
+    },
     present,
     flatten,
     enter,

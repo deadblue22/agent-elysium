@@ -8,10 +8,12 @@ import { BASE_Y, BOOK_H, DEG, wz } from './space';
 
 export const FRAME = { w: 1600, h: 900 };
 export const VIEW = {
-  elevation: 68,      // view direction below the horizon, degrees
-  focal: 2400,        // focal length in frame px
-  nearEdgeY: 810,     // frame row of the book's near edge; the table shows below it
-  nearEdgeWidth: 1280, // frame px spanned by the 13.76-unit cover at the near edge
+  // steep and long: the log's page lies nearly face-on (a tall text window), the standing
+  // pop-up still reads as standing, and the wall's top stays just inside the frame
+  elevation: 74,      // view direction below the horizon, degrees
+  focal: 3600,        // focal length in frame px
+  nearEdgeY: 880,     // frame row of the book's near edge; a strip of table shows below it
+  nearEdgeWidth: 1420, // frame px spanned by the 13.76-unit cover at the near edge
   yaw: 2.4,           // parallax range, degrees
   pitch: 1.2,
 };
@@ -45,6 +47,8 @@ export function createCameraRig() {
     lens: { focal: f, principal: { x: FRAME.w / 2, y: py }, distance },
     /** nx, ny in -1..1 across the frame. */
     setPointer(nx: number, ny: number) { tx = nx; ty = ny; },
+    /** Jumps to where the pointer asks (a test harness, which cannot wait for the easing). */
+    snap() { cx = tx; cy = ty; rig.rotation.set(-cy * VIEW.pitch * DEG, -cx * VIEW.yaw * DEG, 0, 'YXZ'); rig.updateMatrixWorld(true); },
     /** Eases toward the pointer; returns true while still moving. */
     update(dt: number): boolean {
       const k = 1 - Math.exp(-dt * 3.5);

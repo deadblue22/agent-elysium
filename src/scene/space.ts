@@ -108,7 +108,7 @@ export function gutterAO(bx: number, by: number): number {
   const opposite = sinH(yc - y, (u + cu) * W);
   const own = sinH(yc - y, Math.abs(cu - u) * W);
   const vis = u < cu ? 1 - 0.5 * (opposite + own) : 1 - 0.5 * Math.max(opposite, own);
-  return vis ** 1.4;
+  return vis ** 1.9; // (M1 review: a deeper gutter)
 }
 
 export const wx = (bx: number) => (bx - GUTTER) / UNIT;

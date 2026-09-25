@@ -28,6 +28,8 @@ export class PagePainter {
   private offset = 0;
   /** Entries after `entry` are hidden; entry `entry` shows `chars` body characters. */
   private reveal: { entry: number; chars: number } | null = null;
+  /** The continue marker is up (it blinks with the cursor). */
+  private marker = false;
 
   constructor(anisotropy: number, scale: number) {
     this.ctx = this.canvas.getContext('2d', { alpha: true })!;
@@ -112,6 +114,19 @@ export class PagePainter {
     this.cursorOn = on;
     const c = this.layout?.cursor;
     if (c) this.paint({ x: c.x - 1, y: c.y + this.scroll + this.offset - 1, w: c.w + 2, h: c.h + 2 });
+    if (this.marker) this.paint(this.markerRect());
+  }
+
+  /** Shows or hides the continue marker (「▼ 继续」) at the column's bottom right. */
+  setMarker(on: boolean) {
+    if (on === this.marker) return;
+    this.marker = on;
+    if (this.layout?.marker) this.paint(this.markerRect());
+  }
+
+  private markerRect(): Rect {
+    const m = this.layout?.marker;
+    return m ? { x: m.x - 4, y: m.y - 16, w: PAGE.w - m.x, h: 22 } : { x: 0, y: 0, w: 0, h: 0 };
   }
 
   /** Repaints the whole page (rect = null) or only what lies inside rect (page px, as drawn). */
@@ -143,6 +158,22 @@ export class PagePainter {
     }
     ctx.restore();
     if (win) this.fades(r, win);
+    const mk = this.layout?.marker;
+    if (mk && this.marker) {
+      // it pulses with the cursor between full and dim, so it never disappears
+      ctx.save();
+      ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+      ctx.beginPath();
+      ctx.rect(r.x, r.y, r.w, r.h);
+      ctx.clip();
+      ctx.font = mk.font;
+      ctx.fillStyle = mk.color;
+      ctx.globalAlpha = this.cursorOn ? 1 : 0.6;
+      ctx.textBaseline = 'alphabetic';
+      let x = mk.x;
+      for (const ch of mk.text) { ctx.fillText(ch, x, mk.y); x += ctx.measureText(ch).width + mk.ls; }
+      ctx.restore();
+    }
     this.texture.needsUpdate = true;
   }
 
@@ -188,9 +219,9 @@ export class PagePainter {
       ctx.globalAlpha = it.alpha;
       ctx.fillStyle = 'rgba(30,26,22,.22)';
       ctx.fillRect(x + 1.5, y + 1.5, w, h);
-      ctx.fillStyle = '#F2EFE6';
+      ctx.fillStyle = it.fill ?? '#F2EFE6';
       ctx.fillRect(x, y, w, h);
-      ctx.strokeStyle = 'rgba(30,26,22,.9)';
+      ctx.strokeStyle = it.stroke ?? 'rgba(30,26,22,.9)';
       ctx.lineWidth = 1.2;
       ctx.strokeRect(x + 0.6, y + 0.6, w - 1.2, h - 1.2);
       return;

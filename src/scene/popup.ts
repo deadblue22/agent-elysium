@@ -7,7 +7,7 @@ import type { Art } from '../assets';
 import { standingContact } from './paper';
 import { BASE_Y, baseY, envelope, leanNormal, lift, paperMaterial, pointOnStanding, standing, type StandOptions } from './space';
 
-type Row = 'wall' | 'furniture' | 'desk' | 'front';
+type Row = 'wall' | 'furniture' | 'desk' | 'frontLeft' | 'front';
 /**
  * Per piece: its row, fold offset within the row, the SVG y on the fold, its lean (degrees),
  * and optionally a scale about its own centre (cx, board px).
@@ -18,7 +18,8 @@ const PIECES: Record<string, { row: Row; offset: number; baseY: number; lean: nu
   furniture: { row: 'furniture', offset: 0, baseY: 430, lean: 15 }, // shelf, casements, fireplace, clock, radiator
   desk: { row: 'desk', offset: 0, baseY: 250, lean: 12 },       // desk, the victim, the candle
   // the armchair back, 1.25x the M0 size (a chair back about 1.3x the desk's height), framing the left
-  'front-chair': { row: 'front', offset: 0, baseY: 330, lean: 10, scale: 1.25, cx: 180 },
+  // (it stands close behind the left sheet's tear, which leaves the log a tall window)
+  'front-chair': { row: 'frontLeft', offset: 0, baseY: 330, lean: 10, scale: 1.25, cx: 180 },
   'front-right': { row: 'front', offset: 0, baseY: 330, lean: 10 },
 };
 
@@ -27,7 +28,7 @@ export const LAYER_Y = BASE_Y + 0.003;
 
 /** Placements of every piece, from the floor sheet's metadata (fold and row depths, book px). */
 export function layers(floor: Record<string, number>): Record<string, StandOptions> {
-  const rowAt: Record<Row, number> = { wall: 0, furniture: floor.rowFurniture, desk: floor.rowDesk, front: floor.rowFront };
+  const rowAt: Record<Row, number> = { wall: 0, furniture: floor.rowFurniture, desk: floor.rowDesk, frontLeft: floor.rowFrontLeft, front: floor.rowFront };
   return Object.fromEntries(Object.entries(PIECES).map(([k, p]) => {
     const hinge = floor.fold + rowAt[p.row] + p.offset;
     // each card rests on the page along its fold line, bridging the gutter valley
@@ -77,7 +78,7 @@ export function createPopup(art: Art) {
     if (name === 'far') continue; // stands behind the wall
     // baked contact occlusion on the floor where the card meets it
     const contact = standingContact(piece, o, (bx, by) => baseY(bx, by) + 0.003, {
-      opacity: 0.78, behind: 22, front: 18, gap: (bx) => envelope(bx, o.hinge) - lift(bx, o.hinge),
+      opacity: 0.95, behind: 22, front: 18, gap: (bx) => envelope(bx, o.hinge) - lift(bx, o.hinge),
     });
     contact.name = `contact-${name}`;
     group.add(contact);

@@ -136,4 +136,6 @@ export type LogEntry =
   /** The dice line of an active check: [见微知著 - 中等 10]  4 + 5 + 3 = 12 (the result tag follows on the voice's line). */
   | { kind: 'check'; check: Check; dice: [number, number]; total: number; success: boolean }
   /** A currently shown option, numbered as shown; index is its place in the node's options. */
-  | { kind: 'option'; number: number; index: number; option: Option; state?: 'enabled' | 'greyed' };
+  | { kind: 'option'; number: number; index: number; option: Option; state?: 'enabled' | 'greyed' }
+  /** A new piece of evidence: 「新线索：指针被拨过（1/3）」. `count` of `total` found so far. */
+  | { kind: 'notice'; flag: string; count: number; total: number };

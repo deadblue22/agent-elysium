@@ -68,7 +68,7 @@ export function createStage(art: Art, sheet: (bx: number, by: number) => number)
     tab.receiveShadow = true;
     tab.name = `tab-${name}`;
     group.add(tab);
-    const contact = standingContact(art[name], o, sheet, { opacity: 0.75, behind: 12, front: 8 });
+    const contact = standingContact(art[name], o, sheet, { opacity: 0.92, behind: 12, front: 8 });
     contact.name = `contact-${name}`;
     group.add(contact);
   }

@@ -5,11 +5,11 @@
       <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed="3" result="tE"/>
       <feDisplacementMap in="SourceGraphic" in2="tE" scale="4.5" xChannelSelector="R" yChannelSelector="G" result="shape"/>
       <feTurbulence type="fractalNoise" baseFrequency="0.009 0.022" numOctaves="4" seed="21" result="tM"/>
-      <feColorMatrix in="tM" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="tMg"/>
+      <feColorMatrix in="tM" type="matrix" values="0.5 0 0 0 0.25  0.5 0 0 0 0.25  0.5 0 0 0 0.25  0 0 0 0 1" result="tMg"/>
       <feBlend in="tMg" in2="shape" mode="soft-light" result="mot"/>
       <feComposite in="mot" in2="shape" operator="in" result="motS"/>
       <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="5" result="tF"/>
-      <feDiffuseLighting in="tF" surfaceScale="1.6" diffuseConstant="1" lighting-color="#fff" result="fib">
+      <feDiffuseLighting in="tF" surfaceScale="0.96" diffuseConstant="1" lighting-color="#fff" result="fib">
         <feDistantLight azimuth="235" elevation="57"/>
       </feDiffuseLighting>
       <feComposite in="fib" in2="motS" operator="arithmetic" k1="0.62" k2="0" k3="0.44" k4="0" result="tex"/>

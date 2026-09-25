@@ -33,13 +33,14 @@ const BOOK_H = 600;
 /** The pop-up's fold line on the base page: the wall stands here, at the far edge. */
 const FOLD = 10;
 /**
- * The rows of the pop-up, from the wall's fold toward the reader, spread across the floor
- * so the floor shows between them (and their shadows fall on it): furniture one step
- * forward, the desk mid-floor, the foreground pieces near the tear at the sides.
+ * The rows of the pop-up, from the wall's fold toward the reader. The left sheet's tear sits
+ * high (it leaves the log a tall window), so on the left the rows stand close together on
+ * the strip of floor behind it: furniture, the desk, the armchair (frontLeft). On the right
+ * the floor runs down to the tongue: the foreground piece there stands well forward (front).
  */
-const ROWS = { furniture: 55, desk: 105, front: 145 };
-/** Mean line of each tear: left ~28% of the page; the right tongue dips ~100 px below it. */
-const LEFT_TEAR = 166;
+const ROWS = { furniture: 34, desk: 56, frontLeft: 64, front: 145 };
+/** Mean line of each tear: left ~15% of the page; the right tongue dips well below it. */
+const LEFT_TEAR = 90;
 const RIGHT_TEAR = 196;
 const TAU = Math.PI * 2;
 const TEAR = {
@@ -118,7 +119,10 @@ const PIECES = [
   },
   {
     name: 'wall', src: '#wallSvg', viewBox: [-12, 6, 1364, 438],
-    note: 'Layer 1, the back wall: scalloped cornice edge, wallpaper, window hole, photograph, calendar. Hinge at y=440. The snow on the sill is sill-snow.svg.',
+    note: 'Layer 1, the back wall: scalloped cornice edge, wallpaper, window hole, photograph, calendar. Hinge at y=440. The snow on the sill is sill-snow.svg. Damp stains and tide marks at half the M0 board\'s strength.',
+    edit: (svg) => {
+      svg.querySelectorAll('[filter="url(#blotch)"], [filter="url(#tide)"]').forEach((e) => e.setAttribute('opacity', (+(e.getAttribute('opacity') ?? 1) * 0.5).toFixed(3)));
+    },
     remove: ['rect[fill="url(#winSpill)"]', 'rect[fill="url(#candleSpill)"]', 'rect[fill="url(#wallH)"]', 'rect[height="440"][fill="url(#wallV)"]',
       'path[fill="#e2e8e9"]', 'path[d^="M386,316"]'],
   },
@@ -168,7 +172,7 @@ const PIECES = [
   {
     name: 'floor', src: '#floorSvg', viewBox: [-6, -4, 1352, FLOOR_H + 8],
     note: `The study floor on the base page, under the torn top sheets: boards, rug, loose papers, a faint gutter crease. y=0 is the pop-up's fold (book y=${FOLD}); the sheet reaches y=${FLOOR_H}, past the deepest point of the tongue. The strip along each tear line is the torn sheet's soft contact shadow, kept light: the curled sheet edge casts the real one.`,
-    attrs: { 'data-fold': FOLD, 'data-row-furniture': ROWS.furniture, 'data-row-desk': ROWS.desk, 'data-row-front': ROWS.front, 'data-bake-scale': 1.6 },
+    attrs: { 'data-fold': FOLD, 'data-row-furniture': ROWS.furniture, 'data-row-desk': ROWS.desk, 'data-row-front-left': ROWS.frontLeft, 'data-row-front': ROWS.front, 'data-bake-scale': 1.6 },
     data: { H: FLOOR_H, rows: ROWS, tears: [tears.left.pts, tears.right.pts].map((pts) => pts.map(([x, y]) => [x, f1(y - FOLD)])) },
     edit: (svg, d) => {
       // the legacy board's floor script, re-run for the deeper sheet, printed in a faded,
@@ -182,10 +186,11 @@ const PIECES = [
       el('path', { d: `M0,0 H1340 V${H} H0 Z`, fill: '#8a7f71' }, base);
       for (let x = 0; x < 1340; x += 46) {
         const t = R();
-        el('rect', { x, y: 0, width: 46, height: H, fill: t < 0.33 ? '#7f7467' : t < 0.66 ? '#8d8274' : '#86796b', opacity: 0.92 }, base);
+        // boards: half the M0 board's colour spread (a quieter print)
+        el('rect', { x, y: 0, width: 46, height: H, fill: t < 0.33 ? '#837769' : t < 0.66 ? '#8a7e70' : '#86796b', opacity: 0.92 }, base);
         el('rect', { x, y: 0, width: 1.6, height: H, fill: '#554a3f', opacity: 0.8 }, base);
         for (let j = 10 + R() * 100; j < H; j += 150 + R() * 120) el('rect', { x, y: j.toFixed(1), width: 46, height: 1.4, fill: '#554a3f', opacity: 0.7 }, base);
-        for (let k = 0; k < 11; k++) el('rect', { x: (x + 6 + R() * 34).toFixed(1), y: (R() * (H - 20)).toFixed(1), width: 0.8, height: (8 + R() * 20).toFixed(1), fill: '#a69a8a', opacity: 0.35 }, base);
+        for (let k = 0; k < 11; k++) el('rect', { x: (x + 6 + R() * 34).toFixed(1), y: (R() * (H - 20)).toFixed(1), width: 0.8, height: (8 + R() * 20).toFixed(1), fill: '#a69a8a', opacity: 0.17 }, base);
       }
       // faded rug under the desk (the M0 board had the desk at 62; it stands at rows.desk now)
       const rug = el('g', { transform: `translate(0 ${d.rows.desk - 62})` }, base);
@@ -224,7 +229,7 @@ const PIECES = [
       'data-page-h': BOOK_H, 'data-tear-min': tears[side].min, 'data-tear-max': tears[side].max, 'data-column-y0': COLUMN_Y0,
       ...(side === 'right' ? { 'data-puppet-shift': PUPPET_SHIFT, 'data-hearts-y': HEARTS_Y } : {}),
     },
-    data: { H: BOOK_H, shape: tears[side].shape, line: tears[side].line, whiskers: tears[side].whiskers, disp: DISP[side], fringe: FRINGE, seed: side === 'left' ? 17 : 29, colY0: COLUMN_Y0, shift: side === 'right' ? PUPPET_SHIFT : 0, blank: variant === 'end' },
+    data: { H: BOOK_H, side, shape: tears[side].shape, line: tears[side].line, whiskers: tears[side].whiskers, disp: DISP[side], fringe: FRINGE, seed: side === 'left' ? 17 : 29, colY0: COLUMN_Y0, shift: side === 'right' ? PUPPET_SHIFT : 0, blank: variant === 'end' },
     remove: ['use', 'ellipse[fill="#140c06"]', 'g[fill="#120a05"]', '#hearts', 'path[fill="#a9c0cf"]', 'ellipse[fill="url(#warmGlow)"]',
       'path[d^="M1340,560"]', 'path[d^="M1340,558"]', 'path[d^="M1306,566"]'],
     edit: (svg, d) => {
@@ -244,13 +249,23 @@ const PIECES = [
       if (toned) toned.setAttribute('height', d.H - 3);
       svg.querySelectorAll('#foxing circle').forEach((c) => c.setAttribute('cy', (+c.getAttribute('cy') * k).toFixed(0)));
       svg.querySelectorAll('circle[cx="770"][cy="540"]').forEach((c) => c.setAttribute('cy', 540 + d.H - 600));
+      // cleaner, flatter paper (M1 review): the cloudy mottle, the foxing and the stains at
+      // about 40% of the M0 board's (the right page, with no text to hide them, a little less),
+      // the toned edges softer; the fine fibre (pageTex) stays
+      const mottle = svg.querySelector('rect[filter="url(#pageMottle)"]');
+      if (mottle) mottle.setAttribute('opacity', d.side === 'left' ? '.25' : '.2');
+      svg.querySelectorAll('#foxing circle').forEach((c) => c.setAttribute('opacity', (+(c.getAttribute('opacity') ?? 1) * 0.4).toFixed(3)));
+      svg.querySelectorAll('circle[filter="url(#tide)"], circle[cx="770"][cy="540"]').forEach((c) => c.setAttribute('opacity', (+(c.getAttribute('opacity') ?? 1) * 0.4).toFixed(3)));
+      const edge = svg.querySelector('rect[stroke="#6b4a26"]');
+      if (edge) edge.setAttribute('opacity', '.1');
       // keep the paper texture quiet under the (moved) text window
       const q = svg.querySelector('#quietCol rect[filter]');
       if (q) { q.setAttribute('y', d.colY0 - 8); q.setAttribute('height', d.H + 20 - d.colY0); }
       // the legacy page toning (aged paper, darker toward the edges): ellipse 72% x 78% of each page
       for (const [id, cx, cy, stops] of [
-        ['paperL', 295, 312 * k, '<stop offset="0" stop-color="#e8ddc6"/><stop offset=".55" stop-color="#ded1b5"/><stop offset=".9" stop-color="#c8b797"/><stop offset="1" stop-color="#b5a383"/>'],
-        ['paperR', 1018, 276 * k, '<stop offset="0" stop-color="#e6dbc3"/><stop offset=".5" stop-color="#dccfb2"/><stop offset=".88" stop-color="#c8b797"/><stop offset="1" stop-color="#b3a180"/>'],
+        // (M1 review: the darkening toward the edges at about 60% of the M0 board's)
+        ['paperL', 295, 312 * k, '<stop offset="0" stop-color="#e8ddc6"/><stop offset=".55" stop-color="#e2d6bc"/><stop offset=".9" stop-color="#d3c4a7"/><stop offset="1" stop-color="#c6b698"/>'],
+        ['paperR', 1018, 276 * k, '<stop offset="0" stop-color="#e6dbc3"/><stop offset=".5" stop-color="#e0d4b9"/><stop offset=".88" stop-color="#d2c3a6"/><stop offset="1" stop-color="#c4b495"/>'],
       ]) {
         const g = document.createElementNS(NS, 'radialGradient');
         g.id = id; g.setAttribute('gradientUnits', 'userSpaceOnUse');
@@ -293,6 +308,21 @@ const PIECES = [
     },
   })),
 ];
+
+/**
+ * Quieter paper (M1 review): the shared cut-paper filters as the pieces use them.
+ *   cutS, cutL  fibre relief 40% lower (surfaceScale)
+ *   cutL        the pigment mottle's contrast halved (grey noise pulled toward the neutral 0.5
+ *               of its soft-light blend)
+ * The hand-drawn pieces (puppets, M1 props) carry the same values in their own copies.
+ */
+function tone(svg) {
+  return svg
+    .replace(/(<filter id="cutS"[\s\S]*?surfaceScale=")1\.3(")/, '$10.78$2')
+    .replace(/(<filter id="cutL"[\s\S]*?surfaceScale=")1\.6(")/, '$10.96$2')
+    .replace(/(<filter id="cutL"[\s\S]*?result="tM"\/>\s*<feColorMatrix in="tM" type="matrix" values=")1 0 0 0 0 {2}1 0 0 0 0 {2}1 0 0 0 0 {2}0 0 0 0 1(")/,
+      '$10.5 0 0 0 0.25  0.5 0 0 0 0.25  0.5 0 0 0 0.25  0 0 0 0 1$2');
+}
 
 // tileable wood (the legacy table filter, with stitchTiles so it repeats)
 const TABLE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 480" width="1600" height="480" data-bake-scale="1">
@@ -345,7 +375,7 @@ function dice() {
     <filter id="edge" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.6"/></filter>
     <filter id="fibre" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
       <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="tF"/>
-      <feDiffuseLighting in="tF" surfaceScale="1.2" diffuseConstant="1" lighting-color="#fff" result="fib"><feDistantLight azimuth="235" elevation="60"/></feDiffuseLighting>
+      <feDiffuseLighting in="tF" surfaceScale="0.72" diffuseConstant="1" lighting-color="#fff" result="fib"><feDistantLight azimuth="235" elevation="60"/></feDiffuseLighting>
       <feComposite in="fib" in2="SourceGraphic" operator="arithmetic" k1="0.5" k2="0" k3="0.55" k4="0"/>
     </filter>
   </defs>
@@ -410,7 +440,7 @@ await browser.close();
 
 const tidy = (s) => s.replace(/></g, '>\n<');
 for (const { name, svg } of out) {
-  writeFileSync(join(outDir, `${name}.svg`), tidy(svg) + '\n');
+  writeFileSync(join(outDir, `${name}.svg`), tone(tidy(svg)) + '\n');
   console.log(`assets/art/${name}.svg`.padEnd(32), `${(svg.length / 1024).toFixed(1)} KB`);
 }
 writeFileSync(join(outDir, 'table.svg'), TABLE);

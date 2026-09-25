@@ -104,8 +104,26 @@ describe('the chapter', () => {
     const beats = pick(run, 'clock.turn');
     const roll = beats.find((b) => b.kind === 'roll');
     expect(roll && roll.kind === 'roll' && roll.roll).toMatchObject({ dice: [4, 5], skillValue: 3, total: 12, success: true, crit: null });
-    expect(beats.find((b) => b.kind === 'flag')).toEqual({ kind: 'flag', key: 'clock_tampered', evidence: true });
+    expect(beats.find((b) => b.kind === 'flag')).toEqual({ kind: 'flag', key: 'clock_tampered', evidence: true, count: 1, total: 3 });
     expect(optionsOf(beats).map((o) => o.option.id)).toEqual(['clock.lying', 'clock.back']);
+  });
+
+  it('a new lead lands after the words that found it, and is logged as a notice', () => {
+    const run = new Runner(study, { forcedDice: [[4, 5]] });
+    run.start();
+    pick(run, 'intro.clock');
+    const kinds = pick(run, 'clock.turn').map((b) => (b.kind === 'line' ? `line:${typeof b.line.speaker === 'string' ? b.line.speaker : 'thing'}` : b.kind));
+    expect(kinds).toEqual(['line:you', 'roll', 'line:visualCalculus', 'line:kim', 'flag', 'options']);
+    const log = run.log();
+    expect(log.at(-1)).toEqual({ kind: 'notice', flag: 'clock_tampered', count: 1, total: 3 });
+  });
+
+  it('a morale loss lands after the failure it comes from', () => {
+    const run = new Runner(study, { forcedDice: [[1, 2]] });
+    run.start();
+    pick(run, 'intro.window');
+    const kinds = pick(run, 'window.lean').map((b) => b.kind);
+    expect(kinds).toEqual(['line', 'roll', 'line', 'line', 'morale', 'options']);
   });
 
   it('a failed white check is greyed until new information or RETRY_AFTER choices', () => {
@@ -239,7 +257,7 @@ describe('the chapter', () => {
 describe('the style-board moment', () => {
   it('is the committed frame, produced by the engine', () => {
     const kinds = clockMoment.map((e: LogEntry) => (e.kind === 'line' ? (typeof e.line.speaker === 'object' ? e.line.speaker.zh : e.line.speaker) : e.kind));
-    expect(kinds).toEqual(['you', '黄铜座钟', 'encyclopedia', 'you', 'check', 'visualCalculus', 'kim', 'option', 'option']);
+    expect(kinds).toEqual(['you', '黄铜座钟', 'encyclopedia', 'you', 'check', 'visualCalculus', 'kim', 'notice', 'option', 'option']);
     const check = clockMoment[4];
     expect(check.kind === 'check' && [check.dice, check.total, check.success]).toEqual([[4, 5], 12, true]);
     const opts = clockMoment.filter((e) => e.kind === 'option');
@@ -273,7 +291,7 @@ describe('white retry on new information', () => {
     run.choose(1);
     expect(run.options()[0].state).toBe('greyed');
     const beats = run.choose(2);
-    expect(beats.find((b) => b.kind === 'flag')).toEqual({ kind: 'flag', key: 'clue', evidence: true });
+    expect(beats.find((b) => b.kind === 'flag')).toEqual({ kind: 'flag', key: 'clue', evidence: true, count: 1, total: 1 });
     expect(run.options()[0].state).toBe('enabled');
   });
 });

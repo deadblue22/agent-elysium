@@ -1,7 +1,8 @@
-// The left page as the story plays: entries arrive one by one and are typed out (zh 30 ms,
-// en 15 ms a character; an inner voice waits 0.3 s after its name), the log scrolls up to make
-// room for each, and the current options follow, numbered. It also keeps the screen-reader
-// mirror (an ordered list; options are real buttons) and the options' tooltip.
+// The left page as the story plays: entries arrive one by one and are typed out (§6.5: zh
+// 55 ms, en 28 ms a character, longer after punctuation; an inner voice waits 0.3 s after its
+// name), the log scrolls up to make room for each, and the current options follow, numbered.
+// It also keeps the screen-reader mirror (an ordered list; options are real buttons), the
+// options' tooltip and the continue marker the director raises while it waits for a click.
 import type { Lang, LogEntry } from '../content/schema';
 import { skillName } from '../content/skills';
 import { ui } from '../content/ui';
@@ -11,7 +12,38 @@ import type { PagePainter } from '../page/painter';
 import { ease, type Clock } from './clock';
 
 /** Typewriter speed, ms per character (§6.5). */
-export const TYPE_MS: Record<Lang, number> = { zh: 30, en: 15 };
+export const TYPE_MS: Record<Lang, number> = { zh: 55, en: 28 };
+/** Extra ms after punctuation: a comma's breath, a sentence's stop (§6.5). */
+const PAUSES: Record<Lang, [RegExp, number][]> = {
+  zh: [[/[，、：；]/, 120], [/[。！？…」』]/, 260]],
+  en: [[/[,;:]/, 80], [/[.!?]/, 180]],
+};
+/** Marks that close a clause without a pause of their own: the pause waits until after them. */
+const CLOSERS = /[」』”’"')）\]…]/;
+
+/**
+ * When each character of `text` shows (ms from the start of typing): one step per character,
+ * plus the pause after a comma or a sentence's end. A run of marks (「。」」, 「……」, `."`)
+ * pauses once, after its last mark, for its longest pause. English pauses only before a space
+ * (so 23:40 and "e.g." type straight through).
+ */
+export function typeSchedule(text: string, lang: Lang): number[] {
+  const chars = [...text], base = TYPE_MS[lang], pauseOf = (c: string) => PAUSES[lang].find(([re]) => re.test(c))?.[1] ?? 0;
+  const at: number[] = [];
+  let t = 0, pending = 0;
+  chars.forEach((c, i) => {
+    t += base;
+    at.push(t);
+    pending = Math.max(pending, pauseOf(c));
+    const next = chars[i + 1];
+    if (next === undefined) return;
+    if (pending && (pauseOf(next) || CLOSERS.test(next))) return; // still inside the run of marks
+    if (pending && lang === 'en' && !/\s/.test(next)) { pending = 0; return; }
+    t += pending;
+    pending = 0;
+  });
+  return at;
+}
 /** How long the log takes to scroll a new entry into view. */
 const SCROLL_MS = 240;
 
@@ -91,18 +123,26 @@ export class LogView {
     this.reveal = { entry: idx, chars: 0 };
     await this.shift();
     const total = this.layout.chars[idx] ?? 0;
-    if (total > 0) {
+    if (total > 0 && entry.kind === 'line') {
       if (o.pause) await this.clock.wait(o.pause);
       o.speaking?.(true);
-      await this.clock.tween(total * TYPE_MS[this.lang], (p) => {
-        // the language may change mid-line (it finishes the line); read the current count
-        const n = this.layout.chars[idx] ?? 0;
-        this.setReveal({ entry: idx, chars: Math.floor(p * n + 1e-6) });
+      const at = typeSchedule(entry.line.text[this.lang], this.lang);
+      const T = at[at.length - 1] ?? 0;
+      await this.clock.tween(T, (p) => {
+        // how many characters are due at this time (the language may change mid-line: that
+        // finishes the line, so the count only needs to be right for the language it began in)
+        const now = p * T;
+        let lo = 0, hi = at.length;
+        while (lo < hi) { const mid = (lo + hi) >> 1; if (at[mid] <= now + 1e-6) lo = mid + 1; else hi = mid; }
+        this.setReveal({ entry: idx, chars: p >= 1 ? this.layout.chars[idx] ?? lo : lo });
       }, ease.linear, 'type');
       o.speaking?.(false);
     }
     this.setReveal(null);
   }
+
+  /** Raises or lowers the continue marker (「▼ 继续」) while the director waits for a click. */
+  setContinue(on: boolean) { this.painter.setMarker(on); }
 
   private setReveal(r: { entry: number; chars: number } | null) {
     this.reveal = r;

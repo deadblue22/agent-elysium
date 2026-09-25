@@ -7,7 +7,8 @@
 //   serif (Noto Serif SC 400)   every character: dialogue, objects, places, chrome
 //   serif (Noto Serif SC 600)   narration (first lines are set bold)
 //   sans  (Noto Sans SC 600)    labels: speaker names, skills, result and check tags, chrome labels,
-//                               the play's interface strings (src/content/ui.ts), evidence labels
+//                               the play's interface strings (src/content/ui.ts), evidence labels,
+//                               the names in the hover tips (src/content/hotspots.ts)
 //   mono  (LXGW WenKai Mono TC) the player's words: options and 你 / YOU lines
 //   EB Garamond 400/600, Inter 600, JetBrains Mono 400: every non-CJK character, plus printable ASCII
 // The app's font stacks end in the serif subset, so a character missing from a role's
@@ -66,6 +67,8 @@ for (const f of files) {
     // interface (ui.ts: the check tooltip, the evidence slip's label, the greyed reason), and
     // the evidence labels, which the tooltip lists as modifiers (「+1 指针被拨过」)
     if (name === 'chrome' || name === 'ui' || name === 'EVIDENCE_LABELS') every(v, (x) => add('sans', x));
+    // hover tips: the name is set like a speaker (sans), the tip in the serif
+    if (name === 'HOTSPOTS') for (const h of Object.values(v)) texts(h.name).forEach((t) => add('sans', t));
     classify(v);
   }
 }

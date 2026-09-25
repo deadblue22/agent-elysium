@@ -10,13 +10,16 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
   const group = new Group();
   group.name = 'lights';
 
-  const hemi = new HemisphereLight('#8b909b', '#4d3626', 0.62);
+  // (M1 review: less fill, so the direct lights model the paper and their shadows read)
+  const hemi = new HemisphereLight('#8b909b', '#4d3626', 0.32);
   group.add(hemi);
 
   // cool light from the window side of the room: from the left, fairly low and a little in
   // front, so every row of the pop-up throws its shadow sideways across the floor beside it
-  const key = new DirectionalLight('#dae2ea', 2.9);
-  key.position.set(-11, 11, 4.5);
+  // (lower and more from the side than before: the rows' shadows fall across the floor beside
+  // them, where the camera sees them, not behind them)
+  const key = new DirectionalLight('#dae2ea', 4.7);
+  key.position.set(-12.5, 9.5, 2.2);
   key.target.position.set(0.3, 0, -0.8);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -24,12 +27,12 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
   sc.left = -10.5; sc.right = 10.5; sc.top = 10.5; sc.bottom = -10.5; sc.near = 4; sc.far = 36;
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.012;
-  key.shadow.radius = 3;
-  key.shadow.intensity = 0.92; // paper lets a little light through
+  key.shadow.radius = 1.6;   // a little crisper
+  key.shadow.intensity = 1;
   group.add(key, key.target);
 
   // the candle: the only warm light in the room
-  const flame = new PointLight('#ffa35a', 9, 0, 2);
+  const flame = new PointLight('#ffa35a', 16, 0, 2); // physical falloff: a warm pool round the desk
   flame.position.copy(at.candleLight);
   flame.castShadow = true;
   flame.shadow.mapSize.set(1024, 1024);
@@ -42,7 +45,7 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
 
   // daylight spilling in at the window: lights the wall and floor around it (it sits between
   // the wall and the furniture plane, whose fronts face away from it), no shadows
-  const windowGlow = new PointLight('#a9bdd0', 4.2, 0, 2);
+  const windowGlow = new PointLight('#a9bdd0', 2.6, 0, 2);
   windowGlow.position.copy(at.windowGlow);
   group.add(windowGlow);
 
@@ -68,7 +71,7 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
   flameSprite.position.copy(at.candleFlame);
   flameSprite.scale.set(0.2, 0.36, 1);
   flameSprite.renderOrder = 5;
-  const halo = new Sprite(new SpriteMaterial({ map: glowTexture('255,176,102', 128), blending: AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.32 }));
+  const halo = new Sprite(new SpriteMaterial({ map: glowTexture('255,176,102', 128), blending: AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.38 }));
   halo.position.copy(at.candleFlame);
   halo.scale.setScalar(1.5);
   halo.renderOrder = 4;

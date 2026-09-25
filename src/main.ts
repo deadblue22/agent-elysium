@@ -7,7 +7,7 @@
 //   ?speed=N      play animations and the typewriter N times faster (test harness)
 //   ?debug        expose the painters, scene and renderer on window.__debug
 // prefers-reduced-motion: every tween jumps to its end, the snow and grain hold still.
-import { Box3, NoToneMapping, PCFShadowMap, PMREMGenerator, SRGBColorSpace, Scene, Vector3, WebGLRenderer, type PerspectiveCamera } from 'three';
+import { Box3, NoToneMapping, PCFShadowMap, PMREMGenerator, SRGBColorSpace, Scene, Vector2, Vector3, WebGLRenderer, type Mesh, type PerspectiveCamera } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { loadArt, loadFonts } from './assets';
 import type { Lang } from './content/schema';
@@ -30,7 +30,10 @@ import { createLights } from './scene/lights';
 import { createPopup, layers, roomLights } from './scene/popup';
 import { createPost } from './scene/post';
 import { createStage, heartsTop } from './scene/puppets';
-import { createSlip } from './scene/slip';
+import { createLeadCard } from './scene/lead';
+import { createHotspots } from './scene/hotspots';
+import { HOTSPOTS } from './content/hotspots';
+import { holds } from './engine/rules';
 import { createSnow } from './scene/snow';
 import { BASE_Y, DEG, envelope, sheetY, wx, wz } from './scene/space';
 import { createTable } from './scene/table';
@@ -59,6 +62,14 @@ declare global {
       readonly flags: string[];
       /** The log as the screen-reader mirror has it. */
       log(): string[];
+      /** Client position of a point on a hover-tip target (tests), or null. */
+      hotspot(key: string): { x: number; y: number } | null;
+      /** The hover tip showing, by key, or null. */
+      readonly hover: string | null;
+      /** Ends the camera's parallax easing at once. */
+      snapCamera(): void;
+      /** The stop the story waits at for a click (`line:narrator:2`, `notice:1`, …), or null. */
+      readonly stop: string | null;
       /** Pause after a beat (`line:narrator:2`, `stage:snow-start`, …) until resume(). */
       pauseAfter(key: string): void;
       readonly paused: string | null;
@@ -84,6 +95,7 @@ const frameEl = document.getElementById('frame') as HTMLDivElement;
 const canvas = document.getElementById('gl') as HTMLCanvasElement;
 const tipEl = document.getElementById('tip') as HTMLDivElement;
 const whenEl = document.getElementById('when') as HTMLDivElement;
+const hotEl = document.getElementById('hot') as HTMLDivElement;
 
 function frameSize() {
   const w = Math.max(320, Math.floor(Math.min(innerWidth, (innerHeight * 16) / 9)));
@@ -171,18 +183,18 @@ async function main() {
   const popup = createPopup(art), stage = createStage(art, book.rightSheet);
   const top = heartsTop(art);
   const hearts = createHearts(art, top, book.rightSheet, clock, study.morale.max);
-  const slip = createSlip(art, top + 34, book.rightSheet, clock);
+  const lead = createLeadCard(art, book.rightSheet, clock);
   stage.group.add(hearts.group);
   const dice = createDice(stage.dice, clock);
   const buildMs = performance.now() - t0; // geometry, procedural textures and the baked occlusion
   const lights = createLights(roomLights(art.floor.meta));
   const cam = createCameraRig();
-  scene.add(createTable(art), book.group, popup.group, stage.group, slip.mesh, lights.group, cam.rig);
+  scene.add(createTable(art), book.group, popup.group, stage.group, lead.mesh, lead.shadow, lights.group, cam.rig);
   // a soft, low environment light, so curved paper, page edges and board edges read through
   // gentle shading gradients and not only through the direct lights
   const pmrem = new PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.16;
+  scene.environmentIntensity = 0.1;
   pmrem.dispose();
 
   // the log starts under the left sheet's tear (its extent comes from the SVG, via the manifest)
@@ -204,6 +216,8 @@ async function main() {
     turn: (p) => {
       if (!carried) { carried = true; for (const o of [...stage.group.children]) book.carry(o); }
       book.setTurn(p);
+      // the log is done: it fades as the sheet turns over it (the end spread is blank but for 「第一章 完」)
+      book.uniforms.left.uInkAlpha.value = 1 - Math.min(1, Math.max(0, (p - 0.25) / 0.6));
     },
   });
 
@@ -217,6 +231,11 @@ async function main() {
   let director: Director | null = null;
   const log = new LogView(leftInk, measurer, col, clock, a11y, lang, (n) => { director?.choose(n); }, () => !!director?.idle);
 
+  /** Re-renders the hover tip in the current language (set once the hover tips exist). */
+  let refreshHot = () => {};
+  /** Leads found so far (「线索 1/3」 under the hearts). */
+  let leads = { count: 0, total: study.evidence.length };
+
   // who bobs while their line types (Harry for 你 lines, Kim for his)
   let speaker: 'harry' | 'kim' | null = null;
   const bob = { harry: 0, kim: 0 };
@@ -225,26 +244,33 @@ async function main() {
     // the style board: study.clock right after Visual Calculus passes; morale 3 of 4
     log.showFixed(clockMoment);
     hearts.set(3);
+    leads = { count: 1, total: study.evidence.length }; // 指针被拨过
   } else {
     hearts.set(study.morale.start);
     director = new Director(runner, clock, log, {
       dice, hearts, cues,
-      slip: { show: (text) => slip.show(text) },
+      lead,
+      leads: (count, total) => { leads = { count, total }; layoutRight(); invalidate(); },
       speaking: (who) => { speaker = who; },
     });
     director.onIdle = () => { hit.refresh(); invalidate(); };
   }
 
+  function layoutRight() {
+    rightInk.setLayout(layoutRightPage(lang, measurer, chrome.morale[lang], top, { label: ui.leads[lang], ...leads }));
+  }
+
   function applyLang() {
     document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
     log.setLang(lang);
-    rightInk.setLayout(layoutRightPage(lang, measurer, chrome.morale[lang], top));
+    layoutRight();
     endInk.setLayout(layoutEndPage(lang, measurer, ui.chapterEnd[lang], art['page-end'].meta.tearMax));
-    slip.setLang(lang);
+    lead.setLang(lang);
     document.getElementById('title')!.textContent = chrome.title[lang];
     document.getElementById('chapter')!.textContent = chrome.chapter[lang];
     document.getElementById('log-heading')!.textContent = chrome.logHeading[lang];
     whenEl.textContent = ui.lastNight[lang];
+    refreshHot();
     for (const s of document.querySelectorAll<HTMLElement>('#lang [data-lang]')) s.classList.toggle('on', s.dataset.lang === lang);
     tipEl.hidden = true;
     invalidate();
@@ -280,7 +306,8 @@ async function main() {
       invalidate();
     },
     click: (index) => {
-      if (log.typing) { director?.skip(); return; }
+      // a click completes the line being typed or moves on from a stop; otherwise it may choose
+      if (director?.proceed()) return;
       if (index !== null) chooseIndex(index);
     },
   });
@@ -289,9 +316,9 @@ async function main() {
     if (e.ctrlKey || e.metaKey || e.altKey || !director) return;
     if (/^[1-9]$/.test(e.key)) {
       director.choose(Number(e.key));
-    } else if (e.key === ' ' && !(e.target instanceof HTMLButtonElement)) {
+    } else if ((e.key === ' ' || e.key === 'Enter') && !(e.target instanceof HTMLButtonElement)) {
       e.preventDefault();
-      director.skip();
+      director.proceed();
     }
   });
   // the wheel over the left page scrolls the log's history (older lines come down out of the tear)
@@ -312,6 +339,67 @@ async function main() {
     cam.setPointer(Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width - 0.5) * 2)), Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height - 0.5) * 2)));
   });
   frameEl.addEventListener('pointerleave', () => { cam.setPointer(0, 0); tipEl.hidden = true; });
+
+  // ---- hover tips on the stage (src/content/hotspots.ts): look only, never a click
+  const hot = createHotspots({
+    art, pieces: popup.pieces, floor: book.group.getObjectByName('floor') as Mesh,
+    puppets: { harry: stage.puppets.harry.mesh, kim: stage.puppets.kim.mesh }, dice: stage.dice.map((d) => d.mesh),
+    cues: cues.parts,
+    blockers: [
+      { mesh: book.leftPage, piece: art['page-left'] }, { mesh: book.rightPage, piece: art['page-right'] },
+      { mesh: book.group.getObjectByName('page-end') as Mesh, piece: art['page-end'] },
+      { mesh: book.group.getObjectByName('page-right-back') as Mesh, piece: art['page-end'] },
+      { mesh: lead.mesh, piece: art['lead-card'] },
+    ],
+  });
+  scene.add(hot.group);
+  let hotKey: string | null = null, hotShown: string | null = null, hotTimer = 0;
+  let hotAt = { clientX: 0, clientY: 0 };
+  const hotState = () => STILL
+    ? { flags: new Set(['clock_tampered']), morale: 3, sheet: study.sheet }
+    : { flags: runner.state.flags, morale: runner.state.morale, sheet: study.sheet };
+  const renderHot = () => {
+    if (!hotShown) { hotEl.hidden = true; return; }
+    const spot = HOTSPOTS[hotShown];
+    const state = hotState();
+    const tip = spot.variants?.find((v) => holds(v.when, state, study))?.tip ?? spot.tip;
+    hotEl.querySelector('.name')!.textContent = spot.name[lang];
+    hotEl.querySelector('.line')!.textContent = tip[lang];
+    hotEl.hidden = false;
+    // near the pointer, inside the frame, and never over the log's column
+    const r = frameEl.getBoundingClientRect(), s = r.width / FRAME.w;
+    const w = hotEl.offsetWidth, h = hotEl.offsetHeight;
+    const px = hotAt.clientX - r.left, py = hotAt.clientY - r.top;
+    let x = Math.min(Math.max(8, px + 16), r.width - w - 8), y = py + 20;
+    const col = { x0: column.x * s, y0: column.y * s, x1: (column.x + column.w) * s };
+    const overCol = (yy: number) => x < col.x1 && x + w > col.x0 && yy + h > col.y0 - 6;
+    if (y + h > r.height - 8 || overCol(y)) y = py - h - 14;
+    if (overCol(y)) y = col.y0 - h - 10;
+    y = Math.max(8, y);
+    hotEl.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+  };
+  const setHot = (key: string | null) => {
+    if (key === hotKey) { if (hotShown) renderHot(); return; }
+    hotKey = key;
+    clearTimeout(hotTimer);
+    hot.highlight(null);
+    hotShown = null;
+    hotEl.hidden = true;
+    if (key) hotTimer = window.setTimeout(() => { hotShown = key; hot.highlight(key); renderHot(); invalidate(); }, 120);
+    invalidate();
+  };
+  const ndc = new Vector2();
+  canvas.addEventListener('pointermove', (e) => {
+    hotAt = { clientX: e.clientX, clientY: e.clientY };
+    // the options keep their own tooltip
+    if (!tipEl.hidden || hit.pick(e) !== null) { setHot(null); return; }
+    const r = canvas.getBoundingClientRect();
+    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    const key = hot.pick(ndc, cam.camera);
+    setHot(key && HOTSPOTS[key] ? key : null);
+  });
+  canvas.addEventListener('pointerleave', () => setHot(null));
+  refreshHot = () => { if (hotShown) renderHot(); };
 
   // ---- size
   function resize() {
@@ -350,7 +438,7 @@ async function main() {
     for (let i = 0; i < n; i++) { post.render(t); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); }
     return (performance.now() - tb) / n;
   };
-  if (params.has('debug')) Object.assign(window, { __debug: { leftInk, rightInk, scene, renderer, cam, post, lights, clock, cues, book, layout: () => log.layout } });
+  if (params.has('debug')) Object.assign(window, { __debug: { leftInk, rightInk, scene, renderer, cam, post, lights, clock, cues, book, lead, hot, layout: () => log.layout } });
 
   let frames = 0;
   if (director) {
@@ -368,6 +456,16 @@ async function main() {
       log: () => [...a11y.children].map((li) => li.textContent ?? ''),
       pauseAfter: (key) => d.pauseAfter(key),
       get paused() { return d.paused; },
+      get stop() { return d.stop; },
+      hotspot: (key) => {
+        const w = hot.center(key);
+        if (!w) return null;
+        const v = w.project(cam.camera);
+        const r = canvas.getBoundingClientRect();
+        return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height };
+      },
+      get hover() { return hotShown; },
+      snapCamera: () => { cam.snap(); invalidate(); },
       resume: () => d.continue(),
       hold: (name, at) => clock.hold(name, at),
       get held() { return clock.held; },

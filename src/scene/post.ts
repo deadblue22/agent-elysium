@@ -17,7 +17,9 @@ const FilmShader = {
     /** 0 the present; 1 last night: colder, less saturated (the reconstruction's flashback). */
     uNight: { value: 0 },
     uVignette: { value: 1 },
-    uGrain: { value: 0.1 },
+    uGrain: { value: 0.05 },
+    /** Contrast about a mid grey, after the grade (M1 review: a little more punch). */
+    uContrast: { value: 1.1 },
     /** grain grid in cells across the frame; setSize keeps one cell at GRAIN_PX css px */
     uGrainCells: { value: new Vector2(1280, 720) },
     /** uv rect (x0, y0, x1, y1) of the text column, where the grain is gentler (as on the M0 board). */
@@ -29,7 +31,7 @@ const FilmShader = {
     void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
-    uniform float uTime, uExposure, uGrade, uVignette, uGrain, uNight;
+    uniform float uTime, uExposure, uGrade, uVignette, uGrain, uNight, uContrast;
     uniform vec2 uGrainCells;
     uniform vec4 uQuiet;
     uniform float uQuietGrain;
@@ -74,6 +76,8 @@ const FilmShader = {
       float ln = dot(s, vec3(0.2126, 0.7152, 0.0722));
       vec3 cold = mix(vec3(ln), s, 0.5) * vec3(0.8, 0.92, 1.12) * 0.9;
       s = mix(s, mix(cold, s, smoothstep(0.55, 0.95, ln) * 0.5), uNight);
+
+      s = clamp((s - 0.42) * uContrast + 0.42, 0.0, 1.0);
 
       // vignette: ellipse 80% x 78% at (50%, 56%)
       float r = length((vUv - vec2(0.5, 0.44)) / vec2(0.8, 0.78));

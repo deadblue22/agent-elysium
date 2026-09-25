@@ -7,7 +7,8 @@
 // The painter scales it to the canvas.
 import type { Lang, LogEntry } from '../content/schema';
 import { checkTag, resultTag, speakerInk, speakerName } from '../content/skills';
-import { CRIT } from '../content/ui';
+import { EVIDENCE_LABELS } from '../content/study';
+import { CRIT, ui } from '../content/ui';
 
 /** One page in book px (the legacy board's CSS px). Must match tools/extract-art.mjs BOOK_H. */
 export const PAGE = { w: 670, h: 600 };
@@ -20,7 +21,7 @@ export interface Column { x0: number; x1: number; y0: number; y1: number }
  * its right margin (596, 11% of the page from the gutter) kept off the steep part of the
  * pages' curve into the gutter.
  */
-export const textColumn = (y0: number): Column => ({ x0: 30, x1: 596, y0, y1: PAGE.h - 20 });
+export const textColumn = (y0: number): Column => ({ x0: 30, x1: 596, y0, y1: PAGE.h - 16 });
 /** Old lines fade out over this many page px as they rise into the tear. */
 export const FADE = 44;
 
@@ -32,7 +33,7 @@ export const FADE = 44;
  */
 export type DrawItem =
   | { t: 'text'; x: number; y: number; text: string; font: string; color: string; alpha: number; ls: number; stroke: number; option?: number; entry?: number; from?: number; box: Rect }
-  | { t: 'tag'; alpha: number; entry?: number; box: Rect }
+  | { t: 'tag'; alpha: number; entry?: number; box: Rect; stroke?: string; fill?: string }
   | { t: 'rule'; color: string; alpha: number; entry?: number; box: Rect }
   | { t: 'mark'; color: string; alpha: number; entry?: number; box: Rect }
   | { t: 'cursor'; color: string; entry?: number; box: Rect };
@@ -53,6 +54,8 @@ export interface PageLayout {
   scrollMax: number;
   /** Height of everything laid out (page px): a new entry pushes the log up by the difference. */
   height: number;
+  /** The continue marker (「▼ 继续」), right-aligned at the column's bottom right, below the window. */
+  marker?: { x: number; y: number; text: string; font: string; color: string; ls: number };
 }
 
 // ---------------------------------------------------------------- style
@@ -68,6 +71,8 @@ export const INK = {
   red: '#8E2A24',      // red checks
   redMark: '#A3232B',  // the red check marker (§6.2 红色检定)
   greyed: '#8C8378',   // a failed white check, waiting for new information
+  lead: '#8F6A1C',     // a new lead: the gold accent of the original's system notices
+  leadFill: '#F3E9C9',
 };
 
 type Family = 'serif' | 'sans' | 'mono';
@@ -301,6 +306,38 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
       return;
     }
 
+    if (e.kind === 'notice') {
+      // a new lead, as a system line: a boxed gold tag, the evidence, the count
+      const tagStyle: Style = { family: 'sans', size: S.tag, weight: 600, color: INK.lead, ls: S.tag * (lang === 'zh' ? 0.18 : 0.14), stroke: 0.2 };
+      const label = ui.leadTag[lang];
+      const padX = S.tag * 0.55, padT = S.tag * 0.34, padB = S.tag * 0.3, sep = S.narr * 0.45;
+      const wTag = m.width(lang, tagStyle, label) - tagStyle.ls;
+      const boxW = 2 + 2 * padX + wTag, boxH = 2 + padT + S.tag + padB;
+      const lh = S.lineHeight;
+      const leadStyle: Style = { ...narr, color: INK.log };
+      const count: Style = { family: 'sans', size: S.label, weight: 600, color: INK.lead, ls: S.label * 0.06, stroke: 0 };
+      const text = EVIDENCE_LABELS[e.flag]?.[lang] ?? e.flag;
+      const countText = lang === 'zh' ? `（${e.count}/${e.total}）` : ` (${e.count}/${e.total})`;
+      const atoms = atomize([{ text, style: leadStyle }, { text: nbsp(countText), style: count, glue: true, keep: true }]);
+      for (const a of atoms) a.text = a.text.replace(/\u00a0/g, ' ');
+      const lines = breakLines(lang, m, atoms, maxW, boxW + sep, (a) => a.style);
+      y += 4;
+      lines.forEach((line, li) => {
+        const bl = m.baseline(lang, leadStyle, y, lh);
+        if (li === 0) {
+          const box = { x: col.x0, y: bl - S.narr * 0.36 - boxH / 2, w: boxW, h: boxH };
+          items.push({ t: 'tag', alpha, box, stroke: INK.lead, fill: INK.leadFill });
+          pushText(items, lang, col.x0 + 1 + padX, m.baseline(lang, tagStyle, box.y + 1 + padT, S.tag), label, tagStyle, alpha);
+        }
+        for (const p of line) if (!p.atom.space) pushText(items, lang, col.x0 + p.x, bl, p.atom.text, p.atom.style, alpha);
+        y += lh;
+      });
+      y += 6;
+      plain.push(`${label}　${text}${countText}`);
+      tagItems();
+      return;
+    }
+
     let runs: Run[];
     let base: Style = narr;
     let indent = 0, hang = 0;
@@ -409,7 +446,10 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
   }
   for (const o of options) o.rect.y += shift;
   const room = col.y1 - col.y0 - FADE * 0.6;
-  return { items, options, chars, cursor, plain, window: { y0: col.y0, y1: col.y1, fade: FADE }, scrollMax: Math.max(0, content - room), height: Math.max(0, content) };
+  const mk: Style = { family: 'sans', size: lang === 'zh' ? 14.5 : 12.5, weight: 600, color: INK.cursor, ls: (lang === 'zh' ? 14.5 : 12.5) * 0.18, stroke: 0.2 };
+  const markText = ui.continue[lang];
+  const marker = { x: col.x1 - (m.width(lang, mk, markText) - mk.ls), y: col.y1 + 13, text: markText, font: font(lang, mk), color: mk.color, ls: mk.ls };
+  return { items, options, chars, cursor, plain, window: { y0: col.y0, y1: col.y1, fade: FADE }, scrollMax: Math.max(0, content - room), height: Math.max(0, content), marker };
 }
 
 function pushText(items: DrawItem[], lang: Lang, x: number, y: number, text: string, s: Style, alpha: number, option?: number) {
@@ -437,12 +477,24 @@ export function layoutEndPage(lang: Lang, m: Measurer, text: string, top: number
   return { items, options: [], chars: [], cursor: null, plain: [text], window: null, scrollMax: 0, height: 0 };
 }
 
-/** Page furniture on the right page: the morale label and the page number. */
-export function layoutRightPage(lang: Lang, m: Measurer, moraleLabel: string, heartsTop: number): PageLayout {
+/**
+ * Page furniture on the right page: the morale label beside the hearts, under it the leads
+ * found (「线索 1/3」), and the page number.
+ */
+export function layoutRightPage(lang: Lang, m: Measurer, moraleLabel: string, heartsTop: number,
+  leads?: { label: string; count: number; total: number }): PageLayout {
   const items: DrawItem[] = [];
   const label: Style = { family: 'sans', size: lang === 'zh' ? 13 : 11, weight: 600, color: '#2B2622', ls: (lang === 'zh' ? 13 : 11) * 0.35, stroke: 0 };
   const w = m.width(lang, label, moraleLabel);
   pushText(items, lang, 1180 - 670 - 12 - w, m.baseline(lang, label, heartsTop + 1, 16), moraleLabel, label, 0.72);
+  if (leads) {
+    // a second row under the hearts: the label in the morale label's column, the count under the first heart
+    const top = heartsTop + 30;
+    const wl = m.width(lang, label, leads.label);
+    pushText(items, lang, 1180 - 670 - 12 - wl, m.baseline(lang, label, top, 16), leads.label, label, 0.72);
+    const value: Style = { family: 'sans', size: lang === 'zh' ? 15 : 13, weight: 600, color: INK.lead, ls: 1.5, stroke: 0.2 };
+    pushText(items, lang, 1190 - 670 + 2, m.baseline(lang, value, top, 16), `${leads.count} / ${leads.total}`, value, 0.9);
+  }
   const pno: Style = { family: 'serif', size: 12, weight: 400, color: '#2B2622', ls: 12 * 0.2, stroke: 0 };
   const pw = m.width(lang, pno, '18');
   pushText(items, lang, PAGE.w - 48 - pw, m.baseline(lang, pno, PAGE.h - 22, 16), '18', pno, 0.45);

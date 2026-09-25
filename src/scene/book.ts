@@ -43,6 +43,8 @@ export interface PageUniforms {
   tInk: { value: Texture };
   /** Mip LOD bias for the ink: slightly negative keeps glyphs crisp without shimmer. */
   uInkBias: { value: number };
+  /** The ink's strength (the log fades as the chapter's last page turns over it). */
+  uInkAlpha: { value: number };
 }
 
 /** The top sheets lift this much at their tear, curling up over the last CURL px before it. */
@@ -61,19 +63,19 @@ function pageMaterial(paper: Texture, ink: Texture, tooth: Texture): { material:
     map: paper, roughness: 0.9, metalness: 0, alphaToCoverage: true, shadowSide: DoubleSide,
     vertexColors: true, normalMap: tooth, normalScale: new Vector2(0.45, 0.45),
   });
-  const uniforms: PageUniforms = { tInk: { value: ink }, uInkBias: { value: -0.4 } };
+  const uniforms: PageUniforms = { tInk: { value: ink }, uInkBias: { value: -0.4 }, uInkAlpha: { value: 1 } };
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <map_pars_fragment>', /* glsl */ `#include <map_pars_fragment>
 uniform sampler2D tInk;
-uniform float uInkBias;`)
+uniform float uInkBias, uInkAlpha;`)
       .replace('#include <map_fragment>', /* glsl */ `#include <map_fragment>
 {
   // The ink is premultiplied and stored as sRGB; the sampler hands back linear values.
   // Re-encoding recovers the stored premultiplied sRGB exactly, and blending there over
   // the paper (also in sRGB) is how a browser blends text: glyph weight matches the DOM.
-  vec4 ink = texture( tInk, vMapUv, uInkBias );
+  vec4 ink = texture( tInk, vMapUv, uInkBias ) * uInkAlpha; // premultiplied: scale all four
   vec3 inkS = sRGBTransferOETF( vec4( ink.rgb, 1.0 ) ).rgb;
   vec3 paperS = sRGBTransferOETF( vec4( diffuseColor.rgb, 1.0 ) ).rgb;
   diffuseColor.rgb = sRGBTransferEOTF( vec4( paperS * ( 1.0 - ink.a ) + inkS, 1.0 ) ).rgb;

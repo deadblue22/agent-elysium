@@ -145,7 +145,6 @@ export class Runner {
     const node = this.nodeById(id);
     this.node = id;
     for (const cue of node.stage ?? []) beats.push({ kind: 'stage', cue });
-    this.apply(node.effects, beats);
 
     if (!silent) {
       const lines = this.visited.has(id) && node.revisit ? node.revisit : node.lines;
@@ -158,6 +157,8 @@ export class Runner {
         this.say({ speaker: p.skill, sense: p.sense, text: p.text, result: { dc: p.dc, success: true } }, beats);
       });
     }
+    // effects land after the node's words: the new lead or the morale loss follows what caused it
+    this.apply(node.effects, beats);
     this.visited.add(id);
 
     if (node.end) {
@@ -192,7 +193,11 @@ export class Runner {
           if (this.flags.has(e.key)) continue;
           this.flags.add(e.key);
           this.everSet.add(e.key);
-          beats.push({ kind: 'flag', key: e.key, evidence: this.story.evidence.includes(e.key) });
+          if (this.story.evidence.includes(e.key)) {
+            const count = evidenceCount(this.story, this.flags), total = this.story.evidence.length;
+            beats.push({ kind: 'flag', key: e.key, evidence: true, count, total });
+            this.entries.push({ kind: 'notice', flag: e.key, count, total });
+          } else beats.push({ kind: 'flag', key: e.key, evidence: false });
         } else this.flags.delete(e.key);
       } else if (e.type === 'morale') {
         const before = this.morale;

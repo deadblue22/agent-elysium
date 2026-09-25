@@ -202,8 +202,9 @@
       "scale": 1.6,
       "meta": {
         "fold": 10,
-        "rowFurniture": 55,
-        "rowDesk": 105,
+        "rowFurniture": 34,
+        "rowDesk": 56,
+        "rowFrontLeft": 64,
         "rowFront": 145
       }
     },
@@ -345,6 +346,24 @@
         "feetX1": 72
       }
     },
+    "lead-card": {
+      "file": "textures/lead-card.png",
+      "px": [
+        952,
+        436
+      ],
+      "viewBox": [
+        -8,
+        -20,
+        476,
+        218
+      ],
+      "world": [
+        4.76,
+        2.18
+      ],
+      "scale": 2
+    },
     "marek": {
       "file": "textures/marek.png",
       "px": [
@@ -388,7 +407,7 @@
         "pageH": 600,
         "tearMin": 183,
         "tearMax": 290,
-        "columnY0": 196,
+        "columnY0": 120,
         "puppetShift": 40,
         "heartsY": 282
       }
@@ -412,9 +431,9 @@
       "scale": 2,
       "meta": {
         "pageH": 600,
-        "tearMin": 150,
-        "tearMax": 184,
-        "columnY0": 196
+        "tearMin": 74,
+        "tearMax": 108,
+        "columnY0": 120
       }
     },
     "page-right": {
@@ -438,7 +457,7 @@
         "pageH": 600,
         "tearMin": 183,
         "tearMax": 290,
-        "columnY0": 196,
+        "columnY0": 120,
         "puppetShift": 40,
         "heartsY": 282
       }
@@ -482,24 +501,6 @@
         0.16
       ],
       "scale": 2
-    },
-    "slip": {
-      "file": "textures/slip.png",
-      "px": [
-        564,
-        114
-      ],
-      "viewBox": [
-        -4,
-        -4,
-        188,
-        38
-      ],
-      "world": [
-        1.88,
-        0.38
-      ],
-      "scale": 3
     },
     "stairs": {
       "file": "textures/stairs.png",

@@ -39,8 +39,12 @@ export type Beat =
   | { kind: 'roll'; roll: RollResult }
   /** Morale changed. */
   | { kind: 'morale'; value: number; delta: number; max: number }
-  /** A flag was set for the first time; `evidence` when it counts toward the reconstruction. */
-  | { kind: 'flag'; key: string; evidence: boolean }
+  /**
+   * A flag was set for the first time; `evidence` when it counts toward the reconstruction.
+   * Evidence also carries how many of the story's evidence flags are now set, and a
+   * matching `notice` entry is added to the log.
+   */
+  | { kind: 'flag'; key: string; evidence: boolean; count?: number; total?: number }
   /** A stage cue (docs/design.md §6.5): night, snow-stop, snow-start, raise-stairs, … */
   | { kind: 'stage'; cue: string }
   /** The options now available, replacing any shown before. */
