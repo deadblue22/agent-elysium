@@ -27,16 +27,19 @@ mkdirSync(outDir, { recursive: true });
 // base page beneath carries the study's floor, on which the pop-up stands (as in the
 // reference pop-up book). Tear lines are in book px (y from the far edge).
 
+/** Page depth (the M0 board's). The camera looks down steeply, so the pages need no extra depth. */
+const BOOK_H = 600;
+/** The pop-up's fold line on the base page: the wall stands here, at the far edge. */
+const FOLD = 10;
 /**
- * Page depth. The M0 board's pages were 600 deep; with the lower, more frontal camera the
- * pages need to be deeper (near-portrait, like the reference book's) to stay large on screen.
+ * The rows of the pop-up, from the wall's fold toward the reader, spread across the floor
+ * so the floor shows between them (and their shadows fall on it): furniture one step
+ * forward, the desk mid-floor, the foreground pieces near the tear at the sides.
  */
-const BOOK_H = 900;
-/** The pop-up's fold line on the base page: the wall stands here, the strip behind it is never seen. */
-const FOLD = 192;
-/** Mean line of each tear: left ~38% of the page; the right tongue dips ~100 px below it. */
-const LEFT_TEAR = 342;
-const RIGHT_TEAR = 362;
+const ROWS = { furniture: 55, desk: 105, front: 145 };
+/** Mean line of each tear: left ~28% of the page; the right tongue dips ~100 px below it. */
+const LEFT_TEAR = 166;
+const RIGHT_TEAR = 196;
 const TAU = Math.PI * 2;
 const TEAR = {
   // left: gently wavy, rising a little toward the gutter
@@ -53,7 +56,7 @@ const DISP = { left: 7, right: 8.5 };
 /** Width of the exposed-core fringe between the torn edge and the printed paper. */
 const FRINGE = 7;
 /** The puppets (and their printed stand tabs and rug) stand this much nearer than on the M0 board, below the tongue. */
-const PUPPET_SHIFT = 282;
+const PUPPET_SHIFT = 40;
 /** Depth of the floor sheet from the fold: past the deepest point of the tongue. */
 const FLOOR_H = 300;
 
@@ -138,8 +141,8 @@ const PIECES = [
   {
     name: 'floor', src: '#floorSvg', viewBox: [-6, -4, 1352, FLOOR_H + 8],
     note: `The study floor on the base page, under the torn top sheets: boards, rug, loose papers, a faint gutter crease. y=0 is the pop-up's fold (book y=${FOLD}); the sheet reaches y=${FLOOR_H}, past the deepest point of the tongue. The strip along each tear line is the torn sheet's soft contact shadow (too thin for the shadow map at 0.02 units).`,
-    attrs: { 'data-fold': FOLD, 'data-bake-scale': 1.6 },
-    data: { H: FLOOR_H, tears: [tears.left.pts, tears.right.pts].map((pts) => pts.map(([x, y]) => [x, f1(y - FOLD)])) },
+    attrs: { 'data-fold': FOLD, 'data-row-furniture': ROWS.furniture, 'data-row-desk': ROWS.desk, 'data-row-front': ROWS.front, 'data-bake-scale': 1.6 },
+    data: { H: FLOOR_H, rows: ROWS, tears: [tears.left.pts, tears.right.pts].map((pts) => pts.map(([x, y]) => [x, f1(y - FOLD)])) },
     edit: (svg, d) => {
       // the legacy board's floor script, re-run for the deeper sheet, printed in a faded,
       // dusty paper-toned grey-brown (a print of boards, not dark wood); the rug keeps its colour
@@ -157,8 +160,8 @@ const PIECES = [
         for (let j = 10 + R() * 100; j < H; j += 150 + R() * 120) el('rect', { x, y: j.toFixed(1), width: 46, height: 1.4, fill: '#554a3f', opacity: 0.7 }, base);
         for (let k = 0; k < 11; k++) el('rect', { x: (x + 6 + R() * 34).toFixed(1), y: (R() * (H - 20)).toFixed(1), width: 0.8, height: (8 + R() * 20).toFixed(1), fill: '#a69a8a', opacity: 0.35 }, base);
       }
-      // faded rug under the desk
-      const rug = el('g', {}, base);
+      // faded rug under the desk (the M0 board had the desk at 62; it stands at rows.desk now)
+      const rug = el('g', { transform: `translate(0 ${d.rows.desk - 62})` }, base);
       el('rect', { x: 388, y: 18, width: 436, height: 88, fill: '#5a3226', opacity: 0.9 }, rug);
       el('rect', { x: 398, y: 24, width: 416, height: 76, fill: 'none', stroke: '#a57a4c', opacity: 0.4, 'stroke-width': 2 }, rug);
       el('rect', { x: 414, y: 32, width: 384, height: 60, fill: '#2b3148', opacity: 0.8 }, rug);
@@ -166,8 +169,9 @@ const PIECES = [
       el('ellipse', { cx: 606, cy: 62, rx: 60, ry: 16, fill: 'none', stroke: '#a57a4c', opacity: 0.4, 'stroke-width': 1.5 }, rug);
       for (let fx = 392; fx < 822; fx += 5) el('rect', { x: fx, y: 106, width: 1.4, height: 5, fill: '#b89b70', opacity: 0.5 }, rug);
       // loose sheets: the board's five by the furniture, more across the floor that shows through the tears
-      [[318, 86, -14], [618, 90, 22], [842, 100, -8], [998, 64, 12], [1040, 104, -24],
-        [196, 140, 9], [462, 150, -18], [760, 172, 14], [932, 205, -6], [1110, 246, 19], [1236, 182, -11]].forEach((p) => {
+      // loose sheets scattered between the rows and on the tongue
+      [[330, 40, -14], [612, 38, 22], [1000, 34, 12], [240, 88, 9], [868, 84, -8], [1040, 92, -24],
+        [470, 140, -18], [770, 150, 14], [930, 170, -6], [1110, 236, 19], [1210, 200, -11], [560, 190, 6]].forEach((p) => {
         const g = el('g', { transform: `translate(${p[0]} ${p[1]}) rotate(${p[2]})` }, svg);
         el('rect', { x: -15, y: -11, width: 30, height: 22, fill: '#d9d0bb' }, el('g', { filter: 'url(#cutS)' }, g));
         for (let l = 0; l < 4; l++) el('rect', { x: -11, y: -7 + l * 4.5, width: (17 + R() * 5).toFixed(1), height: 0.8, fill: '#5d5445', opacity: 0.6 }, g);

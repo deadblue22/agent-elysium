@@ -18,7 +18,7 @@ export function mulberry32(a: number) {
 }
 
 /** camera: in its resting pose. avoid: frame-space rect kept clear at t = 0. */
-export function createSnow(camera: PerspectiveCamera, lens: { focal: number; principal: { x: number; y: number } }, avoid: Rect | null, count = 230) {
+export function createSnow(camera: PerspectiveCamera, lens: { focal: number; principal: { x: number; y: number }; distance: number }, avoid: Rect | null, count = 230) {
   camera.updateMatrixWorld();
   const eye = camera.getWorldPosition(new Vector3());
   const q = camera.getWorldQuaternion(new Quaternion());
@@ -28,10 +28,11 @@ export function createSnow(camera: PerspectiveCamera, lens: { focal: number; pri
   for (let i = 0; i < count; i++) {
     const r = R(), kind = r < 0.05 ? 2 : r < 0.32 ? 1 : 0;
     let r0: number, a: number, vy: number, depth: number;
-    // view depths in world units; the book starts about 17 units from the eye
-    if (kind === 0) { r0 = 0.7 + R() * 1.5; a = 0.35 + R() * 0.45; vy = 10 + R() * 16; depth = 5 + R() * 11; }
-    else if (kind === 1) { r0 = 2 + R() * 1.8; a = 0.35 + R() * 0.3; vy = 18 + R() * 14; depth = 4 + R() * 8; }
-    else { r0 = 7 + R() * 9; a = 0.07 + R() * 0.08; vy = 26 + R() * 12; depth = 2.5 + R() * 2.5; }
+    // view depths as fractions of the distance to the book, so every flake is in front of it
+    const D = lens.distance;
+    if (kind === 0) { r0 = 0.7 + R() * 1.5; a = 0.35 + R() * 0.45; vy = 10 + R() * 16; depth = D * (0.2 + R() * 0.55); }
+    else if (kind === 1) { r0 = 2 + R() * 1.8; a = 0.35 + R() * 0.3; vy = 18 + R() * 14; depth = D * (0.15 + R() * 0.4); }
+    else { r0 = 7 + R() * 9; a = 0.07 + R() * 0.08; vy = 26 + R() * 12; depth = D * (0.08 + R() * 0.1); }
     let x = R() * 1600, y = R() * 900;
     while (inside(x, y, r0 + 4)) { x = R() * 1600; y = R() * 900; }
     seed.push(x, y, depth, kind);

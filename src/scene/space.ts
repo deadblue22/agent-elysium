@@ -24,9 +24,13 @@ export const COVER_TOP = 0.05;
  */
 export const BASE_Y = 0.2;
 export const SHEET_Y = BASE_Y + 0.02;
-/** Pop-up planes and puppets rise at this angle from the page (M0: 70; steeper for the lower camera). */
-export const HINGE_DEG = 74;
-export const LEAN = (90 - HINGE_DEG) * DEG;
+/**
+ * Default lean of a standing piece back from the vertical, degrees. Each row of the pop-up
+ * sets its own (the wall leans most, rows nearer the reader stand more upright).
+ */
+export const LEAN_DEG = 15;
+/** Unit normal of a piece leaning back by `lean` degrees (it faces the reader and up). */
+export const leanNormal = (lean = LEAN_DEG) => ({ x: 0, y: Math.sin(lean * DEG), z: Math.cos(lean * DEG) });
 
 export const wx = (bx: number) => (bx - GUTTER) / UNIT;
 export const wz = (by: number) => (by - BOOK_H / 2) / UNIT;
@@ -60,11 +64,13 @@ export interface StandOptions {
   scale?: number;
   /** World height of the fold line (defaults to the base page). */
   y?: number;
+  /** Lean back from the vertical, degrees (defaults to LEAN_DEG). */
+  lean?: number;
 }
 
 /**
- * A paper plane hinged on the page: a group at the fold line, leaning back so it stands at
- * HINGE_DEG from the page; the textured plane inside is placed so its base sits on the fold.
+ * A paper plane hinged on the page: a group at the fold line, leaning back by its `lean`;
+ * the textured plane inside is placed so its base sits on the fold.
  */
 export function standing(piece: ArtPiece, material: Material, o: StandOptions): { group: Group; mesh: Mesh } {
   const [vx, vy, vw, vh] = piece.viewBox;
@@ -75,19 +81,19 @@ export function standing(piece: ArtPiece, material: Material, o: StandOptions): 
   mesh.receiveShadow = true;
   const group = new Group();
   group.position.set(0, o.y ?? BASE_Y, wz(o.hinge));
-  group.rotation.x = -LEAN;
+  group.rotation.x = -(o.lean ?? LEAN_DEG) * DEG;
   group.add(mesh);
   return { group, mesh };
 }
 
 /** World position of an SVG point on a standing piece (e.g. the candle flame on the desk). */
 export function pointOnStanding(o: StandOptions & { svgX: number; svgY: number }, y0: number) {
-  const s = o.scale ?? 1;
+  const s = o.scale ?? 1, lean = (o.lean ?? LEAN_DEG) * DEG;
   const up = ((o.baseY - o.svgY) * s) / UNIT;
   return {
     x: wx((o.x0 ?? 0) + o.svgX * s),
-    y: y0 + up * Math.cos(LEAN),
-    z: wz(o.hinge) - up * Math.sin(LEAN),
+    y: y0 + up * Math.cos(lean),
+    z: wz(o.hinge) - up * Math.sin(lean),
   };
 }
 

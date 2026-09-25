@@ -5,7 +5,10 @@ import {
   SpriteMaterial, Vector3,
 } from 'three';
 import type { Art } from '../assets';
-import { DEG, LEAN, SHEET_Y, flatSheet, paperMaterial, pointOnStanding, standing, wx, wz, type StandOptions } from './space';
+import { DEG, SHEET_Y, flatSheet, leanNormal, paperMaterial, pointOnStanding, standing, wx, wz, type StandOptions } from './space';
+
+/** The puppets lean back a little so the high camera does not flatten them into slivers. */
+const PUPPET_LEAN = 15;
 
 /**
  * Placement from the M0 board (0.95 scale, soles on the fold line, about 1.3x the desk's
@@ -13,8 +16,8 @@ import { DEG, LEAN, SHEET_Y, flatSheet, paperMaterial, pointOnStanding, standing
  * cream below the tongue (their printed stand tabs and rug moved with them in the art).
  */
 const PUPPETS: Record<'villon' | 'kask', StandOptions> = {
-  villon: { hinge: 318, baseY: 196.5, x0: 817, scale: 0.95 },
-  kask: { hinge: 304, baseY: 186.5, x0: 1015, scale: 0.95 },
+  villon: { hinge: 318, baseY: 196.5, x0: 817, scale: 0.95, lean: PUPPET_LEAN },
+  kask: { hinge: 304, baseY: 186.5, x0: 1015, scale: 0.95, lean: PUPPET_LEAN },
 };
 
 /** Faces per die in BoxGeometry order: +x (right), -x (left), +y (top), -y (bottom), +z (near), -z (far). */
@@ -48,7 +51,8 @@ export function createStage(art: Art) {
   const v = puppets.villon;
   const e = pointOnStanding({ ...v, svgX: 95.8, svgY: 49.6 }, SHEET_Y - 0.002);
   const ember = new Sprite(new SpriteMaterial({ map: glowTexture('255,170,90'), color: new Color(1.6, 1.3, 1.1), blending: AdditiveBlending, depthWrite: false, transparent: true }));
-  ember.position.set(e.x, e.y, e.z).addScaledVector(new Vector3(0, Math.sin(LEAN), Math.cos(LEAN)), 0.01);
+  const n = leanNormal(PUPPET_LEAN);
+  ember.position.set(e.x, e.y, e.z).addScaledVector(new Vector3(n.x, n.y, n.z), 0.01);
   ember.scale.setScalar(0.2);
   group.add(ember);
 

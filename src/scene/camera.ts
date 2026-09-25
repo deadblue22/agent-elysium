@@ -1,6 +1,6 @@
-// The camera: a lens-shifted pinhole looking at the book from the front and above, like
-// the reference pop-up book (lower than the M0 board's near top-down 68 degrees, so the
-// wall stands tall and the pages recede). The optical axis passes through the middle of
+// The camera: a lens-shifted pinhole looking steeply down at the book, like the reference
+// pop-up book, with a long lens so the text on the page stays close to face-on and even in
+// size from the top of the log to the bottom. The optical axis passes through the middle of
 // the book's near edge, which sits at frame row `nearEdgeY`; the view offset shows the
 // 1600 x 900 frame above it. Parallax orbits a rig around the middle of the book.
 import { Group, PerspectiveCamera, Vector3 } from 'three';
@@ -8,10 +8,10 @@ import { BASE_Y, BOOK_H, DEG, wz } from './space';
 
 export const FRAME = { w: 1600, h: 900 };
 export const VIEW = {
-  elevation: 44,      // view direction below the horizon, degrees (M0: 68)
-  focal: 2200,        // focal length in frame px (M0: 3200)
-  nearEdgeY: 866,     // frame row of the book's near edge; the stack and cover show below it
-  nearEdgeWidth: 1540, // frame px spanned by the 13.76-unit cover at the near edge
+  elevation: 68,      // view direction below the horizon, degrees
+  focal: 2400,        // focal length in frame px
+  nearEdgeY: 810,     // frame row of the book's near edge; the table shows below it
+  nearEdgeWidth: 1280, // frame px spanned by the 13.76-unit cover at the near edge
   yaw: 2.4,           // parallax range, degrees
   pitch: 1.2,
 };
@@ -41,8 +41,8 @@ export function createCameraRig() {
   let tx = 0, ty = 0, cx = 0, cy = 0;
   return {
     camera, rig, eye,
-    /** Frame-space pinhole of the resting camera (for the snow). */
-    lens: { focal: f, principal: { x: FRAME.w / 2, y: py } },
+    /** Frame-space pinhole of the resting camera and its distance to the near edge (for the snow). */
+    lens: { focal: f, principal: { x: FRAME.w / 2, y: py }, distance },
     /** nx, ny in -1..1 across the frame. */
     setPointer(nx: number, ny: number) { tx = nx; ty = ny; },
     /** Eases toward the pointer; returns true while still moving. */

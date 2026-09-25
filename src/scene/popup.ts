@@ -1,49 +1,63 @@
-// The pop-up study standing on the base page: five depths of cut paper, each a plane
-// hinged on its own fold line (docs/design.md §6.1). Fold lines are the M0 board's, offset
-// by the floor sheet's `fold` (tools/extract-art.mjs FOLD), where the wall stands.
+// The pop-up study standing on the base page: five rows of cut paper, each a plane hinged on
+// its own fold line (docs/design.md §6.1), spread across the floor so the floor and the rows'
+// shadows show between them. The row depths come with the floor sheet (tools/extract-art.mjs
+// FOLD and ROWS); the wall leans back most, rows nearer the reader stand more upright.
 import { Group, MeshBasicMaterial, Vector3 } from 'three';
 import type { Art } from '../assets';
-import { BASE_Y, LEAN, paperMaterial, pointOnStanding, standing, type StandOptions } from './space';
+import { BASE_Y, leanNormal, paperMaterial, pointOnStanding, standing, type StandOptions } from './space';
 
-/** Fold line (by, relative to the wall's fold) and the SVG y resting on it, per piece; back to front. */
-const LAYERS: Record<string, StandOptions> = {
-  far: { hinge: -22, baseY: 400 },         // outside the window: sky, roofs, fire escape (self-lit)
-  wall: { hinge: 0, baseY: 440 },          // back wall, scalloped top edge, window hole
-  furniture: { hinge: 26, baseY: 430 },    // shelf, casements, fireplace, clock, radiator
-  desk: { hinge: 62, baseY: 250 },         // desk, the victim, the candle
-  'front-chair': { hinge: 100, baseY: 330 },
-  'front-right': { hinge: 100, baseY: 330 },
+type Row = 'wall' | 'furniture' | 'desk' | 'front';
+/**
+ * Per piece: its row, fold offset within the row, the SVG y on the fold, its lean (degrees),
+ * and optionally a scale about its own centre (cx, board px).
+ */
+const PIECES: Record<string, { row: Row; offset: number; baseY: number; lean: number; scale?: number; cx?: number }> = {
+  far: { row: 'wall', offset: -22, baseY: 400, lean: 18 },      // outside the window: sky, roofs, fire escape (self-lit)
+  wall: { row: 'wall', offset: 0, baseY: 440, lean: 18 },       // back wall, scalloped top edge, window hole
+  furniture: { row: 'furniture', offset: 0, baseY: 430, lean: 15 }, // shelf, casements, fireplace, clock, radiator
+  desk: { row: 'desk', offset: 0, baseY: 250, lean: 12 },       // desk, the victim, the candle
+  // the armchair back, 1.25x the M0 size (a chair back about 1.3x the desk's height), framing the left
+  'front-chair': { row: 'front', offset: 0, baseY: 330, lean: 10, scale: 1.25, cx: 180 },
+  'front-right': { row: 'front', offset: 0, baseY: 330, lean: 10 },
 };
 
 /** The layers stand on the floor sheet of the base page. */
 export const LAYER_Y = BASE_Y + 0.003;
 
-const NORMAL = new Vector3(0, Math.sin(LEAN), Math.cos(LEAN)); // normal of every standing plane
-
-/** The pieces' placements with the pop-up standing on its fold. */
-export function layers(fold: number): Record<string, StandOptions> {
-  return Object.fromEntries(Object.entries(LAYERS).map(([k, o]) => [k, { ...o, hinge: o.hinge + fold }]));
+/** Placements of every piece, from the floor sheet's metadata (fold and row depths, book px). */
+export function layers(floor: Record<string, number>): Record<string, StandOptions> {
+  const rowAt: Record<Row, number> = { wall: 0, furniture: floor.rowFurniture, desk: floor.rowDesk, front: floor.rowFront };
+  return Object.fromEntries(Object.entries(PIECES).map(([k, p]) => {
+    const o: StandOptions = { hinge: floor.fold + rowAt[p.row] + p.offset, baseY: p.baseY, lean: p.lean };
+    if (p.scale && p.cx !== undefined) Object.assign(o, { scale: p.scale, x0: p.cx - (p.cx - 0) * p.scale });
+    return [k, o];
+  }));
 }
 
+const along = (v: { x: number; y: number; z: number }, lean: number | undefined, d: number) => {
+  const n = leanNormal(lean);
+  return new Vector3(v.x, v.y, v.z).add(new Vector3(n.x, n.y, n.z).multiplyScalar(d));
+};
+
 /** Light positions in the room: the candle (its flame on the desk layer at SVG 770, 48), the window. */
-export function roomLights(fold: number) {
-  const L = layers(fold);
+export function roomLights(floor: Record<string, number>) {
+  const L = layers(floor);
   const flame = pointOnStanding({ ...L.desk, svgX: 770, svgY: 48 }, LAYER_Y);
   const win = pointOnStanding({ ...L.wall, svgX: 485, svgY: 215 }, LAYER_Y);
   return {
     /** the candle's light, stood a little into the room so it reaches the desk's front */
-    candleLight: new Vector3(flame.x, flame.y, flame.z).addScaledVector(NORMAL, 0.3),
+    candleLight: along(flame, L.desk.lean, 0.3),
     /** the flame sprite, on the paper over the drawn wick */
-    candleFlame: new Vector3(flame.x, flame.y, flame.z).addScaledVector(NORMAL, 0.02),
+    candleFlame: along(flame, L.desk.lean, 0.02),
     /** just inside the wall's window hole, between the wall and the furniture */
-    windowGlow: new Vector3(win.x, win.y, win.z).addScaledVector(NORMAL, 0.24),
+    windowGlow: along(win, L.wall.lean, 0.24),
   };
 }
 
-export function createPopup(art: Art, fold: number) {
+export function createPopup(art: Art) {
   const group = new Group();
   group.name = 'popup';
-  for (const [name, o] of Object.entries(layers(fold))) {
+  for (const [name, o] of Object.entries(layers(art.floor.meta))) {
     const piece = art[name];
     const material = name === 'far'
       ? new MeshBasicMaterial({ map: piece.texture, alphaToCoverage: true, color: '#d8dde0' })

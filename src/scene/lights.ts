@@ -10,12 +10,13 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
   const group = new Group();
   group.name = 'lights';
 
-  const hemi = new HemisphereLight('#8b909b', '#4d3626', 1.05);
+  const hemi = new HemisphereLight('#8b909b', '#4d3626', 0.9);
   group.add(hemi);
 
-  // cool daylight from the window side of the room: upper left, a little in front
-  const key = new DirectionalLight('#dae2ea', 1.9);
-  key.position.set(-8.5, 14, 5);
+  // cool light from the window side of the room: from the left, fairly low and a little in
+  // front, so every row of the pop-up throws its shadow sideways across the floor beside it
+  const key = new DirectionalLight('#dae2ea', 2.9);
+  key.position.set(-11, 11, 4.5);
   key.target.position.set(0.3, 0, -0.8);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -24,7 +25,7 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.012;
   key.shadow.radius = 3;
-  key.shadow.intensity = 0.88; // paper lets a little light through
+  key.shadow.intensity = 0.92; // paper lets a little light through
   group.add(key, key.target);
 
   // the candle: the only warm light in the room
@@ -45,10 +46,21 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
   windowGlow.position.copy(at.windowGlow);
   group.add(windowGlow);
 
-  // a reading lamp outside the frame: the warm pool on the table and the pages
-  const lamp = new SpotLight('#ffdcb4', 330, 0, 0.55, 1, 2);
-  lamp.position.set(0.6, 15.5, 8.5);
-  lamp.target.position.set(-0.3, 0, 1.4);
+  // a reading lamp outside the frame, in front of the book: the warm pool on the table and the
+  // near half of the pages (the text). Aimed below the pop-up, so its fill does not wash out
+  // the key's shadows between the rows; it sits near the eye's line, so its own shadows
+  // mostly hide behind their casters (they still ground the puppets and dice)
+  const lamp = new SpotLight('#ffdcb4', 330, 0, 0.5, 0.9, 2);
+  lamp.position.set(0.6, 15, 8);
+  lamp.target.position.set(-0.3, 0, 1.9);
+  lamp.castShadow = true;
+  lamp.shadow.mapSize.set(2048, 2048);
+  lamp.shadow.camera.near = 8;
+  lamp.shadow.camera.far = 26;
+  lamp.shadow.bias = -0.0006;
+  lamp.shadow.normalBias = 0.02;
+  lamp.shadow.radius = 5;
+  lamp.shadow.intensity = 0.8;
   group.add(lamp, lamp.target);
 
   // the flame itself and its halo (emissive sprites, drawn over the paper)

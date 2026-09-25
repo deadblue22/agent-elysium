@@ -73,7 +73,10 @@
       ],
       "scale": 1.6,
       "meta": {
-        "fold": 192
+        "fold": 10,
+        "rowFurniture": 55,
+        "rowDesk": 105,
+        "rowFront": 145
       }
     },
     "front-chair": {
@@ -170,50 +173,50 @@
       "file": "textures/page-left.png",
       "px": [
         1340,
-        1800
+        1200
       ],
       "viewBox": [
         0,
         0,
         670,
-        900
+        600
       ],
       "world": [
         6.7,
-        9
+        6
       ],
       "scale": 2,
       "meta": {
-        "pageH": 900,
-        "tearMin": 326,
-        "tearMax": 360,
-        "columnY0": 372
+        "pageH": 600,
+        "tearMin": 150,
+        "tearMax": 184,
+        "columnY0": 196
       }
     },
     "page-right": {
       "file": "textures/page-right.png",
       "px": [
         1340,
-        1800
+        1200
       ],
       "viewBox": [
         670,
         0,
         670,
-        900
+        600
       ],
       "world": [
         6.7,
-        9
+        6
       ],
       "scale": 2,
       "meta": {
-        "pageH": 900,
-        "tearMin": 349,
-        "tearMax": 456,
-        "columnY0": 372,
-        "puppetShift": 282,
-        "heartsY": 448
+        "pageH": 600,
+        "tearMin": 183,
+        "tearMax": 290,
+        "columnY0": 196,
+        "puppetShift": 40,
+        "heartsY": 282
       }
     },
     "stack": {

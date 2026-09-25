@@ -5,8 +5,8 @@
 import type { Lang, LogEntry } from '../content/schema';
 import { ATTRIBUTE_INK, DIFFICULTY, RESULT, SKILLS, SPEAKERS } from '../content/skills';
 
-/** One page in book px (the legacy board's CSS px); the page is deeper than M0's 600 now. */
-export const PAGE = { w: 670, h: 900 };
+/** One page in book px (the legacy board's CSS px). Must match tools/extract-art.mjs BOOK_H. */
+export const PAGE = { w: 670, h: 600 };
 
 export interface Rect { x: number; y: number; w: number; h: number }
 export interface Column { x0: number; x1: number; y0: number; y1: number }
@@ -14,7 +14,7 @@ export interface Column { x0: number; x1: number; y0: number; y1: number }
 /** The text window on the left top sheet: from just under its tear down to the near edge. */
 export const textColumn = (y0: number): Column => ({ x0: 34, x1: 620, y0, y1: PAGE.h - 20 });
 /** Old lines fade out over this many page px as they rise into the tear. */
-export const FADE = 60;
+export const FADE = 44;
 
 export type DrawItem =
   | { t: 'text'; x: number; y: number; text: string; font: string; color: string; alpha: number; ls: number; stroke: number; option?: number; box: Rect }
@@ -68,15 +68,15 @@ const STACKS: Record<Lang, Record<Family, string>> = {
 
 interface Metrics { narr: number; mono: number; label: number; tag: number; roll: number; res: number; lineHeight: number }
 /**
- * Sized for the screen, not the canvas. Under the camera the text window is foreshortened
- * to 0.57 (just below the fade) .. 0.77 (bottom) screen px per page px vertically, about
- * 1.0-1.1 horizontally; CJK glyphs have about 0.9 em of ink. So 31.5 page px gives
- * narration glyphs of 16-22 px on screen and a 44 page px line pitch of 25-34 px.
- * The M0 board's proportions between the styles are kept.
+ * Sized for the screen, not the canvas. Under the camera the text window shows at about
+ * 0.74 (top) .. 0.82 (bottom) screen px per page px vertically and 0.86-0.9 horizontally;
+ * CJK glyphs have about 0.9 em of ink. So 24.5 page px gives narration glyphs of about
+ * 16.3-18 px on screen and a 34.4 page px line pitch of 25-28 px (npm run shot prints the
+ * measured values). The M0 board's proportions between the styles are kept.
  */
 const SIZES: Record<Lang, Metrics> = {
-  zh: { narr: 31.5, mono: 28, label: 22.5, tag: 22.5, roll: 26.5, res: 24, lineHeight: 44 },
-  en: { narr: 32, mono: 24.5, label: 18, tag: 18, roll: 23.5, res: 19, lineHeight: 41.5 },
+  zh: { narr: 24.5, mono: 22.3, label: 17.8, tag: 17.8, roll: 21.2, res: 19, lineHeight: 34.4 },
+  en: { narr: 25, mono: 19.3, label: 14.4, tag: 14.4, roll: 18.2, res: 15.1, lineHeight: 32.8 },
 };
 
 const font = (lang: Lang, s: Style) => `${s.weight} ${s.size}px ${STACKS[lang][s.family]}`;
