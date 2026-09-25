@@ -1,7 +1,8 @@
 // Bakes every paper piece in assets/art/*.svg into public/textures/<name>.png
 // (transparent background, 2x unless the SVG root says data-bake-scale="n"),
-// and writes public/textures/manifest.json with each texture's pixel size, viewBox
-// and world size (1 world unit = 100 SVG units, the legacy board's CSS pixels).
+// and writes public/textures/manifest.json with each texture's pixel size, viewBox,
+// world size (1 world unit = 100 SVG units, the legacy board's CSS pixels) and any
+// data-* attributes of the SVG root as `meta`.
 //
 // The paper filters (torn edges, fibre, burnt rims) run here, once. The legacy `cutS`
 // filter also paints a small drop shadow under each piece: inside a piece that is the
@@ -72,12 +73,18 @@ for (const f of files) {
   }
   writeFileSync(join(outDir, `${name}.png`), png);
   const px = [png.readUInt32BE(16), png.readUInt32BE(20)];
+  // other data-* attributes on the root travel to the app (e.g. where a torn sheet's tear runs)
+  const root = svg.match(/<svg\b[^>]*>/)[0];
+  const meta = Object.fromEntries([...root.matchAll(/data-([a-z0-9-]+)="([^"]*)"/g)]
+    .filter(([, k]) => k !== 'bake-scale')
+    .map(([, k, v]) => [k.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase()), Number.isNaN(Number(v)) ? v : Number(v)]));
   manifest.textures[name] = {
     file: `textures/${name}.png`,
     px,
     viewBox: vb,
     world: [+(vb[2] / UNIT).toFixed(4), +(vb[3] / UNIT).toFixed(4)],
     scale,
+    ...(Object.keys(meta).length ? { meta } : {}),
   };
   console.log(`${name.padEnd(12)} ${String(px[0]).padStart(5)}x${String(px[1]).padEnd(5)} @${scale}x  ${(png.length / 1024).toFixed(0).padStart(5)} KB  ${Date.now() - t0} ms`);
 }

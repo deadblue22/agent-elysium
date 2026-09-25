@@ -6,10 +6,12 @@ import type { Lang, LogEntry } from '../content/schema';
 import { ATTRIBUTE_INK, DIFFICULTY, RESULT, SKILLS, SPEAKERS } from '../content/skills';
 
 export const PAGE = { w: 670, h: 600 };
-/** The text column on the left page (below the study's floor sheet). */
-export const COLUMN = { x0: 34, x1: 609, y0: 128, y1: 594 };
 
 export interface Rect { x: number; y: number; w: number; h: number }
+export interface Column { x0: number; x1: number; y0: number; y1: number }
+
+/** The text column on the left top sheet: from just under its tear down to the near edge. */
+export const textColumn = (y0: number): Column => ({ x0: 34, x1: 616, y0, y1: 590 });
 
 export type DrawItem =
   | { t: 'text'; x: number; y: number; text: string; font: string; color: string; alpha: number; ls: number; stroke: number; option?: number; box: Rect }
@@ -57,9 +59,14 @@ const STACKS: Record<Lang, Record<Family, string>> = {
 };
 
 interface Metrics { narr: number; mono: number; label: number; tag: number; roll: number; res: number; lineHeight: number }
+/**
+ * The M0 board's proportions (serif 22 / mono 20 / labels 16, line height 1.65) scaled
+ * down so the whole study.clock log fits on the torn sheet under the tear, about the
+ * size of the reference book's text relative to its page.
+ */
 const SIZES: Record<Lang, Metrics> = {
-  zh: { narr: 22, mono: 20, label: 16, tag: 16, roll: 19, res: 17, lineHeight: 36.3 },
-  en: { narr: 22, mono: 17.5, label: 13, tag: 13, roll: 17, res: 13.5, lineHeight: 33 },
+  zh: { narr: 17, mono: 15.5, label: 12.4, tag: 12.4, roll: 14.7, res: 13.2, lineHeight: 25.5 },
+  en: { narr: 17.5, mono: 13.8, label: 10.2, tag: 10.2, roll: 13.2, res: 10.6, lineHeight: 23 },
 };
 
 const font = (lang: Lang, s: Style) => `${s.weight} ${s.size}px ${STACKS[lang][s.family]}`;
@@ -182,9 +189,9 @@ function keepLastSentence(lang: Lang, m: Measurer, atoms: Atom[], lines: Placed[
 
 // ---------------------------------------------------------------- the log
 
-export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer): PageLayout {
+export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Column): PageLayout {
   const S = SIZES[lang];
-  const maxW = COLUMN.x1 - COLUMN.x0;
+  const maxW = col.x1 - col.x0;
   const narr: Style = { family: 'serif', size: S.narr, weight: 400, color: INK.log, ls: 0, stroke: 0 };
   const mono = (color: string, stroke: number): Style => ({ family: 'mono', size: S.mono, weight: 400, color, ls: S.mono * 0.02, stroke });
   const label = (color: string): Style => ({ family: 'sans', size: S.label, weight: 600, color, ls: S.label * 0.16, stroke: 0.2 });
@@ -195,7 +202,7 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer): PageLay
   const options: PageLayout['options'] = [];
   const plain: string[] = [];
   let cursor: Rect | null = null;
-  let y = COLUMN.y0;
+  let y = col.y0;
 
   entries.forEach((e, idx) => {
     // older entries fade: past choices to 0.75, everything before the last choice to 0.84
@@ -203,7 +210,7 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer): PageLay
 
     if (e.kind === 'check') {
       const lh = S.narr * 1.5;
-      y += 4;
+      y += 3;
       const top = y, mid = top + lh / 2;
       const sk = SKILLS[e.check.skill];
       const tagSkill: Style = { family: 'sans', size: S.tag, weight: 600, color: ATTRIBUTE_INK[sk.attribute], ls: S.tag * 0.12, stroke: 0.2 };
@@ -214,19 +221,20 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer): PageLay
       const rollText = `${e.dice[0]} + ${e.dice[1]} + ${sk.value} = ${e.total}`;
       const resText = (e.success ? RESULT.success : RESULT.failure)[lang];
       const wSkill = m.width(lang, tagSkill, skill), wDc = m.width(lang, tagDc, dc), gap = S.tag * 0.3;
-      const boxW = 1 + 10 + wSkill + gap + wDc + 10 + 1, boxH = 1 + 6 + S.tag + 5 + 1;
-      let x = COLUMN.x0;
+      const padX = S.tag * 0.62, padT = S.tag * 0.38, padB = S.tag * 0.31, sep = S.narr * 0.64;
+      const boxW = 1 + padX + wSkill + gap + wDc + padX + 1, boxH = 1 + padT + S.tag + padB + 1;
+      let x = col.x0;
       const box = { x, y: mid - boxH / 2, w: boxW, h: boxH };
       items.push({ t: 'tag', alpha, box });
-      const tb = m.baseline(lang, tagSkill, box.y + 7, S.tag);
-      pushText(items, lang, x + 11, tb, skill, tagSkill, alpha);
-      pushText(items, lang, x + 11 + wSkill + gap, tb, dc, tagDc, alpha);
-      x += boxW + 14;
+      const tb = m.baseline(lang, tagSkill, box.y + 1 + padT, S.tag);
+      pushText(items, lang, x + 1 + padX, tb, skill, tagSkill, alpha);
+      pushText(items, lang, x + 1 + padX + wSkill + gap, tb, dc, tagDc, alpha);
+      x += boxW + sep;
       const rb = m.baseline(lang, roll, mid - lh / 2, lh);
       pushText(items, lang, x, rb, rollText, roll, alpha);
-      x += m.width(lang, roll, rollText) + 14;
+      x += m.width(lang, roll, rollText) + sep;
       pushText(items, lang, x, m.baseline(lang, res, mid - lh / 2, lh), resText, res, alpha);
-      y = top + lh + 5;
+      y = top + lh + 4;
       plain.push(`${skill} ${dc} ${rollText} ${resText}`);
       return;
     }
@@ -279,18 +287,18 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer): PageLay
     const lh = S.lineHeight;
     lines.forEach((line, li) => {
       const bl = m.baseline(lang, base, y, lh);
-      let prevEnd = COLUMN.x0 + (li === 0 ? indent : 0);
+      let prevEnd = col.x0 + (li === 0 ? indent : 0);
       for (const p of line) {
         if (p.atom.space) continue;
         const st = styleFor(p.atom, li);
-        const x = COLUMN.x0 + p.x + (p.atom.pad?.[0] ?? 0);
+        const x = col.x0 + p.x + (p.atom.pad?.[0] ?? 0);
         if (p.atom.rule) {
           const h = Math.max(1, S.label * 0.07);
           items.push({ t: 'rule', color: st.color, alpha: alpha * 0.55, box: { x, y: bl - S.narr * 0.36 - h / 2, w: p.atom.rule, h } });
           continue;
         }
         pushText(items, lang, x, bl, p.atom.text, st, alpha, p.atom.option);
-        prevEnd = COLUMN.x0 + p.x + p.w;
+        prevEnd = col.x0 + p.x + p.w;
       }
       if (e.kind === 'option' && li === lines.length - 1) {
         const em = base.size;
@@ -301,13 +309,13 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer): PageLay
     });
     if (optionIndex !== undefined) {
       const top = y - lines.length * lh;
-      options.push({ index: optionIndex, rect: { x: COLUMN.x0 - 10, y: top, w: maxW + 20, h: lines.length * lh } });
+      options.push({ index: optionIndex, rect: { x: col.x0 - 10, y: top, w: maxW + 20, h: lines.length * lh } });
     }
-    y += 3;
+    y += 2;
   });
 
   // overflow: the log scrolls, the oldest lines leave the top of the column
-  const overflow = y - 3 - COLUMN.y1;
+  const overflow = y - 2 - col.y1;
   if (overflow > 0) {
     for (const it of items) {
       it.box.y -= overflow; // the cursor rect is its item's box, so it moves too
@@ -315,7 +323,7 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer): PageLay
     }
     for (const o of options) o.rect.y -= overflow;
   }
-  const visible = items.filter((it) => it.box.y >= COLUMN.y0 - 6);
+  const visible = items.filter((it) => it.box.y >= col.y0 - 6);
   return { items: visible, options, cursor, plain };
 }
 
@@ -329,11 +337,11 @@ function pushText(items: DrawItem[], lang: Lang, x: number, y: number, text: str
 }
 
 /** Page furniture on the right page: the morale label and the page number. */
-export function layoutRightPage(lang: Lang, m: Measurer, moraleLabel: string): PageLayout {
+export function layoutRightPage(lang: Lang, m: Measurer, moraleLabel: string, heartsTop: number): PageLayout {
   const items: DrawItem[] = [];
   const label: Style = { family: 'sans', size: lang === 'zh' ? 13 : 11, weight: 600, color: '#2B2622', ls: (lang === 'zh' ? 13 : 11) * 0.35, stroke: 0 };
   const w = m.width(lang, label, moraleLabel);
-  pushText(items, lang, 1180 - 670 - 12 - w, m.baseline(lang, label, 139, 16), moraleLabel, label, 0.72);
+  pushText(items, lang, 1180 - 670 - 12 - w, m.baseline(lang, label, heartsTop + 1, 16), moraleLabel, label, 0.72);
   const pno: Style = { family: 'serif', size: 12, weight: 400, color: '#2B2622', ls: 12 * 0.2, stroke: 0 };
   const pw = m.width(lang, pno, '18');
   pushText(items, lang, PAGE.w - 48 - pw, m.baseline(lang, pno, 578, 16), '18', pno, 0.45);

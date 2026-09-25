@@ -6,16 +6,16 @@ import { loadArt, loadFonts } from './assets';
 import type { Lang } from './content/schema';
 import { chrome, clockMoment } from './content/study-clock';
 import { PageHit } from './page/hit';
-import { COLUMN, Measurer, PAGE, layoutLog, layoutRightPage, type PageLayout, type Rect } from './page/layout';
+import { Measurer, PAGE, layoutLog, layoutRightPage, textColumn, type PageLayout, type Rect } from './page/layout';
 import { PagePainter } from './page/painter';
 import { createBook } from './scene/book';
 import { FRAME, createCameraRig } from './scene/camera';
 import { createLights } from './scene/lights';
 import { candleFlamePosition, candleLightPosition, createPopup, windowGlowPosition } from './scene/popup';
 import { createPost } from './scene/post';
-import { createStage } from './scene/puppets';
+import { HEARTS_SHIFT, createStage } from './scene/puppets';
 import { createSnow } from './scene/snow';
-import { surfaceY, wx, wz } from './scene/space';
+import { SHEET_Y, wx, wz } from './scene/space';
 import { createTable } from './scene/table';
 
 declare global {
@@ -41,11 +41,11 @@ function frameSize() {
 /** Canvas px per page px: twice the page's on-screen size (the page is ~1:1 with the 1600 frame). */
 const inkScale = (w: number, pr: number) => Math.min(3.5, Math.max(2, (2 * w * pr) / FRAME.w));
 
-/** Frame-space bounding box of a rect on the pages. */
+/** Frame-space bounding box of a rect on the top sheets. */
 function projectRect(camera: PerspectiveCamera, bx0: number, by0: number, bx1: number, by1: number): Rect {
   const xs: number[] = [], ys: number[] = [];
   for (const bx of [bx0, bx1]) for (const by of [by0, by1]) {
-    const v = new Vector3(wx(bx), surfaceY(bx), wz(by)).project(camera);
+    const v = new Vector3(wx(bx), SHEET_Y, wz(by)).project(camera);
     xs.push(((v.x + 1) / 2) * FRAME.w);
     ys.push(((1 - v.y) / 2) * FRAME.h);
   }
@@ -82,8 +82,11 @@ async function main() {
   const cam = createCameraRig();
   scene.add(createTable(art), book.group, createPopup(art).group, createStage(art).group, lights.group, cam.rig);
 
-  const column = projectRect(cam.camera, COLUMN.x0, COLUMN.y0, COLUMN.x1, COLUMN.y1);
-  const pageRect = projectRect(cam.camera, 0, 112, PAGE.w, PAGE.h);
+  // the log starts under the left sheet's tear (its extent comes from the SVG, via the manifest)
+  const tear = art['page-left'].meta;
+  const col = textColumn(tear.columnY0);
+  const column = projectRect(cam.camera, col.x0, col.y0, col.x1, col.y1);
+  const pageRect = projectRect(cam.camera, 0, tear.tearMin - 14, PAGE.w, PAGE.h);
   const snow = createSnow(cam.camera, column);
   scene.add(snow.points);
   const post = createPost(renderer, scene, cam.camera);
@@ -92,7 +95,7 @@ async function main() {
 
   // ---- the pages
   const measurer = new Measurer();
-  let layout: PageLayout = layoutLog(clockMoment, lang, measurer);
+  let layout: PageLayout = layoutLog(clockMoment, lang, measurer, col);
   let needsRender = true;
   const invalidate = () => { needsRender = true; };
 
@@ -103,9 +106,9 @@ async function main() {
   };
   function applyLang() {
     document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
-    layout = layoutLog(clockMoment, lang, measurer);
+    layout = layoutLog(clockMoment, lang, measurer, col);
     leftInk.setLayout(layout);
-    rightInk.setLayout(layoutRightPage(lang, measurer, chrome.morale[lang]));
+    rightInk.setLayout(layoutRightPage(lang, measurer, chrome.morale[lang], art.hearts.viewBox[1] + 5 + HEARTS_SHIFT));
     document.getElementById('title')!.textContent = chrome.title[lang];
     document.getElementById('chapter')!.textContent = chrome.chapter[lang];
     document.getElementById('log-heading')!.textContent = chrome.logHeading[lang];

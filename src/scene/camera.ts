@@ -4,14 +4,14 @@
 // principal point, of which the view offset shows rows 700..1600. Parallax orbits a rig
 // around the middle of the book by a few degrees.
 import { Group, PerspectiveCamera, Vector3 } from 'three';
-import { DEG, PAGE_BASE } from './space';
+import { BASE_Y, DEG } from './space';
 
 export const FRAME = { w: 1600, h: 900 };
 export const VIEW = {
   distance: 32,       // 3200 px, 100 px per unit
   tilt: 22,           // pages tilted away from the frame (M0 --theta)
   principal: { x: 800, y: 100 },
-  nearEdgeY: 888,     // frame y of the book's near edge (M0: top 288 + height 600)
+  nearEdgeY: 874,     // frame y of the book's near edge (M0: 888; raised so the sheet stack and cover show)
   yaw: 2.6,           // parallax range, degrees
   pitch: 1.3,
 };
@@ -24,12 +24,12 @@ export function createCameraRig() {
   const fwd = new Vector3(0, -Math.cos(t), -Math.sin(t));
   const up = new Vector3(0, Math.sin(t), -Math.cos(t));
   // the near edge's centre sits (nearEdgeY - principal.y) px below the principal point, D ahead
-  const nearEdge = new Vector3(0, PAGE_BASE, 3);
+  const nearEdge = new Vector3(0, BASE_Y, 3);
   const eye = nearEdge.clone()
     .addScaledVector(fwd, -D)
     .addScaledVector(up, (VIEW.nearEdgeY - VIEW.principal.y) / 100);
 
-  const pivot = new Vector3(0, PAGE_BASE, 0);
+  const pivot = new Vector3(0, BASE_Y, 0);
   const rig = new Group();
   rig.name = 'camera-rig';
   rig.position.copy(pivot);

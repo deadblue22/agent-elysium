@@ -1,17 +1,23 @@
-// The right page's stage: the two profile puppets (hinged like the pop-up planes),
-// two paper dice showing 4 and 5, and the four morale hearts.
+// The right page's stage, on the torn top sheet below the floor's tongue: the two profile
+// puppets (hinged like the pop-up planes), two paper dice showing 4 and 5, the morale hearts.
 import {
   AdditiveBlending, BoxGeometry, CanvasTexture, Color, Group, Mesh, MeshStandardMaterial, SRGBColorSpace, Sprite,
   SpriteMaterial, Vector3,
 } from 'three';
 import type { Art } from '../assets';
-import { DEG, LEAN, curvedSheet, paperMaterial, pointOnStanding, standing, surfaceY, wx, wz, type StandOptions } from './space';
+import { DEG, LEAN, SHEET_Y, flatSheet, paperMaterial, pointOnStanding, standing, wx, wz, type StandOptions } from './space';
 
-/** Placement from the M0 board: 0.95 scale, soles on the fold line; about 1.3x the desk's height. */
+/**
+ * Placement from the M0 board (0.95 scale, soles on the fold line, about 1.3x the desk's
+ * height), moved 112 px toward the reader so both stand on the cream below the tongue
+ * (their printed stand tabs moved with them; see tools/extract-art.mjs PUPPET_SHIFT).
+ */
 export const PUPPETS: Record<'villon' | 'kask', StandOptions> = {
-  villon: { hinge: 318, baseY: 196.5, x0: 817, scale: 0.95 },
-  kask: { hinge: 304, baseY: 186.5, x0: 1015, scale: 0.95 },
+  villon: { hinge: 430, baseY: 196.5, x0: 817, scale: 0.95 },
+  kask: { hinge: 416, baseY: 186.5, x0: 1015, scale: 0.95 },
 };
+/** The hearts sit at the top right of the cream, below the tear (M0 had them at y = 130). */
+export const HEARTS_SHIFT = 262;
 
 /** Faces per die in BoxGeometry order: +x (right), -x (left), +y (top), -y (bottom), +z (near), -z (far). */
 const DICE = [
@@ -25,19 +31,18 @@ export function createStage(art: Art) {
   group.name = 'stage';
 
   for (const [name, o] of Object.entries(PUPPETS)) {
-    const cx = (o.x0 ?? 0) + (art[name].viewBox[2] / 2) * (o.scale ?? 1);
     const material = paperMaterial(art[name].texture, 0.9);
     // light bouncing off the bright page onto the puppets' fronts (the direct lights miss it)
     material.emissive.setRGB(0.2, 0.18, 0.15);
     material.emissiveMap = art[name].texture;
-    const { group: g, mesh } = standing(art[name], material, { ...o, y: surfaceY(cx) - 0.004 });
+    const { group: g, mesh } = standing(art[name], material, { ...o, y: SHEET_Y - 0.002 });
     mesh.name = name;
     group.add(g);
   }
 
   // the ember of Villon's cigarette
   const v = PUPPETS.villon;
-  const e = pointOnStanding({ ...v, svgX: 95.8, svgY: 49.6 }, surfaceY(874) - 0.004);
+  const e = pointOnStanding({ ...v, svgX: 95.8, svgY: 49.6 }, SHEET_Y - 0.002);
   const ember = new Sprite(new SpriteMaterial({ map: glowTexture('255,170,90'), color: new Color(1.6, 1.3, 1.1), blending: AdditiveBlending, depthWrite: false, transparent: true }));
   ember.position.set(e.x, e.y, e.z).addScaledVector(new Vector3(0, Math.sin(LEAN), Math.cos(LEAN)), 0.01);
   ember.scale.setScalar(0.2);
@@ -52,7 +57,7 @@ export function createStage(art: Art) {
       return new MeshStandardMaterial({ map: t, roughness: 0.85 });
     });
     const die = new Mesh(new BoxGeometry(DIE, DIE, DIE), mats);
-    die.position.set(wx(d.bx), surfaceY(d.bx) + DIE / 2, wz(d.by));
+    die.position.set(wx(d.bx), SHEET_Y + DIE / 2, wz(d.by));
     die.rotation.y = d.rot * DEG;
     die.castShadow = die.receiveShadow = true;
     die.name = 'die';
@@ -60,7 +65,8 @@ export function createStage(art: Art) {
   }
 
   const [hx, hy, hw, hh] = art.hearts.viewBox;
-  const hearts = new Mesh(curvedSheet(hx, hx + hw, hy, hy + hh, 0.003, 2), paperMaterial(art.hearts.texture));
+  const hearts = flatSheet(hx, hx + hw, hy + HEARTS_SHIFT, hy + hh + HEARTS_SHIFT, SHEET_Y + 0.003);
+  hearts.material = paperMaterial(art.hearts.texture);
   hearts.receiveShadow = true;
   hearts.name = 'hearts';
   group.add(hearts);

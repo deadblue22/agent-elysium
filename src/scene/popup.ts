@@ -2,7 +2,7 @@
 // each a plane hinged on its own fold line (docs/design.md §6.1).
 import { Group, MeshBasicMaterial, Vector3 } from 'three';
 import type { Art } from '../assets';
-import { BULGE, LEAN, PAGE_BASE, paperMaterial, pointOnStanding, standing, type StandOptions } from './space';
+import { BASE_Y, LEAN, paperMaterial, pointOnStanding, standing, type StandOptions } from './space';
 
 /** Fold line (by) and the SVG y resting on it, per piece; back to front. */
 export const LAYERS: Record<string, StandOptions> = {
@@ -14,8 +14,8 @@ export const LAYERS: Record<string, StandOptions> = {
   'front-right': { hinge: 100, baseY: 330 },
 };
 
-/** The layers stand on a straight fold; the pages bulge a little, so the fold sits mid-bulge. */
-export const LAYER_Y = PAGE_BASE + BULGE * 0.55;
+/** The layers stand on the floor sheet of the base page. */
+export const LAYER_Y = BASE_Y + 0.003;
 
 const NORMAL = new Vector3(0, Math.sin(LEAN), Math.cos(LEAN)); // normal of every standing plane
 

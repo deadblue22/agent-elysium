@@ -8,12 +8,14 @@ export interface ArtPiece {
   /** World size (1 unit = 100 board px). */
   world: [number, number];
   px: [number, number];
+  /** data-* attributes of the source SVG (e.g. tearMin, tearMax, columnY0 on the torn sheets). */
+  meta: Record<string, number>;
 }
 export type Art = Record<string, ArtPiece>;
 
 interface Manifest {
   unit: number;
-  textures: Record<string, { file: string; px: [number, number]; viewBox: [number, number, number, number]; world: [number, number]; scale: number }>;
+  textures: Record<string, { file: string; px: [number, number]; viewBox: [number, number, number, number]; world: [number, number]; scale: number; meta?: Record<string, number> }>;
 }
 
 const BASE = import.meta.env.BASE_URL;
@@ -29,7 +31,7 @@ export async function loadArt(anisotropy: number): Promise<Art> {
     texture.anisotropy = anisotropy;
     texture.name = name;
     if (name === 'table') texture.wrapS = texture.wrapT = RepeatWrapping;
-    return [name, { texture, viewBox: t.viewBox, world: t.world, px: t.px }] as const;
+    return [name, { texture, viewBox: t.viewBox, world: t.world, px: t.px, meta: t.meta ?? {} }] as const;
   }));
   return Object.fromEntries(entries);
 }
