@@ -1,0 +1,142 @@
+<svg viewBox="670 0 670 600" xmlns="http://www.w3.org/2000/svg" width="670" height="600">
+<!-- The right page's paper: fibre, mottling, foxing, toned edges, the faint printed rug and the puppets' stand tabs. Text is painted at runtime. -->
+<defs>
+<filter id="tide" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" seed="8" result="t"/>
+      <feDisplacementMap in="SourceGraphic" in2="t" scale="22" xChannelSelector="R" yChannelSelector="G"/>
+      <feGaussianBlur stdDeviation=".6"/>
+    </filter>
+<filter id="soft4" x="-30%" y="-30%" width="160%" height="160%">
+<feGaussianBlur stdDeviation="4"/>
+</filter>
+<filter id="pageMottle" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.006 0.011" numOctaves="4" seed="7"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 .42  0 0 0 0 .30  0 0 0 0 .17  -1.6 0 0 0 1.05"/>
+    </filter>
+<filter id="pageTex" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="3" seed="44" result="tF"/>
+      <feDiffuseLighting in="tF" surfaceScale="1.5" diffuseConstant="1.05" lighting-color="#fff">
+        <feDistantLight azimuth="240" elevation="60"/>
+      </feDiffuseLighting>
+    </filter>
+<filter id="soft10" x="-40%" y="-40%" width="180%" height="180%">
+<feGaussianBlur stdDeviation="10"/>
+</filter>
+</defs>
+            <defs>
+              <!-- keep the paper texture quiet under the text column (≈23% strength there) -->
+              <mask id="quietCol" maskUnits="userSpaceOnUse" x="0" y="0" width="1340" height="600">
+                <rect width="1340" height="600" fill="#fff"/>
+                <rect x="30" y="124" width="612" height="476" fill="#3a3a3a" filter="url(#soft10)"/>
+              </mask>
+            <radialGradient id="paperL" gradientUnits="userSpaceOnUse" cx="295" cy="312" r="482" gradientTransform="translate(295 312) scale(1 0.97) translate(-295 -312)">
+<stop offset="0" stop-color="#e8ddc6"/>
+<stop offset=".55" stop-color="#ded1b5"/>
+<stop offset=".9" stop-color="#c8b797"/>
+<stop offset="1" stop-color="#b5a383"/>
+</radialGradient>
+<radialGradient id="paperR" gradientUnits="userSpaceOnUse" cx="1018" cy="276" r="482" gradientTransform="translate(1018 276) scale(1 0.97) translate(-1018 -276)">
+<stop offset="0" stop-color="#e6dbc3"/>
+<stop offset=".5" stop-color="#dccfb2"/>
+<stop offset=".88" stop-color="#c8b797"/>
+<stop offset="1" stop-color="#b3a180"/>
+</radialGradient>
+</defs>
+<g>
+<rect x="0" y="0" width="670" height="600" fill="url(#paperL)"/>
+<rect x="670" y="0" width="670" height="600" fill="url(#paperR)"/>
+</g>
+            <g mask="url(#quietCol)" style="mix-blend-mode:multiply">
+<rect width="1340" height="600" filter="url(#pageTex)" opacity=".2"/>
+</g>
+            <g mask="url(#quietCol)" style="mix-blend-mode:multiply">
+<rect width="1340" height="600" filter="url(#pageMottle)" opacity=".62"/>
+</g>
+            <!-- foxing -->
+            <g mask="url(#quietCol)" style="mix-blend-mode:multiply">
+<g fill="#8a5a2a" id="foxing">
+<circle cx="919" cy="238" r="2.8" opacity="0.09"/>
+<circle cx="249" cy="312" r="1.0" opacity="0.09"/>
+<circle cx="381" cy="69" r="0.8" opacity="0.16"/>
+<circle cx="590" cy="450" r="1.1" opacity="0.12"/>
+<circle cx="679" cy="9" r="1.3" opacity="0.08"/>
+<circle cx="1315" cy="55" r="0.6" opacity="0.08"/>
+<circle cx="1" cy="599" r="2.9" opacity="0.13"/>
+<circle cx="1070" cy="434" r="0.8" opacity="0.10"/>
+<circle cx="526" cy="189" r="3.3" opacity="0.16"/>
+<circle cx="600" cy="169" r="1.3" opacity="0.08"/>
+<circle cx="1074" cy="511" r="0.7" opacity="0.10"/>
+<circle cx="459" cy="424" r="0.7" opacity="0.15"/>
+<circle cx="585" cy="578" r="2.5" opacity="0.10"/>
+<circle cx="375" cy="175" r="1.7" opacity="0.17"/>
+<circle cx="1265" cy="14" r="0.7" opacity="0.15"/>
+<circle cx="673" cy="542" r="0.7" opacity="0.14"/>
+<circle cx="13" cy="140" r="1.9" opacity="0.07"/>
+<circle cx="693" cy="99" r="0.7" opacity="0.13"/>
+<circle cx="1173" cy="42" r="1.4" opacity="0.07"/>
+<circle cx="1036" cy="48" r="1.9" opacity="0.09"/>
+<circle cx="954" cy="479" r="1.0" opacity="0.11"/>
+<circle cx="498" cy="363" r="0.6" opacity="0.11"/>
+<circle cx="1243" cy="493" r="3.5" opacity="0.12"/>
+<circle cx="232" cy="59" r="3.5" opacity="0.13"/>
+<circle cx="62" cy="347" r="2.0" opacity="0.10"/>
+<circle cx="578" cy="147" r="0.8" opacity="0.12"/>
+<circle cx="273" cy="229" r="1.2" opacity="0.12"/>
+<circle cx="1139" cy="528" r="2.6" opacity="0.07"/>
+<circle cx="1302" cy="368" r="2.7" opacity="0.08"/>
+<circle cx="466" cy="242" r="0.7" opacity="0.08"/>
+<circle cx="1218" cy="222" r="1.5" opacity="0.15"/>
+<circle cx="906" cy="389" r="0.7" opacity="0.07"/>
+<circle cx="1278" cy="419" r="0.6" opacity="0.11"/>
+<circle cx="1120" cy="334" r="2.8" opacity="0.10"/>
+<circle cx="1289" cy="570" r="0.7" opacity="0.07"/>
+<circle cx="629" cy="428" r="0.8" opacity="0.15"/>
+<circle cx="454" cy="44" r="2.6" opacity="0.16"/>
+<circle cx="152" cy="313" r="2.0" opacity="0.11"/>
+<circle cx="1272" cy="564" r="0.7" opacity="0.10"/>
+<circle cx="1020" cy="204" r="1.4" opacity="0.05"/>
+<circle cx="181" cy="186" r="2.7" opacity="0.16"/>
+<circle cx="359" cy="159" r="1.4" opacity="0.14"/>
+<circle cx="363" cy="139" r="1.0" opacity="0.10"/>
+<circle cx="843" cy="365" r="0.8" opacity="0.11"/>
+<circle cx="170" cy="74" r="0.8" opacity="0.14"/>
+<circle cx="1312" cy="157" r="2.3" opacity="0.17"/>
+<circle cx="120" cy="470" r="36" fill="none" stroke="#7a4a1e" stroke-width="2.5" opacity="0.07"/>
+</g>
+</g>
+            <!-- toned, handled edges -->
+            <rect x="1.5" y="1.5" width="1337" height="597" fill="none" stroke="#6b4a26" stroke-width="5" opacity=".16" filter="url(#soft4)"/>
+            <circle cx="770" cy="540" r="44" fill="none" stroke="#6e4a22" stroke-width="3" opacity=".08" filter="url(#tide)"/>
+            <circle cx="770" cy="540" r="41" fill="none" stroke="#6e4a22" stroke-width="1" opacity=".06"/>
+            <!-- faint printed rug under the actors -->
+            <g opacity=".2" fill="none" style="mix-blend-mode:multiply">
+              <ellipse cx="972" cy="316" rx="150" ry="46" stroke="#5a2a1c" stroke-width="2.4"/>
+              <ellipse cx="972" cy="316" rx="142" ry="42" stroke="#5a2a1c" stroke-width=".9"/>
+              <ellipse cx="972" cy="316" rx="128" ry="36" stroke="#1f2a44" stroke-width="5" stroke-dasharray="2.5 7"/>
+              <ellipse cx="972" cy="316" rx="112" ry="30" stroke="#5a2a1c" stroke-width=".9"/>
+              <ellipse cx="972" cy="316" rx="46" ry="12" stroke="#1f2a44" stroke-width="1"/>
+            </g>
+            <!-- cold daylight from the window falling across the right page -->
+            
+            <!-- candle warmth -->
+            
+
+            <!-- puppet shadows: short contact shadow, long faint cast toward the lower left -->
+            
+            
+            
+            
+            <!-- stand tabs: the fold that glues each puppet to the page -->
+            <path d="M855,320 L905,320 L902,326 L858,326 Z M1045,306 L1091,306 L1088,312 L1048,312 Z" fill="#c9b898" opacity=".6"/>
+            <path d="M855,320.4 H905 M1045,306.4 H1091" stroke="#2e2116" stroke-width="1.4" opacity=".8"/>
+            <path d="M858,326 H902 M1048,312 H1088" stroke="#6b5a44" stroke-width=".8" opacity=".4"/>
+            <!-- dice shadows -->
+            
+            <!-- morale: four paper hearts, the last one gone pale -->
+            
+            <!-- dog-eared corner of the right page -->
+            
+            
+            
+            
+          </svg>

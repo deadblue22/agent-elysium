@@ -5,19 +5,45 @@
 ## 文档
 
 - [方案设计](docs/design.md)：目标、参考 demo 拆解、角色、第一章完整剧本、游戏系统、视觉与动效、技术方案、里程碑。
-- [风格板截图](docs/style-board.png)：M0 阶段的画面基准。
+- [技术栈评估](docs/tech-eval.md)：为什么从 CSS 3D 迁移到 Three.js，文字页如何贴在纸面上。
+- [Three.js 画面](docs/style-board-three.png)与[左页 1:1 裁切](docs/style-board-three-text.png)：当前画面基准。
+- [风格板截图](docs/style-board.png)：M0 阶段的 CSS 3D 画面，作对照。
 - [早期布局示意图](docs/mockup-layout.png)：第一版平面示意，已被风格板取代，仅作对照。
 
-## 风格板
+## 运行
 
-`demo/index.html` 是单文件页面，直接用浏览器打开即可，无需构建。内容是第一章 `study.clock` 节点的一个静止瞬间：木桌、透视开本、从折缝竖起的多层纸艺书房、左页文字日志、右页两个纸偶与骰子。鼠标移动时各层有轻微视差。
+需要 Node 20 以上。
 
-页面内嵌了按台词裁剪的字体子集。台词变更后运行下面的脚本重新生成（需要 `fontTools` 与网络）：
+```
+npm install
+npm run dev      # 开发服务器
+npm run build    # 类型检查并构建到 dist/
+npm run bake     # assets/art/*.svg 烘焙为 public/textures/*.png 与 manifest.json
+npm run shot     # 构建、在 Chromium 中渲染，截图到 docs/style-board-three*.png
+```
+
+内容是第一章 `study.clock` 节点的一个静止瞬间：木桌、开本、从折缝竖起的五层纸艺书房、左页文字日志、右页两个纸偶与骰子。鼠标移动时相机有几度的视差，悬停左页的当前选项会高亮，点击在控制台输出选项序号。右上角可切换中英文。
+
+`bake` 与 `shot` 使用预装的 Chromium（路径见 `tools/chromium.mjs`，可用 `CHROMIUM_PATH` 覆盖），没有 GPU 时由 SwiftShader 提供 WebGL 2。页面参数：`?still` 冻结雪、颗粒与光标，用于截图；`?lang=en` 以英文打开。
+
+## 模块
+
+- `src/scene/`：`table` 木桌，`book` 封面、页叠与带弧度的左右页，`popup` 背景板五层，`puppets` 纸偶、骰子与士气，`lights` 灯光与阴影，`post` 颗粒、暗角与调色，`camera` 相机与视差，`snow` 雪，`space` 坐标与纸片工具。
+- `src/page/`：`layout` 日志排版（中文按字断行、避头尾，英文按词），`painter` 画布绘制与局部重绘，`hit` 射线命中选项。
+- `src/content/`：`schema` 类型（design.md 7.3），`skills` 技能表与颜色，`study-clock` 本节点台词。
+- `assets/art/*.svg`：每张纸片一个矢量源文件，撕边与纸纹滤镜写在文件里，只在烘焙时运行。
+- `public/textures/`：烘焙结果；`public/fonts/`：字体子集。
+- `tools/`：`bake` 烘焙，`shot` 截图，`fonts` 解出字体子集并复制拉丁字体，`extract-art` 从旧风格板提取纸片（一次性迁移工具，重跑会覆盖 `assets/art`）。
+
+## 旧风格板
+
+`demo/index.html` 是 M0 阶段的 CSS 3D 单文件页面，保留作对照，直接用浏览器打开即可，运行时不再使用。页面内嵌了按台词裁剪的字体子集，台词变更后先重新生成子集（需要 `fontTools` 与网络），再解出到 `public/fonts`：
 
 ```
 python3 tools/embed_fonts.py
+npm run fonts
 ```
 
 ## 当前阶段
 
-M0 风格板完成，等待确认后进入 M1 最小 Demo（完整对话树、检定与骰子、还原动画、语言切换）。
+M0 风格板已迁移到 Three.js：纸片纹理离线烘焙，投影与光照由渲染器产生，左页文字以画布纹理画在页面网格上。下一步进入 M1 最小 Demo（完整对话树、检定与骰子、还原动画、语言切换）。

@@ -1,0 +1,92 @@
+<svg viewBox="88 166 210 168" xmlns="http://www.w3.org/2000/svg" width="210" height="168">
+<!-- Layer 4 (foreground), left: the armchair back. Hinge at y=330. -->
+<defs>
+<filter id="cutL" x="-4%" y="-6%" width="108%" height="112%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed="3" result="tE"/>
+      <feDisplacementMap in="SourceGraphic" in2="tE" scale="4.5" xChannelSelector="R" yChannelSelector="G" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.009 0.022" numOctaves="4" seed="21" result="tM"/>
+      <feColorMatrix in="tM" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="tMg"/>
+      <feBlend in="tMg" in2="shape" mode="soft-light" result="mot"/>
+      <feComposite in="mot" in2="shape" operator="in" result="motS"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="5" result="tF"/>
+      <feDiffuseLighting in="tF" surfaceScale="1.6" diffuseConstant="1" lighting-color="#fff" result="fib">
+        <feDistantLight azimuth="235" elevation="57"/>
+      </feDiffuseLighting>
+      <feComposite in="fib" in2="motS" operator="arithmetic" k1="0.62" k2="0" k3="0.44" k4="0" result="tex"/>
+      <feGaussianBlur in="shape" stdDeviation="7" result="sb"/>
+      <feComposite in="shape" in2="sb" operator="out" result="rimM"/>
+      <feFlood flood-color="#050508" flood-opacity="0.62"/>
+      <feComposite in2="rimM" operator="in" result="burn"/>
+      <feOffset in="shape" dx="0.5" dy="1.6" result="sOff"/>
+      <feComposite in="shape" in2="sOff" operator="out" result="edgeM"/>
+      <feFlood flood-color="#efe2c4" flood-opacity="0.42"/>
+      <feComposite in2="edgeM" operator="in" result="edge"/>
+      <feMerge>
+<feMergeNode in="tex"/>
+<feMergeNode in="burn"/>
+<feMergeNode in="edge"/>
+</feMerge>
+    </filter>
+</defs>
+          <defs>
+            <linearGradient id="leather" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#5a2c25"/>
+<stop offset=".5" stop-color="#3e1f1b"/>
+<stop offset="1" stop-color="#241210"/>
+            </linearGradient>
+          </defs>
+          <g transform="translate(0 160)">
+          <g filter="url(#cutL)">
+            <path fill="url(#leather)" d="M112,170 L116,142 L106,139 C98,104 98,62 112,36 C120,22 138,18 152,25 C172,15 214,15 234,25 C248,18 266,22 274,36 C288,62 288,104 280,139 L270,142 L274,170 L260,170 L257,148 L129,148 L126,170 Z"/>
+          </g>
+          <path d="M152,26 C150,70 150,110 152,146 M234,26 C236,70 236,110 234,146 M110,100 C160,94 226,94 282,100" stroke="#1a0c0a" stroke-width="1.6" fill="none" opacity=".6"/>
+          <path d="M112,38 C120,24 138,20 152,27 C172,17 214,17 234,27 C248,20 266,24 274,38" stroke="#b58a78" stroke-width="1.6" fill="none" opacity=".45"/>
+          <g fill="#9c7d4a" opacity=".8" id="nails">
+<circle cx="118" cy="143" r="1.3"/>
+<circle cx="125" cy="143" r="1.3"/>
+<circle cx="132" cy="143" r="1.3"/>
+<circle cx="139" cy="143" r="1.3"/>
+<circle cx="146" cy="143" r="1.3"/>
+<circle cx="153" cy="143" r="1.3"/>
+<circle cx="160" cy="143" r="1.3"/>
+<circle cx="167" cy="143" r="1.3"/>
+<circle cx="174" cy="143" r="1.3"/>
+<circle cx="181" cy="143" r="1.3"/>
+<circle cx="188" cy="143" r="1.3"/>
+<circle cx="195" cy="143" r="1.3"/>
+<circle cx="202" cy="143" r="1.3"/>
+<circle cx="209" cy="143" r="1.3"/>
+<circle cx="216" cy="143" r="1.3"/>
+<circle cx="223" cy="143" r="1.3"/>
+<circle cx="230" cy="143" r="1.3"/>
+<circle cx="237" cy="143" r="1.3"/>
+<circle cx="244" cy="143" r="1.3"/>
+<circle cx="251" cy="143" r="1.3"/>
+<circle cx="258" cy="143" r="1.3"/>
+<circle cx="265" cy="143" r="1.3"/>
+</g>
+          <!-- floor stack of books -->
+          
+          
+          <!-- wastebasket, one sheet crumpled beside it -->
+          
+          
+          </g>
+          <!-- coat stand with the dead man's hat and overcoat: a tall piece that breaks the wall's edge -->
+          <defs>
+            <linearGradient id="oldCoat" x1="0" x2="1">
+              <stop offset="0" stop-color="#3a2f26"/>
+<stop offset=".6" stop-color="#2a221c"/>
+<stop offset="1" stop-color="#1a1512"/>
+            </linearGradient>
+          </defs>
+          
+          <!-- a furled umbrella leaning on the stand -->
+          
+          <!-- the old man's overcoat hanging limp from one hook -->
+          
+          
+          
+          <!-- his hat, tipped on the other hook -->
+          
+        </svg>

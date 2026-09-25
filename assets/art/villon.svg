@@ -1,0 +1,136 @@
+<svg viewBox="0 0 120 200" xmlns="http://www.w3.org/2000/svg" width="120" height="200">
+<!-- Detective August Villon, profile puppet. Soles at y=196.5. -->
+<defs>
+<filter id="cutS" x="-15%" y="-15%" width="135%" height="140%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" seed="9" result="tE"/>
+      <feDisplacementMap in="SourceGraphic" in2="tE" scale="2.4" xChannelSelector="R" yChannelSelector="G" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="13" result="tF"/>
+      <feDiffuseLighting in="tF" surfaceScale="1.3" diffuseConstant="1" lighting-color="#fff" result="fib">
+        <feDistantLight azimuth="235" elevation="58"/>
+      </feDiffuseLighting>
+      <feComposite in="fib" in2="shape" operator="arithmetic" k1="0.55" k2="0" k3="0.5" k4="0" result="tex"/>
+      <feGaussianBlur in="shape" stdDeviation="2.4" result="sb"/>
+      <feComposite in="shape" in2="sb" operator="out" result="rimM"/>
+      <feFlood flood-color="#050508" flood-opacity="0.38"/>
+      <feComposite in2="rimM" operator="in" result="burn"/>
+      <feOffset in="shape" dx="0.4" dy="1.1" result="sOff"/>
+      <feComposite in="shape" in2="sOff" operator="out" result="edgeM"/>
+      <feFlood flood-color="#f1e5c8" flood-opacity="0.38"/>
+      <feComposite in2="edgeM" operator="in" result="edge"/>
+      <feGaussianBlur in="shape" stdDeviation="1.3" result="shB"/>
+      <feOffset in="shB" dx="1" dy="1.8" result="shO"/>
+      <feFlood flood-color="#060403" flood-opacity="0.55"/>
+      <feComposite in2="shO" operator="in" result="drop"/>
+      <feMerge>
+<feMergeNode in="drop"/>
+<feMergeNode in="tex"/>
+<feMergeNode in="burn"/>
+<feMergeNode in="edge"/>
+</feMerge>
+    </filter>
+</defs>
+          <defs>
+            <linearGradient id="vCoat" x1="0" y1="0" x2="1" y2=".3">
+              <stop offset="0" stop-color="#34405f"/>
+<stop offset=".55" stop-color="#253049"/>
+<stop offset="1" stop-color="#19203a"/>
+            </linearGradient>
+            <linearGradient id="vScarf" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#cf6533"/>
+<stop offset="1" stop-color="#963d1f"/>
+            </linearGradient>
+            <radialGradient id="ember">
+              <stop offset="0" stop-color="#ffe0a0"/>
+<stop offset=".2" stop-color="#ff8f3c" stop-opacity=".9"/>
+<stop offset="1" stop-color="#ff6a1a" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <g id="villonArt">
+            <!-- legs in a slack stride, shoes pointing right -->
+            <g filter="url(#cutS)">
+              <path fill="#1c1b20" d="M52,154 L44,189 L54,189 L60,154 Z"/>
+              <path fill="#222026" d="M66,154 L73,189 L83,189 L75,154 Z"/>
+              <path fill="#121014" d="M38,196 Q38,188 45,188 L55,188 Q61,190 63,196 Z"/>
+              <path fill="#141216" d="M69,196 Q69,188 75,188 L85,188 Q93,190 95,196 Z"/>
+            </g>
+            <!-- coat tail behind -->
+            <g filter="url(#cutS)">
+<path fill="#121829" d="M40,116 C38,132 36,146 34,157 L44,160 L46,124 Z"/>
+</g>
+            <!-- coat in profile: rounded hump behind, belly forward, torn hem -->
+            <g filter="url(#cutS)">
+<path fill="url(#vCoat)" d="M54,55 C45,60 39,70 39,84 C39,96 41,104 44,110 C42,126 39,142 36,156 L41,159 L47,155 L53,160 L60,155 L67,160 L74,155 L81,160 L87,157 C85,143 84,126 83,110 C85,98 84,85 80,72 C78,64 75,59 71,57 Z"/>
+</g>
+            <g filter="url(#cutS)">
+<path fill="#2b3553" d="M76,61 C81,73 82,91 82,107 L78,107 C78,91 77,75 72,63 Z"/>
+</g>
+            <g filter="url(#cutS)">
+<path fill="#394769" d="M68,57 L78,61 L75,84 L71,70 Z"/>
+</g>
+            <!-- arm: elbow out behind, hand buried in the pocket -->
+            <g filter="url(#cutS)">
+<path fill="#1c2440" d="M55,62 C46,72 42,86 44,98 C46,106 51,111 58,115 L63,111 L56,103 C53,95 55,80 62,68 Z"/>
+</g>
+            <path d="M44,92 q5,4 11,2" stroke="#070a12" stroke-opacity=".55" stroke-width="1" fill="none"/>
+            <path d="M43,91 q5,4 11,2" stroke="#cdbf9e" stroke-opacity=".22" stroke-width=".8" fill="none"/>
+            <!-- belt, badly cinched, tongue hanging -->
+            <g filter="url(#cutS)">
+<path fill="#141a2b" d="M41,107 C55,110 70,110 84,107 L84,114 C70,117 55,117 41,114 Z"/>
+</g>
+            <path d="M77,108 h6 v6 h-6z" fill="none" stroke="#7e6a44" stroke-width="1.2"/>
+            <g filter="url(#cutS)">
+<path fill="#141a2b" d="M75,113 L79,113 L79,131 L77,134 L75,131 Z"/>
+</g>
+            <path d="M57,114 L66,118" stroke="#05070d" stroke-width="1.3" opacity=".8"/>
+            <g fill="none" stroke-linecap="round">
+              <path stroke="#070a12" stroke-opacity=".55" stroke-width="1.1" d="M47,122 l-3,14 M58,128 l-1,15 M70,124 l2,14 M43,146 l3,-8"/>
+              <path stroke="#cdbf9e" stroke-opacity=".26" stroke-width=".8" d="M46,121 l-3,14 M57,127 l-1,15"/>
+            </g>
+            <!-- scarf: tail flicked over the back -->
+            <g filter="url(#cutS)">
+<path fill="#8b381d" d="M52,57 C45,61 40,69 38,78 L43,79 C45,72 50,66 56,62 Z"/>
+</g>
+            <g filter="url(#cutS)">
+<path fill="#1b2238" d="M46,40 L54,36 L57,58 L48,62 Z"/>
+</g>
+            <!-- head in profile under the brim: nose and jaw catch the light -->
+            <path fill="#29231f" d="M48,32 C46,40 48,48 54,53 L58,50 L56,33 Z"/>
+            <g filter="url(#cutS)">
+<path fill="#bea582" d="M52,33 L79,33 C80,35 81,37 81,38 L88,41.5 L84.5,43 C85,45 84.5,46.5 83,47.2 C81,50.8 76,53 70,53 L62,53 C56,51.5 52,45.5 52,39.5 Z"/>
+</g>
+            <path fill="#0a0b10" opacity=".58" d="M52,33 H81 L82,37.2 C75,36.5 66,37.3 59,41 L52,43 Z"/>
+            <path d="M81.5,38.6 C84,39.8 86,40.8 87.6,41.4 M73,52.6 C77,51.9 80.6,50 82.4,47.6" stroke="#ead7b4" stroke-width=".9" fill="none" opacity=".85"/>
+            <path d="M61,40 c2,-1 4,0 3.4,2.6 c-.6,1.8 -2.6,1.8 -3.4,.6 z" fill="#8a735a"/>
+            <g fill="#4d4034" opacity=".5">
+<circle cx="72" cy="50" r=".5"/>
+<circle cx="75" cy="50.4" r=".5"/>
+<circle cx="78" cy="49.4" r=".5"/>
+<circle cx="70" cy="48.6" r=".5"/>
+</g>
+            <g filter="url(#cutS)">
+<path fill="url(#vScarf)" d="M53,51 C60,56 72,57 80,52 L81,61 C72,65 60,65 51,61 Z"/>
+</g>
+            <g filter="url(#cutS)">
+<path fill="url(#vScarf)" d="M73,59 L80,60 C81,73 79,87 82,99 L77,97 L75,102 L73,97 L70,102 L69,96 C68,83 70,71 73,59 Z"/>
+</g>
+            <path d="M69,89 L81,90 M69.2,93 L81.4,94" stroke="#6b2912" stroke-width="1.1" opacity=".65"/>
+            <path fill="#a4431f" d="M75,56 C80,54 84,58 82,63 C79,65 76,63 75,56 Z"/>
+            <!-- fedora in side view, tipped forward: front brim dips over the eyes, back brim curls up -->
+            <g transform="rotate(6 60 26)">
+              <g filter="url(#cutS)">
+                <path fill="#191c26" d="M42,27 C41,15 46,8 58,7 C70,6 76,12 76,25 Z"/>
+                <path fill="#2b2525" d="M41.5,22.5 L76.5,21.5 L76.6,27 L42,27.6 Z"/>
+                <path fill="#11141c" d="M32,25.4 C37,27 41,28 44,28 C58,27 78,27 96,33 C98.5,35 96.5,37 92.5,36.4 C80,33 58,32 44,32.4 C38,32.6 33,31 30,28.4 C29.4,26.6 30.6,25.2 32,25.4 Z"/>
+              </g>
+              <path d="M51,9 Q58,13 65,8" stroke="#07080c" stroke-width="1.2" fill="none" opacity=".8"/>
+              <path d="M44,28.6 C58,27.6 78,27.6 94,33" stroke="#5d6680" stroke-width=".9" fill="none" opacity=".55"/>
+            </g>
+            <!-- cigarette -->
+            <path fill="#e7e0d1" d="M83,46.6 L95,48.6 L94.8,50.4 L82.8,48.6 Z"/>
+            <path fill="#8b8378" d="M93.2,48.3 L95,48.6 L94.8,50.4 L93,50.1 Z"/>
+          </g>
+          <!-- ember + smoke: outside the art group so the cast shadow ignores them -->
+          
+          <circle cx="95.8" cy="49.6" r="1.5" fill="#ffc070"/>
+          <path d="M97.5,45 C102,39 95,34 99,28 C103,22 96,17 100,10" fill="none" stroke="#dcd5c8" stroke-opacity=".32" stroke-width="1.9" stroke-linecap="round"/>
+        </svg>

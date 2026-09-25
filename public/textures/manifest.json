@@ -1,0 +1,275 @@
+{
+  "unit": 100,
+  "textures": {
+    "desk": {
+      "file": "textures/desk.png",
+      "px": [
+        848,
+        420
+      ],
+      "viewBox": [
+        392,
+        44,
+        424,
+        210
+      ],
+      "world": [
+        4.24,
+        2.1
+      ],
+      "scale": 2
+    },
+    "dice": {
+      "file": "textures/dice.png",
+      "px": [
+        720,
+        120
+      ],
+      "viewBox": [
+        0,
+        0,
+        240,
+        40
+      ],
+      "world": [
+        2.4,
+        0.4
+      ],
+      "scale": 3
+    },
+    "far": {
+      "file": "textures/far.png",
+      "px": [
+        776,
+        728
+      ],
+      "viewBox": [
+        296,
+        40,
+        388,
+        364
+      ],
+      "world": [
+        3.88,
+        3.64
+      ],
+      "scale": 2
+    },
+    "floor": {
+      "file": "textures/floor.png",
+      "px": [
+        2704,
+        268
+      ],
+      "viewBox": [
+        -6,
+        -4,
+        1352,
+        134
+      ],
+      "world": [
+        13.52,
+        1.34
+      ],
+      "scale": 2
+    },
+    "front-chair": {
+      "file": "textures/front-chair.png",
+      "px": [
+        420,
+        336
+      ],
+      "viewBox": [
+        88,
+        166,
+        210,
+        168
+      ],
+      "world": [
+        2.1,
+        1.68
+      ],
+      "scale": 2
+    },
+    "front-right": {
+      "file": "textures/front-right.png",
+      "px": [
+        624,
+        612
+      ],
+      "viewBox": [
+        1066,
+        28,
+        312,
+        306
+      ],
+      "world": [
+        3.12,
+        3.06
+      ],
+      "scale": 2
+    },
+    "furniture": {
+      "file": "textures/furniture.png",
+      "px": [
+        2544,
+        772
+      ],
+      "viewBox": [
+        40,
+        48,
+        1272,
+        386
+      ],
+      "world": [
+        12.72,
+        3.86
+      ],
+      "scale": 2
+    },
+    "hearts": {
+      "file": "textures/hearts.png",
+      "px": [
+        272,
+        72
+      ],
+      "viewBox": [
+        1184,
+        130,
+        136,
+        36
+      ],
+      "world": [
+        1.36,
+        0.36
+      ],
+      "scale": 2
+    },
+    "kask": {
+      "file": "textures/kask.png",
+      "px": [
+        220,
+        380
+      ],
+      "viewBox": [
+        0,
+        0,
+        110,
+        190
+      ],
+      "world": [
+        1.1,
+        1.9
+      ],
+      "scale": 2
+    },
+    "page-left": {
+      "file": "textures/page-left.png",
+      "px": [
+        1340,
+        1200
+      ],
+      "viewBox": [
+        0,
+        0,
+        670,
+        600
+      ],
+      "world": [
+        6.7,
+        6
+      ],
+      "scale": 2
+    },
+    "page-right": {
+      "file": "textures/page-right.png",
+      "px": [
+        1340,
+        1200
+      ],
+      "viewBox": [
+        670,
+        0,
+        670,
+        600
+      ],
+      "world": [
+        6.7,
+        6
+      ],
+      "scale": 2
+    },
+    "stack": {
+      "file": "textures/stack.png",
+      "px": [
+        2688,
+        40
+      ],
+      "viewBox": [
+        0,
+        0,
+        1344,
+        20
+      ],
+      "world": [
+        13.44,
+        0.2
+      ],
+      "scale": 2
+    },
+    "table": {
+      "file": "textures/table.png",
+      "px": [
+        1600,
+        480
+      ],
+      "viewBox": [
+        0,
+        0,
+        1600,
+        480
+      ],
+      "world": [
+        16,
+        4.8
+      ],
+      "scale": 1
+    },
+    "villon": {
+      "file": "textures/villon.png",
+      "px": [
+        240,
+        400
+      ],
+      "viewBox": [
+        0,
+        0,
+        120,
+        200
+      ],
+      "world": [
+        1.2,
+        2
+      ],
+      "scale": 2
+    },
+    "wall": {
+      "file": "textures/wall.png",
+      "px": [
+        2728,
+        876
+      ],
+      "viewBox": [
+        -12,
+        6,
+        1364,
+        438
+      ],
+      "world": [
+        13.64,
+        4.38
+      ],
+      "scale": 2
+    }
+  }
+}

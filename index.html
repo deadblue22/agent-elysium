@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>雪落之前</title>
+<meta name="description" content="《雪落之前》第一章 study.clock：纸艺立体书 + 极乐迪斯科式排版，Three.js 渲染。">
+<link rel="icon" href="data:,">
+<style>
+  :root{
+    --paper:#E8DCC4; --rust:#C2562B;
+    --serif:"Elysium Serif SC","EB Garamond",serif;
+    --sans:"Elysium Sans SC","Inter",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#0b0806;overflow:hidden}
+  /* 16:9 letterboxed frame; --s = frame width / 1600 (set by main.ts) */
+  #frame{position:absolute;left:50%;top:50%;width:1600px;height:900px;transform:translate(-50%,-50%);--s:1;overflow:hidden;background:#0b0806}
+  #gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+
+  /* chrome: title and language toggle, outside the book's world */
+  .chrome{position:absolute;left:0;top:0;width:100%;height:calc(80px * var(--s));pointer-events:none}
+  .title{position:absolute;left:calc(40px * var(--s));top:calc(11px * var(--s));font-family:var(--serif);color:rgba(232,220,196,.74);font-size:calc(15px * var(--s));letter-spacing:.14em;white-space:nowrap}
+  .title .ch{margin-left:.9em;font-size:.866em;color:rgba(232,220,196,.5);letter-spacing:.3em}
+  .title::after{content:"";position:absolute;left:0;top:calc(25px * var(--s));width:calc(56px * var(--s));height:1px;background:rgba(194,86,43,.7)}
+  :lang(en) .title{font-family:"EB Garamond",serif;letter-spacing:.06em;font-size:calc(16px * var(--s))}
+  :lang(en) .title .ch{letter-spacing:.14em}
+  .lang{position:absolute;right:calc(36px * var(--s));top:calc(8px * var(--s));font-family:var(--sans);font-weight:600;font-size:calc(12.5px * var(--s));letter-spacing:.2em;color:rgba(232,220,196,.42);pointer-events:auto;cursor:pointer;
+    padding:calc(5px * var(--s)) calc(10px * var(--s)) calc(4px * var(--s));border:1px solid rgba(232,220,196,.2);background:none;line-height:1.2}
+  .lang:hover{border-color:rgba(232,220,196,.4)}
+  .lang:focus-visible{outline:1px solid rgba(194,86,43,.9);outline-offset:2px}
+  .lang .on{color:rgba(232,220,196,.9)}
+  .lang .sep{margin:0 .4em;opacity:.6}
+
+  /* the log mirrored for screen readers */
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .sr-only:focus-within{position:absolute;left:8px;bottom:8px;width:auto;height:auto;clip-path:none;white-space:normal;background:#0b0806;color:#e8dcc4;padding:8px;font:14px/1.5 var(--serif);max-width:480px}
+
+  #nogl{position:absolute;inset:0;display:grid;place-items:center;color:rgba(232,220,196,.8);font:16px/1.7 var(--serif);text-align:center;padding:24px}
+  #nogl[hidden]{display:none}
+</style>
+</head>
+<body>
+<div id="frame">
+  <canvas id="gl" aria-hidden="true"></canvas>
+  <header class="chrome">
+    <div class="title"><span id="title">《雪落之前》</span><span class="ch" id="chapter">第一章</span></div>
+    <button class="lang" id="lang" type="button" aria-label="切换语言 / Switch language"><span data-lang="zh" class="on">中</span><span class="sep">/</span><span data-lang="en">EN</span></button>
+  </header>
+  <section class="sr-only" aria-live="polite">
+    <h2 id="log-heading">日志</h2>
+    <ol id="log"></ol>
+  </section>
+  <div id="nogl" hidden><p>这个页面需要 WebGL 2。<br>This page needs WebGL 2.</p></div>
+</div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
