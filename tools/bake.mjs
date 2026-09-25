@@ -12,7 +12,7 @@
 //
 // Usage: node tools/bake.mjs [name ...]
 import { chromium } from 'playwright-core';
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'node:fs';
 import { dirname, join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CHROMIUM, CHROMIUM_ARGS } from './chromium.mjs';
@@ -90,6 +90,14 @@ for (const f of files) {
 }
 await browser.close();
 
+// drop textures whose source SVG is gone
+const sources = new Set(readdirSync(artDir).filter((f) => f.endsWith('.svg')).map((f) => basename(f, '.svg')));
+for (const name of Object.keys(manifest.textures)) {
+  if (sources.has(name)) continue;
+  delete manifest.textures[name];
+  rmSync(join(outDir, `${name}.png`), { force: true });
+  console.log(`${name.padEnd(12)} removed (no assets/art/${name}.svg)`);
+}
 manifest.textures = Object.fromEntries(Object.entries(manifest.textures).sort(([a], [b]) => a.localeCompare(b)));
 writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
 const total = Object.keys(manifest.textures).reduce((s, n) => s + readFileSync(join(outDir, `${n}.png`)).length, 0);

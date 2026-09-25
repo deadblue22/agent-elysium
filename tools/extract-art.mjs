@@ -140,7 +140,7 @@ const PIECES = [
   },
   {
     name: 'floor', src: '#floorSvg', viewBox: [-6, -4, 1352, FLOOR_H + 8],
-    note: `The study floor on the base page, under the torn top sheets: boards, rug, loose papers, a faint gutter crease. y=0 is the pop-up's fold (book y=${FOLD}); the sheet reaches y=${FLOOR_H}, past the deepest point of the tongue. The strip along each tear line is the torn sheet's soft contact shadow (too thin for the shadow map at 0.02 units).`,
+    note: `The study floor on the base page, under the torn top sheets: boards, rug, loose papers, a faint gutter crease. y=0 is the pop-up's fold (book y=${FOLD}); the sheet reaches y=${FLOOR_H}, past the deepest point of the tongue. The strip along each tear line is the torn sheet's soft contact shadow, kept light: the curled sheet edge casts the real one.`,
     attrs: { 'data-fold': FOLD, 'data-row-furniture': ROWS.furniture, 'data-row-desk': ROWS.desk, 'data-row-front': ROWS.front, 'data-bake-scale': 1.6 },
     data: { H: FLOOR_H, rows: ROWS, tears: [tears.left.pts, tears.right.pts].map((pts) => pts.map(([x, y]) => [x, f1(y - FOLD)])) },
     edit: (svg, d) => {
@@ -184,7 +184,7 @@ const PIECES = [
       defs.innerHTML = '<filter id="tearShadow" x="-5%" y="-40%" width="110%" height="180%"><feGaussianBlur stdDeviation="2.6"/></filter>';
       for (const pts of d.tears) {
         const band = 'M' + pts.map(([x, y]) => `${x},${(y - 4).toFixed(1)}`).join(' L') + ' L' + pts.slice().reverse().map(([x, y]) => `${x},${(y + 8).toFixed(1)}`).join(' L') + ' Z';
-        el('path', { d: band, fill: '#0b0704', opacity: 0.5, filter: 'url(#tearShadow)' }, svg);
+        el('path', { d: band, fill: '#0b0704', opacity: 0.28, filter: 'url(#tearShadow)' }, svg);
       }
     },
   },
@@ -283,10 +283,6 @@ const PIECES = [
         + `<path d="${d.line}" stroke="#5a4730" stroke-opacity=".3" stroke-width="1.3" fill="none"/></g></g>`);
     },
   })),
-  {
-    name: 'stack', src: '#stackSvg', viewBox: [0, 0, 1344, 20],
-    note: 'The page block seen from the fore-edge.',
-  },
 ];
 
 // tileable wood (the legacy table filter, with stitchTiles so it repeats)

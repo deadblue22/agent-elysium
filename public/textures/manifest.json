@@ -219,24 +219,6 @@
         "heartsY": 282
       }
     },
-    "stack": {
-      "file": "textures/stack.png",
-      "px": [
-        2688,
-        40
-      ],
-      "viewBox": [
-        0,
-        0,
-        1344,
-        20
-      ],
-      "world": [
-        13.44,
-        0.2
-      ],
-      "scale": 2
-    },
     "table": {
       "file": "textures/table.png",
       "px": [

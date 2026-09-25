@@ -5,7 +5,8 @@ import {
   SpriteMaterial, Vector3,
 } from 'three';
 import type { Art } from '../assets';
-import { DEG, SHEET_Y, flatSheet, leanNormal, paperMaterial, pointOnStanding, standing, wx, wz, type StandOptions } from './space';
+import { contactSquare, decal, standingContact } from './paper';
+import { DEG, leanNormal, paperMaterial, pointOnStanding, rectUV, standing, surfaceGrid, wx, wz, xSamples, ySamples, type StandOptions } from './space';
 
 /** The puppets lean back a little so the high camera does not flatten them into slivers. */
 const PUPPET_LEAN = 15;
@@ -30,26 +31,32 @@ const DIE = 0.4;
 /** Book y of the top of the morale hearts: the right sheet's `heartsY`, clear of its tear. */
 export const heartsTop = (art: Art) => art['page-right'].meta.heartsY;
 
-export function createStage(art: Art) {
+/** sheet: world height of the right top sheet at (bx, by), which everything here stands on. */
+export function createStage(art: Art, sheet: (bx: number, by: number) => number) {
   const group = new Group();
   group.name = 'stage';
   const shift = art['page-right'].meta.puppetShift;
   const pageH = art['page-right'].meta.pageH;
 
   const puppets = Object.fromEntries(Object.entries(PUPPETS).map(([k, o]) => [k, { ...o, hinge: o.hinge + shift }]));
+  /** a puppet stands where the sheet is under the middle of its feet */
+  const footY = (o: StandOptions, piece: string) => sheet((o.x0 ?? 0) + (art[piece].viewBox[2] / 2) * (o.scale ?? 1), o.hinge) - 0.002;
   for (const [name, o] of Object.entries(puppets)) {
     const material = paperMaterial(art[name].texture, 0.9);
     // light bouncing off the bright page onto the puppets' fronts (the direct lights miss it)
     material.emissive.setRGB(0.2, 0.18, 0.15);
     material.emissiveMap = art[name].texture;
-    const { group: g, mesh } = standing(art[name], material, { ...o, y: SHEET_Y - 0.002 });
+    const { group: g, mesh } = standing(art[name], material, { ...o, y: footY(o, name) });
     mesh.name = name;
     group.add(g);
+    const contact = standingContact(art[name], o, sheet, { opacity: 0.75, behind: 12, front: 8 });
+    contact.name = `contact-${name}`;
+    group.add(contact);
   }
 
   // the ember of Villon's cigarette
   const v = puppets.villon;
-  const e = pointOnStanding({ ...v, svgX: 95.8, svgY: 49.6 }, SHEET_Y - 0.002);
+  const e = pointOnStanding({ ...v, svgX: 95.8, svgY: 49.6 }, footY(v, 'villon'));
   const ember = new Sprite(new SpriteMaterial({ map: glowTexture('255,170,90'), color: new Color(1.6, 1.3, 1.1), blending: AdditiveBlending, depthWrite: false, transparent: true }));
   const n = leanNormal(PUPPET_LEAN);
   ember.position.set(e.x, e.y, e.z).addScaledVector(new Vector3(n.x, n.y, n.z), 0.01);
@@ -64,18 +71,27 @@ export function createStage(art: Art) {
       t.offset.set((f - 1) / 6, 0);
       return new MeshStandardMaterial({ map: t, roughness: 0.85 });
     });
+    const by = d.by + pageH - 600; // bottom right, as on M0
     const die = new Mesh(new BoxGeometry(DIE, DIE, DIE), mats);
-    die.position.set(wx(d.bx), SHEET_Y + DIE / 2, wz(d.by + pageH - 600)); // bottom right, as on M0
+    die.position.set(wx(d.bx), sheet(d.bx, by) + DIE / 2, wz(by));
     die.rotation.y = d.rot * DEG;
     die.castShadow = die.receiveShadow = true;
     die.name = 'die';
     group.add(die);
+    // contact occlusion under the die
+    const r = DIE * 100; // footprint, book px; the decal is twice as wide
+    const under = decal(surfaceGrid(xSamples(d.bx - r, d.bx + r), ySamples(by - r, by + r, 8), (bx, y) => sheet(bx, y) + 0.004, rectUV(d.bx - r, d.bx + r, by - r, by + r)), contactSquare(), 0.8);
+    under.geometry.center();
+    under.position.set(wx(d.bx), sheet(d.bx, by) + 0.004, wz(by));
+    under.rotation.y = d.rot * DEG;
+    under.name = 'contact-die';
+    group.add(under);
   }
 
   const [hx, hy, hw, hh] = art.hearts.viewBox;
   const dy = heartsTop(art) - (hy + 5); // the hearts are drawn from y + 5 in their SVG
-  const hearts = flatSheet(hx, hx + hw, hy + dy, hy + hh + dy, SHEET_Y + 0.003);
-  hearts.material = paperMaterial(art.hearts.texture);
+  const hearts = new Mesh(surfaceGrid(xSamples(hx, hx + hw), ySamples(hy + dy, hy + hh + dy, 6), (bx, by) => sheet(bx, by) + 0.003,
+    rectUV(hx, hx + hw, hy + dy, hy + hh + dy)), paperMaterial(art.hearts.texture));
   hearts.receiveShadow = true;
   hearts.name = 'hearts';
   group.add(hearts);

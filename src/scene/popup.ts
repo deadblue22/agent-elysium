@@ -4,7 +4,8 @@
 // FOLD and ROWS); the wall leans back most, rows nearer the reader stand more upright.
 import { Group, MeshBasicMaterial, Vector3 } from 'three';
 import type { Art } from '../assets';
-import { BASE_Y, leanNormal, paperMaterial, pointOnStanding, standing, type StandOptions } from './space';
+import { standingContact } from './paper';
+import { BASE_Y, baseY, envelope, leanNormal, lift, paperMaterial, pointOnStanding, standing, type StandOptions } from './space';
 
 type Row = 'wall' | 'furniture' | 'desk' | 'front';
 /**
@@ -28,7 +29,9 @@ export const LAYER_Y = BASE_Y + 0.003;
 export function layers(floor: Record<string, number>): Record<string, StandOptions> {
   const rowAt: Record<Row, number> = { wall: 0, furniture: floor.rowFurniture, desk: floor.rowDesk, front: floor.rowFront };
   return Object.fromEntries(Object.entries(PIECES).map(([k, p]) => {
-    const o: StandOptions = { hinge: floor.fold + rowAt[p.row] + p.offset, baseY: p.baseY, lean: p.lean };
+    const hinge = floor.fold + rowAt[p.row] + p.offset;
+    // each card rests on the page along its fold line, bridging the gutter valley
+    const o: StandOptions = { hinge, baseY: p.baseY, lean: p.lean, rest: (bx) => envelope(bx, hinge) };
     if (p.scale && p.cx !== undefined) Object.assign(o, { scale: p.scale, x0: p.cx - (p.cx - 0) * p.scale });
     return [k, o];
   }));
@@ -66,6 +69,13 @@ export function createPopup(art: Art) {
     mesh.name = name;
     if (name === 'far') mesh.receiveShadow = false;
     group.add(g);
+    if (name === 'far') continue; // stands behind the wall
+    // baked contact occlusion on the floor where the card meets it
+    const contact = standingContact(piece, o, (bx, by) => baseY(bx, by) + 0.003, {
+      opacity: 0.78, behind: 22, front: 18, gap: (bx) => envelope(bx, o.hinge) - lift(bx, o.hinge),
+    });
+    contact.name = `contact-${name}`;
+    group.add(contact);
   }
   return { group };
 }

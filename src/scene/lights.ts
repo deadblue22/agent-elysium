@@ -10,7 +10,7 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
   const group = new Group();
   group.name = 'lights';
 
-  const hemi = new HemisphereLight('#8b909b', '#4d3626', 0.9);
+  const hemi = new HemisphereLight('#8b909b', '#4d3626', 0.62);
   group.add(hemi);
 
   // cool light from the window side of the room: from the left, fairly low and a little in

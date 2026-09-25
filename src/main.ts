@@ -1,7 +1,8 @@
 // 雪落之前 · the study.clock moment rendered with Three.js.
 // URL flags: ?still freezes time (snow, grain, flicker, cursor) for screenshots; ?lang=en;
 // ?debug exposes the painters, scene and renderer on window.__debug.
-import { NoToneMapping, PCFShadowMap, SRGBColorSpace, Scene, Vector3, WebGLRenderer, type PerspectiveCamera } from 'three';
+import { NoToneMapping, PCFShadowMap, PMREMGenerator, SRGBColorSpace, Scene, Vector3, WebGLRenderer, type PerspectiveCamera } from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { loadArt, loadFonts } from './assets';
 import type { Lang } from './content/schema';
 import { chrome, clockMoment } from './content/study-clock';
@@ -15,14 +16,21 @@ import { createPopup, layers, roomLights } from './scene/popup';
 import { createPost } from './scene/post';
 import { createStage, heartsTop } from './scene/puppets';
 import { createSnow } from './scene/snow';
-import { BASE_Y, DEG, SHEET_Y, wx, wz } from './scene/space';
+import { BASE_Y, DEG, envelope, sheetY, wx, wz } from './scene/space';
 import { createTable } from './scene/table';
 
 declare global {
   interface Window {
     __ready?: boolean;
     /** For tools/shot.mjs: frame-space rects, composition metrics and renderer facts. */
-    __shot?: { page: Rect; column: Rect; renderer: string; webgl2: boolean; anisotropy: number; ink: { w: number; h: number }; metrics: Record<string, number> };
+    __shot?: {
+      page: Rect; column: Rect; renderer: string; webgl2: boolean; anisotropy: number; ink: { w: number; h: number };
+      metrics: Record<string, number>;
+      /** Frame points for the close-up crops: the gutter at the near edge, the right page's near outer corner. */
+      points: { gutter: { x: number; y: number }; corner: { x: number; y: number } };
+    };
+    /** Renders n frames synchronously and returns the mean ms per frame (for tools/shot.mjs). */
+    __bench?: (n: number) => number;
   }
 }
 
@@ -46,13 +54,20 @@ function frameSize() {
 const inkScale = (w: number, pr: number) => Math.min(4, Math.max(3, (3 * w * pr) / FRAME.w));
 const labelScale = (w: number, pr: number) => Math.min(3, Math.max(1.5, (1.5 * w * pr) / FRAME.w));
 
-/** Frame-space bounding box of a rect on the top sheets. */
+/** Frame position of a point on the top sheets (or at height h). */
+function onFrame(camera: PerspectiveCamera, bx: number, by: number, h = sheetY(bx, by)) {
+  const v = new Vector3(wx(bx), h, wz(by)).project(camera);
+  return { x: ((v.x + 1) / 2) * FRAME.w, y: ((1 - v.y) / 2) * FRAME.h };
+}
+
+/** Frame-space bounding box of a rect on the top sheets (sampled along its edges: the sheets are curved). */
 function projectRect(camera: PerspectiveCamera, bx0: number, by0: number, bx1: number, by1: number): Rect {
   const xs: number[] = [], ys: number[] = [];
-  for (const bx of [bx0, bx1]) for (const by of [by0, by1]) {
-    const v = new Vector3(wx(bx), SHEET_Y, wz(by)).project(camera);
-    xs.push(((v.x + 1) / 2) * FRAME.w);
-    ys.push(((1 - v.y) / 2) * FRAME.h);
+  for (let k = 0; k <= 16; k++) {
+    for (const [bx, by] of [[bx0 + ((bx1 - bx0) * k) / 16, by0], [bx0 + ((bx1 - bx0) * k) / 16, by1], [bx0, by0 + ((by1 - by0) * k) / 16], [bx1, by0 + ((by1 - by0) * k) / 16]]) {
+      const p = onFrame(camera, bx, by);
+      xs.push(p.x); ys.push(p.y);
+    }
   }
   const x = Math.min(...xs), y = Math.min(...ys);
   return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
@@ -82,10 +97,19 @@ async function main() {
   const rightInk = new PagePainter(anisotropy, labelScale(w0, pr0));
 
   const scene = new Scene();
+  const t0 = performance.now();
   const book = createBook(art, leftInk.texture, rightInk.texture);
+  const popup = createPopup(art), stage = createStage(art, book.rightSheet);
+  const buildMs = performance.now() - t0; // geometry, procedural textures and the baked occlusion
   const lights = createLights(roomLights(art.floor.meta));
   const cam = createCameraRig();
-  scene.add(createTable(art), book.group, createPopup(art).group, createStage(art).group, lights.group, cam.rig);
+  scene.add(createTable(art), book.group, popup.group, stage.group, lights.group, cam.rig);
+  // a soft, low environment light, so curved paper, page edges and board edges read through
+  // gentle shading gradients and not only through the direct lights
+  const pmrem = new PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.16;
+  pmrem.dispose();
 
   // the log starts under the left sheet's tear (its extent comes from the SVG, via the manifest)
   const tear = art['page-left'].meta;
@@ -181,7 +205,14 @@ async function main() {
     webgl2: renderer.capabilities.isWebGL2,
     anisotropy,
     ink: { w: leftInk.size.w, h: leftInk.size.h },
-    metrics: composition(cam.camera, art, layout),
+    metrics: { ...composition(cam.camera, art, layout), buildMs: Math.round(buildMs) },
+    points: { gutter: onFrame(cam.camera, 670, PAGE.h), corner: onFrame(cam.camera, 2 * 670, PAGE.h) },
+  };
+  window.__bench = (n: number) => {
+    const gl = renderer.getContext(), px = new Uint8Array(4);
+    const tb = performance.now();
+    for (let i = 0; i < n; i++) { post.render(t); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); }
+    return (performance.now() - tb) / n;
   };
   if (params.has('debug')) Object.assign(window, { __debug: { leftInk, rightInk, scene, renderer, cam, post, lights, layout: () => layout } });
 
@@ -217,14 +248,16 @@ async function main() {
  * fully visible line.
  */
 function composition(camera: PerspectiveCamera, art: Awaited<ReturnType<typeof loadArt>>, log: PageLayout) {
-  const P = (bx: number, by: number, up = 0, lean = 0, h = SHEET_Y) => {
+  const P = (bx: number, by: number, up = 0, lean = 0, h = sheetY(bx, by)) => {
     const r = lean * DEG;
     const v = new Vector3(wx(bx), h + (up / 100) * Math.cos(r), wz(by) - (up / 100) * Math.sin(r)).project(camera);
     return { x: ((v.x + 1) / 2) * FRAME.w, y: ((1 - v.y) / 2) * FRAME.h };
   };
-  const Y = (bx: number, by: number, up = 0, lean = 0, h = SHEET_Y) => Math.round(P(bx, by, up, lean, h).y);
+  const Y = (bx: number, by: number, up = 0, lean = 0, h = sheetY(bx, by)) => Math.round(P(bx, by, up, lean, h).y);
   const L = layers(art.floor.meta), tl = art['page-left'].meta, tr = art['page-right'].meta;
-  const base = (k: string) => Y(670, L[k].hinge, 0, 0, BASE_Y);
+  // the pop-up measured where its cards stand on the flat part of the left page
+  const rest = (k: string) => BASE_Y + 0.003 + envelope(335, L[k].hinge);
+  const base = (k: string) => Y(335, L[k].hinge, 0, 0, rest(k));
   const scale = (by: number) => {
     const a = P(300, by), b = P(301, by), c = P(300, by + 1);
     return { v: c.y - a.y, h: b.x - a.x };
@@ -238,9 +271,9 @@ function composition(camera: PerspectiveCamera, art: Awaited<ReturnType<typeof l
   const ink = 0.9 * em; // CJK glyphs carry about 0.9 em of ink
   const pitch = baselines.length > 1 ? Math.min(...baselines.slice(1).map((b, i) => b - baselines[i])) : 0;
   return {
-    backdropTop: Y(670, L.wall.hinge, 418, L.wall.lean, BASE_Y), backdropBase: base('wall'),
+    backdropTop: Y(335, L.wall.hinge, 418, L.wall.lean, rest('wall')), backdropBase: base('wall'),
     rowFurniture: base('furniture'), rowDesk: base('desk'), rowFront: base('front-chair'),
-    leftTearTop: Y(335, tl.tearMin), leftTearBottom: Y(335, tl.tearMax), tongue: Y(1090, tr.tearMax), nearEdge: Y(670, PAGE.h),
+    leftTearTop: Y(335, tl.tearMin), leftTearBottom: Y(335, tl.tearMax), tongue: Y(1090, tr.tearMax), nearEdge: Y(335, PAGE.h),
     glyphHW: +(mid.v / mid.h).toFixed(3), glyphBottomOverTop: +(scale(bottom).v / scale(top).v).toFixed(3),
     glyphPxTop: +(ink * scale(top).v).toFixed(1), glyphPxBottom: +(ink * scale(bottom).v).toFixed(1),
     pitchPxTop: +(pitch * scale(top).v).toFixed(1), bodyEm: em,

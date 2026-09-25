@@ -11,8 +11,12 @@ export const PAGE = { w: 670, h: 600 };
 export interface Rect { x: number; y: number; w: number; h: number }
 export interface Column { x0: number; x1: number; y0: number; y1: number }
 
-/** The text window on the left top sheet: from just under its tear down to the near edge. */
-export const textColumn = (y0: number): Column => ({ x0: 34, x1: 620, y0, y1: PAGE.h - 20 });
+/**
+ * The text window on the left top sheet: from just under its tear down to the near edge,
+ * its right margin (596, 11% of the page from the gutter) kept off the steep part of the
+ * pages' curve into the gutter.
+ */
+export const textColumn = (y0: number): Column => ({ x0: 30, x1: 596, y0, y1: PAGE.h - 20 });
 /** Old lines fade out over this many page px as they rise into the tear. */
 export const FADE = 44;
 
