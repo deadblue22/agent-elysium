@@ -89,7 +89,7 @@ export const HOTSPOTS: Record<string, Hotspot> = {
   },
   rug: {
     name: t('地毯', 'Rug'),
-    tip: t('边角磨破了。桌前那一块被踩得最旧。', 'Frayed at the corners. The patch in front of the desk is the most worn.'),
+    tip: t('边角磨破了。从门口到书桌，踩出了一条颜色更浅的路。', 'Frayed at the corners. A paler path is worn into it, from the door to the desk.'),
   },
 
   // --- the front row and the floor ------------------------------------------------------
@@ -114,10 +114,19 @@ export const HOTSPOTS: Record<string, Hotspot> = {
     tip: t('账页，钟表零件的订单。没有一张写着凶手的名字。', 'Ledger pages, orders for clock parts. None of them names a murderer.'),
   },
 
-  // --- the right page -------------------------------------------------------------------
+  // --- on the table ----------------------------------------------------------------------
   dice: {
     name: t('骰子', 'Dice'),
     tip: t('两枚纸骰子。在这本书里，命运归它们管。', 'Two paper dice. In this book, fate is their department.'),
+  },
+  // the name is followed by the count (「士气 3 / 4」); the leads' line lists what was found
+  morale: {
+    name: t('士气', 'Morale'),
+    tip: t('失败会让它流失。一颗也不剩的时候，你会放下这个案子。', 'Failures drain it. When no heart is left, you give up the case.'),
+  },
+  leads: {
+    name: t('线索', 'Leads'),
+    tip: t('还没有找到线索。', 'No leads yet.'),
   },
 
   // --- the reconstruction ---------------------------------------------------------------

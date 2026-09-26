@@ -7,6 +7,11 @@
 // reveals the newest entry character by character (`setReveal`); an animated offset lets a
 // new entry push the older lines up smoothly. Partial repaints (hover, cursor blink) clip to
 // a rect and redraw only what is inside.
+//
+// The ink can be stretched vertically about a line (the bottom of the log's window): the
+// camera sees the page at a slant, which squashes the glyphs; drawn a little taller, they
+// read with their true proportions. The layout stays unstretched (its own page px); the
+// painter maps it, and hands out option boxes in the page's real px.
 import { CanvasTexture, LinearFilter, LinearMipmapLinearFilter, SRGBColorSpace } from 'three';
 import { INK, PAGE, type DrawItem, type PageLayout, type Rect } from './layout';
 
@@ -30,6 +35,9 @@ export class PagePainter {
   private reveal: { entry: number; chars: number } | null = null;
   /** The continue marker is up (it blinks with the cursor). */
   private marker = false;
+  /** Vertical stretch of the ink about the row `anchor` (page px): page y = anchor + (y - anchor) * stretch. */
+  private stretch = 1;
+  private anchor = 0;
 
   constructor(anisotropy: number, scale: number) {
     this.ctx = this.canvas.getContext('2d', { alpha: true })!;
@@ -56,6 +64,21 @@ export class PagePainter {
 
   get size() { return { w: this.canvas.width, h: this.canvas.height, scale: this.scale }; }
 
+  /** Draws the layout `s` times taller about the page row `anchor`. */
+  setStretch(s: number, anchor: number) {
+    this.stretch = s;
+    this.anchor = anchor;
+    if (this.layout) this.paint(null);
+  }
+
+  /** Layout px → canvas: the page scale and the stretch. */
+  private transform() {
+    const { scale, stretch: s, anchor } = this;
+    this.ctx.setTransform(scale, 0, 0, scale * s, 0, scale * anchor * (1 - s));
+  }
+  /** A layout y in the page's real px. */
+  toPage(y: number): number { return this.anchor + (y - this.anchor) * this.stretch; }
+
   setLayout(layout: PageLayout, opts: { reveal?: { entry: number; chars: number } | null; offset?: number } = {}) {
     this.layout = layout;
     this.scroll = Math.min(this.scroll, layout.scrollMax);
@@ -81,7 +104,7 @@ export class PagePainter {
   /** Scrolls the history by delta page px (positive: back in time). Returns true if it moved. */
   scrollBy(delta: number): boolean {
     const max = this.layout?.scrollMax ?? 0;
-    const next = Math.max(0, Math.min(max, this.scroll + delta));
+    const next = Math.max(0, Math.min(max, this.scroll + delta / this.stretch));
     if (next === this.scroll) return false;
     this.scroll = next;
     this.paint(null);
@@ -91,8 +114,8 @@ export class PagePainter {
   /** Back to the newest line. */
   scrollToEnd() { if (this.scroll) { this.scroll = 0; this.paint(null); } }
 
-  /** Hit boxes of the options as they are drawn now: scrolled, and cut to the visible window. */
-  optionRects(): OptionRect[] {
+  /** The options' boxes as drawn now (layout px): scrolled, and cut to the visible window. */
+  private drawnOptions(): OptionRect[] {
     const w = this.layout?.window;
     const dy = this.scroll + this.offset;
     return (this.layout?.options ?? []).flatMap(({ index, number, greyed, rect }) => {
@@ -102,9 +125,14 @@ export class PagePainter {
     });
   }
 
+  /** Hit boxes of the options as they are drawn now, in the page's real px. */
+  optionRects(): OptionRect[] {
+    return this.drawnOptions().map((o) => ({ ...o, rect: { ...o.rect, y: this.toPage(o.rect.y), h: o.rect.h * this.stretch } }));
+  }
+
   setHover(index: number | null) {
     if (index === this.hover || !this.layout) return;
-    const rects = this.optionRects().filter((o) => o.index === index || o.index === this.hover).map((o) => o.rect);
+    const rects = this.drawnOptions().filter((o) => o.index === index || o.index === this.hover).map((o) => o.rect);
     this.hover = index;
     for (const r of rects) this.paint(r);
   }
@@ -126,7 +154,7 @@ export class PagePainter {
 
   private markerRect(): Rect {
     const m = this.layout?.marker;
-    return m ? { x: m.x - 4, y: m.y - 16, w: PAGE.w - m.x, h: 22 } : { x: 0, y: 0, w: 0, h: 0 };
+    return m ? { x: m.x - 4, y: m.y - 22, w: PAGE.w - m.x, h: 30 } : { x: 0, y: 0, w: 0, h: 0 };
   }
 
   /** Repaints the whole page (rect = null) or only what lies inside rect (page px, as drawn). */
@@ -135,8 +163,9 @@ export class PagePainter {
     const win = this.layout?.window ?? null;
     const dy = this.scroll + this.offset;
     ctx.save();
-    ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
-    const r = rect ?? { x: 0, y: 0, w: PAGE.w, h: PAGE.h };
+    this.transform();
+    // the whole canvas, in layout px
+    const r = rect ?? { x: 0, y: (this.anchor * (this.stretch - 1)) / this.stretch, w: PAGE.w, h: PAGE.h / this.stretch };
     ctx.beginPath();
     ctx.rect(r.x, r.y, r.w, r.h);
     ctx.clip();
@@ -162,7 +191,7 @@ export class PagePainter {
     if (mk && this.marker) {
       // it pulses with the cursor between full and dim, so it never disappears
       ctx.save();
-      ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+      this.transform();
       ctx.beginPath();
       ctx.rect(r.x, r.y, r.w, r.h);
       ctx.clip();
@@ -190,7 +219,7 @@ export class PagePainter {
   private fades(r: Rect, win: NonNullable<PageLayout['window']>) {
     const { ctx } = this;
     ctx.save();
-    ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+    this.transform();
     ctx.beginPath();
     ctx.rect(r.x, r.y, r.w, r.h);
     ctx.clip();

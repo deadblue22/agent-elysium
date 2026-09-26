@@ -6,11 +6,11 @@
 //            player's own words, or before options (the options are the stop).
 //   roll     the dice tumble and settle, then the dice line prints (the result line stops)
 //   morale   the hearts flip
-//   flag     evidence: a notice line in the log, the leads counter, and the lead card drops
-//            onto the right page; it stops there, and the card slides away on the click
+//   flag     evidence: a notice line in the log, and the lead card drops onto the right page;
+//            it stops there, and on the click the card is filed on the stack on the table
 //   stage    the cue plays; a cue listed in PARALLEL starts together with the one before it
 //   options  the options are laid out, and the director waits for the player's choice
-//   end      the chapter is over
+//   end      the chapter is over: 「第一章 完」 closes the log
 // Input: a choice only while the options wait (`idle`); a click, Space or Enter completes the
 // line being typed, or else moves on from a stop.
 import type { Lang, Line, SkillId } from '../content/schema';
@@ -27,7 +27,7 @@ export interface Stagehands {
   dice: { roll(values: [number, number]): Promise<void> };
   hearts: { to(value: number): Promise<void> };
   lead: { show(text: (lang: Lang) => LeadText): Promise<void>; dismiss(): Promise<void> };
-  /** The leads counter under the hearts. */
+  /** How many leads are found (the stack's hover tip counts them). */
   leads(count: number, total: number): void;
   cues: { play(cue: string): Promise<void>; enter(): Promise<void> };
   /** Which puppet bobs while its line types. */
@@ -35,7 +35,7 @@ export interface Stagehands {
 }
 
 /** Rest after a line that does not stop (ms), after a stop's click, after the dice line. */
-const REST = { line: 200, stop: 120, roll: 350 };
+const REST = { line: 200, stop: 120, roll: 350, end: 600 };
 
 export class Director {
   /** Waiting for the player's choice. */
@@ -171,6 +171,8 @@ export class Director {
           }
           case 'end': {
             const key = this.key('end');
+            await this.clock.wait(REST.end);
+            await this.log.append({ kind: 'end' });
             this.ended = true;
             await this.checkpoint(key);
             break;

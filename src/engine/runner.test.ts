@@ -203,7 +203,7 @@ describe('the chapter', () => {
     expect(said[1]).toMatchObject({ speaker: 'logic', result: { dc: 12, success: true } });
     expect(said.filter((l) => l.speaker === 'narrator')).toHaveLength(4);
     expect(said.at(-1)!.speaker).toBe('necktie');
-    const end = pick(run, 'recon.turn');
+    const end = pick(run, 'recon.upstairs');
     expect(end.map((b) => b.kind)).toEqual(['line', 'stage', 'end']);
     expect(run.isEnded).toBe(true);
     expect(run.choose(1)).toEqual([]);
@@ -234,7 +234,7 @@ describe('the chapter', () => {
       while (!run.isEnded && steps < 600) {
         const enabled = run.options().filter((o) => o.state === 'enabled');
         expect(enabled.length, `seed ${seed} step ${steps} node ${run.state.node}`).toBeGreaterThan(0);
-        const recon = enabled.find((o) => o.option.id === 'intro.reconstruct' || o.option.id === 'recon.turn');
+        const recon = enabled.find((o) => o.option.id === 'intro.reconstruct' || o.option.id === 'recon.upstairs');
         const choice = recon && next() < 0.5 ? recon : enabled[Math.floor(next() * enabled.length)];
         run.choose(choice.number);
         steps++;

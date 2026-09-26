@@ -231,22 +231,22 @@ export function contactUnder(image: CanvasImageSource & { width: number; height:
 }
 
 /**
- * A puppet's stand tab: the flap of the cut-out folded forward and glued to the page. A little
- * darker than the page, narrower at its front edge, a dark crease along the fold (the top
+ * A puppet's stand tab: the flap of the cut-out folded forward and glued to the floor: plain
+ * card, a little darker than the page, narrower at its front edge, a dark crease along the fold (the top
  * of the texture, v = 1) and a light cut edge at the front.
  */
 export function standTab(): CanvasTexture {
   const w = 256, h = 32, c = document.createElement('canvas');
   c.width = w; c.height = h;
   const x = c.getContext('2d')!;
-  x.fillStyle = '#cbbb98';
+  x.fillStyle = '#a8977a';
   x.beginPath();
   x.moveTo(0, 0); x.lineTo(w, 0); x.lineTo(w - 10, h); x.lineTo(10, h);
   x.closePath();
   x.fill();
-  x.fillStyle = 'rgba(46,33,22,.8)';
-  x.fillRect(0, 0, w, 5);
-  x.fillStyle = 'rgba(255,246,224,.5)';
+  x.fillStyle = 'rgba(46,33,22,.85)';
+  x.fillRect(0, 0, w, 6);
+  x.fillStyle = 'rgba(255,246,224,.28)';
   x.fillRect(10, h - 3, w - 20, 2);
   const t = new CanvasTexture(c);
   t.colorSpace = SRGBColorSpace;

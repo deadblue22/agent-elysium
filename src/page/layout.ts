@@ -3,7 +3,7 @@
 // carry their result tag ([极易：成功]); the dice line is a boxed check tag and the roll;
 // the current options are numbered, in rust, with the cursor after the last one.
 // Line breaking: CJK per character with kinsoku, Latin per word.
-// Everything is in page px (the legacy board's CSS px; the page is 670 x 600).
+// Everything is in page px (the legacy board's CSS px; the page is 670 x 720).
 // The painter scales it to the canvas.
 import type { Lang, LogEntry } from '../content/schema';
 import { checkTag, resultTag, speakerInk, speakerName } from '../content/skills';
@@ -11,7 +11,7 @@ import { EVIDENCE_LABELS } from '../content/study';
 import { CRIT, ui } from '../content/ui';
 
 /** One page in book px (the legacy board's CSS px). Must match tools/extract-art.mjs BOOK_H. */
-export const PAGE = { w: 670, h: 600 };
+export const PAGE = { w: 670, h: 720 };
 
 export interface Rect { x: number; y: number; w: number; h: number }
 export interface Column { x0: number; x1: number; y0: number; y1: number }
@@ -21,7 +21,7 @@ export interface Column { x0: number; x1: number; y0: number; y1: number }
  * its right margin (596, 11% of the page from the gutter) kept off the steep part of the
  * pages' curve into the gutter.
  */
-export const textColumn = (y0: number): Column => ({ x0: 30, x1: 596, y0, y1: PAGE.h - 16 });
+export const textColumn = (y0: number): Column => ({ x0: 30, x1: 596, y0, y1: PAGE.h - 30 });
 /** Old lines fade out over this many page px as they rise into the tear. */
 export const FADE = 44;
 
@@ -306,6 +306,21 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
       return;
     }
 
+    if (e.kind === 'end') {
+      // 「第一章 完」: centred on the column, a little larger than the narration, over a short rust rule
+      const size = S.narr * 1.1, lh = S.lineHeight * 1.6;
+      const st: Style = { family: 'serif', size, weight: 400, color: INK.log, ls: size * (lang === 'zh' ? 0.32 : 0.08), stroke: 0.3 };
+      const text = ui.chapterEnd[lang];
+      const w = m.width(lang, st, text) - st.ls, cx = (col.x0 + col.x1) / 2;
+      y += S.lineHeight * 0.5;
+      pushText(items, lang, cx - w / 2, m.baseline(lang, st, y, lh), text, st, 0.9);
+      items.push({ t: 'rule', color: INK.cursor, alpha: 0.75, box: { x: cx - 22, y: y + lh - 2, w: 44, h: 1.4 } });
+      y += lh + 8;
+      plain.push(text);
+      tagItems();
+      return;
+    }
+
     if (e.kind === 'notice') {
       // a new lead, as a system line: a boxed gold tag, the evidence, the count
       const tagStyle: Style = { family: 'sans', size: S.tag, weight: 600, color: INK.lead, ls: S.tag * (lang === 'zh' ? 0.18 : 0.14), stroke: 0.2 };
@@ -446,9 +461,10 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
   }
   for (const o of options) o.rect.y += shift;
   const room = col.y1 - col.y0 - FADE * 0.6;
-  const mk: Style = { family: 'sans', size: lang === 'zh' ? 14.5 : 12.5, weight: 600, color: INK.cursor, ls: (lang === 'zh' ? 14.5 : 12.5) * 0.18, stroke: 0.2 };
+  const ms = lang === 'zh' ? 18 : 15.5;
+  const mk: Style = { family: 'sans', size: ms, weight: 600, color: INK.cursor, ls: ms * 0.18, stroke: 0.3 };
   const markText = ui.continue[lang];
-  const marker = { x: col.x1 - (m.width(lang, mk, markText) - mk.ls), y: col.y1 + 13, text: markText, font: font(lang, mk), color: mk.color, ls: mk.ls };
+  const marker = { x: col.x1 - (m.width(lang, mk, markText) - mk.ls), y: col.y1 + ms + 2, text: markText, font: font(lang, mk), color: mk.color, ls: mk.ls };
   return { items, options, chars, cursor, plain, window: { y0: col.y0, y1: col.y1, fade: FADE }, scrollMax: Math.max(0, content - room), height: Math.max(0, content), marker };
 }
 
@@ -461,42 +477,11 @@ function pushText(items: DrawItem[], lang: Lang, x: number, y: number, text: str
   });
 }
 
-/**
- * The blank page the chapter's last page turn reveals: one line in its middle, 「第一章 完」 /
- * "End of Chapter One", over a short rust rule. `top` is where the paper starts (its tear).
- */
-export function layoutEndPage(lang: Lang, m: Measurer, text: string, top: number): PageLayout {
+/** The right sheet's strip of paper carries only the page number, at its bottom right. */
+export function layoutRightPage(lang: Lang, m: Measurer): PageLayout {
   const items: DrawItem[] = [];
-  const size = lang === 'zh' ? 30 : 29;
-  const s: Style = { family: 'serif', size, weight: 400, color: INK.log, ls: size * (lang === 'zh' ? 0.32 : 0.08), stroke: 0.3 };
-  const w = m.width(lang, s, text) - s.ls; // no tracking after the last character
-  // centred on the flat part of the page, between the crest by the gutter and the fore-edge
-  const mid = (top + PAGE.h) / 2 - 10, cx = (0.12 * PAGE.w + PAGE.w) / 2;
-  pushText(items, lang, cx - w / 2, m.baseline(lang, s, mid - size, size * 1.4), text, s, 0.88);
-  items.push({ t: 'rule', color: INK.cursor, alpha: 0.75, box: { x: cx - 22, y: mid + size * 0.62, w: 44, h: 1.4 } });
-  return { items, options: [], chars: [], cursor: null, plain: [text], window: null, scrollMax: 0, height: 0 };
-}
-
-/**
- * Page furniture on the right page: the morale label beside the hearts, under it the leads
- * found (「线索 1/3」), and the page number.
- */
-export function layoutRightPage(lang: Lang, m: Measurer, moraleLabel: string, heartsTop: number,
-  leads?: { label: string; count: number; total: number }): PageLayout {
-  const items: DrawItem[] = [];
-  const label: Style = { family: 'sans', size: lang === 'zh' ? 13 : 11, weight: 600, color: '#2B2622', ls: (lang === 'zh' ? 13 : 11) * 0.35, stroke: 0 };
-  const w = m.width(lang, label, moraleLabel);
-  pushText(items, lang, 1180 - 670 - 12 - w, m.baseline(lang, label, heartsTop + 1, 16), moraleLabel, label, 0.72);
-  if (leads) {
-    // a second row under the hearts: the label in the morale label's column, the count under the first heart
-    const top = heartsTop + 30;
-    const wl = m.width(lang, label, leads.label);
-    pushText(items, lang, 1180 - 670 - 12 - wl, m.baseline(lang, label, top, 16), leads.label, label, 0.72);
-    const value: Style = { family: 'sans', size: lang === 'zh' ? 15 : 13, weight: 600, color: INK.lead, ls: 1.5, stroke: 0.2 };
-    pushText(items, lang, 1190 - 670 + 2, m.baseline(lang, value, top, 16), `${leads.count} / ${leads.total}`, value, 0.9);
-  }
-  const pno: Style = { family: 'serif', size: 12, weight: 400, color: '#2B2622', ls: 12 * 0.2, stroke: 0 };
-  const pw = m.width(lang, pno, '18');
-  pushText(items, lang, PAGE.w - 48 - pw, m.baseline(lang, pno, PAGE.h - 22, 16), '18', pno, 0.45);
+  const pno: Style = { family: 'serif', size: 13, weight: 400, color: '#2B2622', ls: 13 * 0.2, stroke: 0 };
+  const pw = m.width(lang, pno, '18') - pno.ls;
+  pushText(items, lang, PAGE.w - 52 - pw, m.baseline(lang, pno, PAGE.h - 26, 16), '18', pno, 0.5);
   return { items, options: [], chars: [], cursor: null, plain: [], window: null, scrollMax: 0, height: 0 };
 }

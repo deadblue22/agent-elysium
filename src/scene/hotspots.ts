@@ -4,13 +4,13 @@
 // from the pointer is tested against all of them, nearest first; a hit on a transparent pixel
 // of a piece's texture (a small CPU copy of its alpha) passes through. The first opaque hit
 // decides: a piece of its own names its key (the puppets, the casements, the stairs, the dog,
-// Marek, the dice); a baked layer (the furniture row, the wall, the desk, the floor, …) looks
+// Marek; on the table the dice, the morale hearts, the filed leads); a baked layer (the furniture row, the wall, the desk, the floor, …) looks
 // the point up among its regions, in the layer's SVG coordinates, first match first (so the
 // clock wins over the fireplace, and the fireplace over the wall behind it). An opaque hit
 // with no key (bare wallpaper, the left page) shows nothing.
 //
-// The hovered thing brightens a little: its own pieces by 10%, and a region of a layer by an
-// additive copy of that layer's texture laid over the region (only the region's paper lights).
+// The hovered thing brightens: its own pieces by 25%, and a region of a layer by an additive
+// copy of that layer's texture laid over the region (only the region's paper lights).
 import {
   AdditiveBlending, Box3, BufferGeometry, Color, Float32BufferAttribute, Group, Mesh, MeshBasicMaterial, Raycaster, Vector2, Vector3,
   type Camera, type Material, type Object3D, type Texture,
@@ -54,8 +54,9 @@ const REGIONS: Record<string, [string, Shape][]> = {
  * The loose sheets printed on the floor (tools/extract-art.mjs: x, y from the fold, degrees),
  * each 30 x 22 px.
  */
-const PAPERS: [number, number, number][] = [[330, 40, -14], [612, 38, 22], [1000, 34, 12], [240, 88, 9], [868, 84, -8], [1040, 92, -24],
-  [470, 140, -18], [770, 150, 14], [930, 170, -6], [1110, 236, 19], [1210, 200, -11], [560, 190, 6]];
+const PAPERS: [number, number, number][] = [[300, 60, -14], [250, 104, 9], [612, 62, 22], [1000, 70, 12], [1230, 112, -11], [860, 150, -8],
+  [1060, 196, -24], [742, 216, 14], [1188, 318, 19], [1262, 404, -18], [724, 470, 6], [1004, 540, -9],
+  [1150, 560, 16], [840, 590, -20]];
 
 /** A texture's alpha, at a reduced size, for picking. */
 class AlphaMask {
@@ -113,7 +114,8 @@ export interface HotspotParts {
   pieces: Record<string, PieceHandle>;
   floor: Mesh;
   puppets: Record<'harry' | 'kim', Mesh>;
-  dice: Mesh[];
+  /** On the table: the dice, the morale hearts, and the leads filed so far (they come and go). */
+  table: { dice: Mesh[]; morale: Mesh[]; leads: () => Mesh[] };
   cues: { window: Mesh[]; clock: Mesh[]; stairs: Mesh[]; dog: Mesh[]; marek: Mesh[] };
   /** Pieces that hide what is behind them without a tip of their own (the pages, the lead card). */
   blockers: { mesh: Mesh; piece?: ArtPiece }[];
@@ -136,20 +138,21 @@ export function createHotspots(p: HotspotParts) {
   }
   add(p.pieces['front-chair'].mesh, p.art['front-chair'], { key: 'armchair' });
   add(p.pieces.far.mesh, p.art.far, { key: 'window' });
-  // the floor: the loose sheets, then the rug under the desk
-  const rowDesk = p.art.floor.meta.rowDesk;
+  // the floor: the loose sheets, then the rug
+  const fm = p.art.floor.meta;
   const papers: [string, Shape][] = PAPERS.map(([x, y, deg]) => {
     const r = (deg * Math.PI) / 180, c = Math.cos(r), s = Math.sin(r);
     return ['papers', [[-17, -13], [17, -13], [17, 13], [-17, 13]].map(([u, v]) => [x + u * c - v * s, y + u * s + v * c] as [number, number])];
   });
   add(p.floor, p.art.floor, {
-    regions: [...papers, ['rug', [386, rowDesk - 46, 826, rowDesk + 52]]],
+    regions: [...papers, ['rug', [fm.rugX0, fm.rugY0, fm.rugX1, fm.rugY1]]],
     surface: { kind: 'floor', fold: p.art.floor.meta.fold },
   });
   // pieces of their own
   add(p.puppets.harry, p.art.harry, { key: 'harry' });
   add(p.puppets.kim, p.art.kim, { key: 'kim' });
-  for (const d of p.dice) add(d, null, { key: 'dice' });
+  for (const d of p.table.dice) add(d, null, { key: 'dice' });
+  for (const h of p.table.morale) add(h, p.art.heart, { key: 'morale' });
   const own: [keyof HotspotParts['cues'], (m: Mesh) => ArtPiece | null][] = [
     ['window', (m) => (m.name === 'pane' ? null : p.art[m.name] ?? null)],
     ['clock', (m) => p.art[m.name] ?? null],
@@ -161,13 +164,17 @@ export function createHotspots(p: HotspotParts) {
   for (const b of p.blockers) add(b.mesh, b.piece ?? null);
 
   const ray = new Raycaster();
-  const meshes = [...targets.keys()];
+  /** Every target, the leads filed since the last call included. */
+  const meshes = () => {
+    for (const m of p.table.leads()) if (!targets.has(m)) add(m, p.art['lead-card'], { key: 'leads' });
+    return [...targets.keys()];
+  };
   const visible = (o: Object3D | null): boolean => { for (let x = o; x; x = x.parent) if (!x.visible) return false; return true; };
 
   /** The key under a pointer (NDC), or null. */
   function pick(ndc: Vector2, camera: Camera): string | null {
     ray.setFromCamera(ndc, camera);
-    for (const hit of ray.intersectObjects(meshes, false)) {
+    for (const hit of ray.intersectObjects(meshes(), false)) {
       const t = targets.get(hit.object);
       if (!t || !visible(t.mesh)) continue;
       const uv = hit.uv;
@@ -219,7 +226,7 @@ export function createHotspots(p: HotspotParts) {
         g.setAttribute('position', new Float32BufferAttribute(pos, 3));
         g.setAttribute('uv', new Float32BufferAttribute(uv, 2));
         g.setIndex([0, 3, 1, 1, 3, 2]);
-        const m = new Mesh(g, new MeshBasicMaterial({ map: t.texture, color: '#ffe6c4', transparent: true, opacity: 0.1, blending: AdditiveBlending, depthWrite: false }));
+        const m = new Mesh(g, new MeshBasicMaterial({ map: t.texture, color: '#ffe6c4', transparent: true, opacity: 0.22, blending: AdditiveBlending, depthWrite: false }));
         m.renderOrder = 2;
         m.visible = false;
         group.add(m);
@@ -251,7 +258,7 @@ export function createHotspots(p: HotspotParts) {
         if (!('color' in m)) continue;
         const c = (m as MeshBasicMaterial).color;
         if (!original.has(m)) original.set(m, c.clone());
-        c.copy(original.get(m)!).multiplyScalar(1.1);
+        c.copy(original.get(m)!).multiplyScalar(1.25);
       }
       for (const q of quadsFor(key)) q.visible = true;
     },

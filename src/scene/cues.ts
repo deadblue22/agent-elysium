@@ -5,8 +5,10 @@
 //   - the snow outside the window and on the sill (far-snow.svg, sill-snow.svg);
 //   - the stairwell with the landlady's dog (stairs.svg, dog.svg, dog-head.svg), a pop-up card
 //     that rises from the floor on the right for the reconstruction, and Marek (marek.svg),
-//     who climbs it, stands at the desk and at the clock, and goes back down;
-//   - the grade, the lights and the global snow.
+//     who climbs it, comes into the room from behind it, and walks from the desk to the clock,
+//     to the window and back out, and down the stairs;
+//   - the grade, the lights, the candle and the snow;
+//   - at the end, Harry and Kim, who walk out of the room to the right.
 // Every cue is a sequence of clock tweens (src/play/clock.ts), so reduced motion jumps to the
 // end states and a test harness can freeze them. The room's resting state (the present, after
 // the fact: casements open, hands at 23:40, pendulum still, snow) is also the style board's.
@@ -27,25 +29,33 @@ export const PARALLEL = new Set(['snow-stop']);
 const OPEN = 70;
 /** The clock: the time it shows in the present, and at the start of the flashback (minutes). */
 const STOPPED = 23 * 60 + 40, FLASHBACK = 22 * 60 + 30;
+/**
+ * What really happened when (minutes), for the time marker: the clock lies (23:40), the
+ * marker does not. Keyed by the cue that reaches the moment.
+ */
+const REAL_TIME: Record<string, number> = {
+  flashback: 22 * 60 + 30, 'marek-blow': 22 * 60 + 40, 'clock-set': 22 * 60 + 44, 'window-open': 22 * 60 + 46,
+  'marek-leave': 22 * 60 + 52, 'snow-start': 23 * 60 + 30,
+};
 /** Pendulum: swing (radians) and period (s). */
 const SWING = 0.15, PERIOD = 1.1;
 /** A card lying (nearly) flat on its fold, before it rises (degrees back from the vertical). */
 const FLAT = 86;
-/** Marek walks this fast (book px per s), a step every STEP px. */
-const PACE = 105, STEP = 15;
+/** Marek climbs this fast (stair px per s), a step every STEP px; he crosses the room faster. */
+const PACE = 105, ROOM_PACE = 170, STEP = 15;
+
+interface Puppet { group: Group; mesh: Mesh; lean: number }
 
 interface Deps {
   art: Art;
   clock: Clock;
   popup: { group: Group; pieces: Record<string, PieceHandle> };
-  stage: { group: Group; puppets: Record<'harry' | 'kim', { group: Group; lean: number }>; ember: Object3D };
+  stage: { group: Group; puppets: Record<'harry' | 'kim', Puppet>; ember: Object3D };
   lights: ReturnType<typeof createLights>;
   post: { uniforms: { uNight: { value: number }; uExposure: { value: number } } };
   snow: { setOpacity(o: number): void };
-  /** Shows or hides the chrome's time marker (「昨晚 22:30」). */
-  marker: (on: boolean) => void;
-  /** The page turn: progress 0..1. */
-  turn: (p: number) => void;
+  /** Shows the chrome's time marker (「昨晚 22:30」) at these minutes, or hides it (null). */
+  marker: (minutes: number | null) => void;
 }
 
 /**
@@ -150,17 +160,21 @@ export function createCues(d: Deps) {
     const handle: PieceHandle & { contact: Mesh; lean: number } = { group, mesh, opts, contact, lean: o.lean };
     return handle;
   };
-  const STAIRS_X0 = 1030;
-  const stairs = card('stairs', { hinge: fold0 + 92, x0: STAIRS_X0, scale: 1, lean: 12 });
-  const dogScale = 1.1, dogRight = 1046;
-  const dog = card('dog', { hinge: fold0 + 104, x0: dogRight - 90 * dogScale, scale: dogScale, lean: 12 });
+  // the stairwell stands on the right, between the fireplace and the foreground props; the
+  // flight climbs to the right onto a landing, behind which lies the study's door
+  const ST = { x0: 1000, hinge: fold0 + 150, scale: 1.3, lean: 10 };
+  const sm = art.stairs.meta;
+  const stairs = card('stairs', ST);
+  const dogScale = 1.3, dogRight = ST.x0 + (sm.footX - 4) * ST.scale;
+  const dog = card('dog', { hinge: ST.hinge + 16, x0: dogRight - 90 * dogScale, scale: dogScale, lean: 10 });
   const HEAD_DOWN = 0.38, HEAD_UP = -0.08;
   const head = overlay(dog, art['dog-head'], art.dog.meta.neckX, art.dog.meta.neckY, paperMaterial(art['dog-head'].texture, 0.92), { dz: 0.003 });
   head.mesh.castShadow = head.mesh.receiveShadow = true;
   head.pivot.rotation.z = HEAD_DOWN;
 
-  // Marek: a card of his own, its origin at his feet, so he can walk, climb and fold
-  const mk = art.marek, mS = 0.95, M_LEAN = 12;
+  // Marek: a card of his own, its origin at his feet, so he can walk, climb and fold. A shade
+  // lighter than a silhouette, so the cold flashback light still models him.
+  const mk = art.marek, mS = 1.25, M_LEAN = 10;
   const marekGeo = (flip: boolean) => {
     const [vx, vy, vw, vh] = mk.viewBox;
     const g = new PlaneGeometry((vw * mS) / UNIT, (vh * mS) / UNIT);
@@ -170,22 +184,30 @@ export function createCues(d: Deps) {
   };
   const facing = { right: marekGeo(false), left: marekGeo(true) };
   const marekMat = paperMaterial(mk.texture, 0.9);
+  marekMat.emissive.setRGB(0.07, 0.075, 0.09);
+  marekMat.emissiveMap = mk.texture;
   const marekMesh = new Mesh(facing.right, marekMat);
   marekMesh.name = 'marek';
   marekMesh.castShadow = marekMesh.receiveShadow = true;
   const marek = new Group();
   marek.add(marekMesh);
   stage.add(marek);
-  /** Where Marek can be: on the stair track (stair x; height from the treads) or on the floor by the desk, by the clock. */
-  const deskRow = art.floor.meta.rowDesk;
-  const TRACK = fold0 + 98, SPOTS = { desk: { bx: 356, hinge: fold0 + deskRow - 4 }, clock: { bx: 900, hinge: fold0 + 101 } };
-  const treadH = (sx: number) => (sx < 16 ? 0 : sx < 186 ? (sx - 16) * 0.9 : 153);
+  /**
+   * Where Marek can be: on the stair track (stair x; height from the treads), or on the room's
+   * path, which runs behind the desk and in front of the fireplace (book x). The path's door
+   * end is hidden behind the stairwell's landing.
+   */
+  const TRACK = ST.hinge + 6, ROOM = fold0 + 90;
+  const SPOT = { door: 1262, entered: 1000, desk: 356, clock: 968, window: 520 };
+  const treadH = (sx: number) => (sx < sm.footX ? 0 : sx < sm.pathX1 ? (sx - sm.footX) * 0.9 : (sm.pathX1 - sm.footX) * 0.9);
   const place = (bx: number, hinge: number, h: number, face: 'left' | 'right') => {
     const l = M_LEAN * DEG;
     marek.position.set(wx(bx), LAYER_Y + (h * Math.cos(l)) / UNIT, wz(hinge) - (h * Math.sin(l)) / UNIT);
     marekMesh.geometry = facing[face];
   };
-  const onTrack = (sx: number, face: 'left' | 'right') => place(STAIRS_X0 + sx, TRACK, treadH(sx), face);
+  const onTrack = (sx: number, face: 'left' | 'right') => place(ST.x0 + sx * ST.scale, TRACK, treadH(sx) * ST.scale, face);
+  const inRoom = (bx: number, face: 'left' | 'right') => place(bx, ROOM, 0, face);
+  let at = SPOT.door;
   /** A card's lean while it rises (p 0 → 1) or folds (1 → 0). */
   const lean = (g: Group, deg: number, p: number) => { g.rotation.x = -lerp(FLAT, deg, p) * DEG; };
   const rise = async (g: Group, deg: number, ms: number, contact?: Mesh) => {
@@ -198,16 +220,28 @@ export function createCues(d: Deps) {
     g.visible = false;
     if (contact) contact.visible = false;
   };
-  const walk = async (from: number, to: number, face: 'left' | 'right') => {
+  /** A walking card's step: a small bob and sway as each foot lands. */
+  const step = (mesh: Mesh, phase: number, face: 'left' | 'right') => {
+    mesh.position.y = 0.012 * Math.abs(Math.sin(phase));
+    mesh.rotation.z = 0.02 * Math.sin(phase) * (face === 'right' ? -1 : 1);
+  };
+  const still = (mesh: Mesh) => { mesh.position.y = 0; mesh.rotation.z = 0; };
+  const climb = async (from: number, to: number, face: 'left' | 'right') => {
     const dist = Math.abs(to - from);
     await clock.tween((dist / PACE) * 1000, (p) => {
-      const sx = lerp(from, to, p), stepPhase = (Math.PI * dist * p) / STEP;
-      onTrack(sx, face);
-      marekMesh.position.y = 0.012 * Math.abs(Math.sin(stepPhase));
-      marekMesh.rotation.z = 0.02 * Math.sin(stepPhase) * (face === 'right' ? -1 : 1);
+      onTrack(lerp(from, to, p), face);
+      step(marekMesh, (Math.PI * dist * p) / STEP, face);
     }, ease.linear, 'marek-walk');
-    marekMesh.position.y = 0;
-    marekMesh.rotation.z = 0;
+    still(marekMesh);
+  };
+  const stroll = async (to: number) => {
+    const from = at, dist = Math.abs(to - from), face = to < from ? 'left' : 'right';
+    at = to;
+    await clock.tween((dist / ROOM_PACE) * 1000, (p) => {
+      inRoom(lerp(from, to, ease.inOut(p)), face);
+      step(marekMesh, (Math.PI * dist * ease.inOut(p)) / (STEP * 1.3), face);
+    }, ease.linear, 'marek-walk');
+    still(marekMesh);
   };
   const headTo = (to: number, ms: number) => {
     const from = head.pivot.rotation.z;
@@ -228,13 +262,34 @@ export function createCues(d: Deps) {
     lights.candle.boost = lerp(1, 1.35, n);
     lights.candle.flicker = lerp(0.05, 0.09, n);
   };
+  const marker = (cue: string) => { if (cue in REAL_TIME) d.marker(REAL_TIME[cue]); };
+
+  // ---------------------------------------------------------------- Harry and Kim leave
+  const pups = d.stage.puppets;
+  /** Turns a puppet round (its card seen from the back is its mirror image). */
+  const turnRound = (p: Puppet) => { p.mesh.scale.x *= -1; };
+  const walkOff = async (p: Puppet, dx: number) => {
+    const g = p.group, x0 = g.position.x, y0 = g.position.y, dist = Math.abs(dx) * UNIT;
+    for (const name of [`tab-${p.mesh.name}`, `contact-${p.mesh.name}`]) {
+      const o = d.stage.group.getObjectByName(name);
+      if (o) o.visible = false;
+    }
+    await clock.tween((dist / 150) * 1000, (q) => {
+      const e = ease.inOut(q);
+      g.position.x = x0 + dx * e;
+      g.position.y = y0 + 0.014 * Math.abs(Math.sin((Math.PI * dist * e) / 20));
+    }, ease.linear, 'exit');
+    g.position.y = y0;
+    await clock.tween(420, (q) => { lean(g, p.lean, 1 - q); }, ease.in, 'exit');
+    g.visible = false;
+  };
 
   // ---------------------------------------------------------------- the cues
   const cues: Record<string, () => Promise<void>> = {
     // last night: the grade goes cold, the candle burns a little brighter, the casements close,
     // the hands run back to 22:30 and the pendulum swings again
     async flashback() {
-      d.marker(true);
+      marker('flashback');
       const t0 = time, o0 = open, n0 = night;
       await Promise.all([
         clock.tween(1400, (p) => setNight(lerp(n0, 1, p)), ease.inOut),
@@ -255,25 +310,30 @@ export function createCues(d: Deps) {
         clock.wait(260).then(() => rise(dog.group, dog.lean, 800, dog.contact)),
       ]);
     },
-    // Marek comes up the stairs; the dog lifts its head, and lowers it again
+    // Marek comes up the stairs (the dog lifts its head, and lowers it again), goes through
+    // the door behind the landing and comes into the room from behind the stairwell
     async 'marek-climb'() {
-      onTrack(-40, 'right');
+      onTrack(sm.pathX0, 'right');
       lean(marek, M_LEAN, 0);
       await rise(marek, M_LEAN, 450);
-      await walk(-40, 16, 'right');
+      await climb(sm.pathX0, sm.footX, 'right');
       await Promise.all([
-        walk(16, 186, 'right'),
+        climb(sm.footX, sm.pathX1, 'right'),
         headTo(HEAD_UP, 350).then(() => clock.wait(700)).then(() => headTo(HEAD_DOWN, 550)),
       ]);
-      await walk(186, 222, 'right');
-      await lay(marek, M_LEAN, 380);
+      await climb(sm.pathX1, sm.landingX, 'right');
+      await lay(marek, M_LEAN, 320);
+      at = SPOT.door;
+      inRoom(at, 'left');
+      await rise(marek, M_LEAN, 380);
+      await stroll(SPOT.entered);
     },
-    // Marek at the desk. A single blow: the candle gutters, the room goes dark for a beat;
-    // the pendulum swings on
+    // Marek crosses to the desk. A single blow: the candle gutters, the room goes dark for a
+    // beat; the pendulum swings on
     async 'marek-blow'() {
-      place(SPOTS.desk.bx, SPOTS.desk.hinge, 0, 'right');
-      lean(marek, M_LEAN, 0);
-      await rise(marek, M_LEAN, 450);
+      await stroll(SPOT.desk);
+      marker('marek-blow');
+      inRoom(SPOT.desk, 'right'); // he turns to the chair
       await clock.wait(300);
       const e0 = base.exposure;
       await Promise.all([
@@ -287,38 +347,42 @@ export function createCues(d: Deps) {
     },
     // at the clock: the hands run on to 23:40, and a hand stills the pendulum
     async 'clock-set'() {
-      await lay(marek, M_LEAN, 320);
-      place(SPOTS.clock.bx, SPOTS.clock.hinge, 0, 'right');
-      await rise(marek, M_LEAN, 450);
+      await stroll(SPOT.clock);
+      marker('clock-set');
       const t0 = time;
       await clock.tween(1600, (p) => setTime(lerp(t0, STOPPED, p)), ease.inOut);
       const s0 = swing;
       await clock.tween(420, (p) => { swing = s0 * (1 - p); }, ease.out);
       swing = 0;
     },
-    // the casements swing open into the room
+    // at the window: the casements swing open into the room
     async 'window-open'() {
+      await stroll(SPOT.window);
+      marker('window-open');
       const o0 = open;
       await clock.tween(1300, (p) => setOpen(lerp(o0, OPEN, p)), ease.back, 'window-open');
     },
-    // Marek goes back down the stairs; the dog sleeps on
+    // Marek goes back out behind the stairwell and down the stairs; the dog sleeps on
     async 'marek-leave'() {
+      marker('marek-leave');
+      await stroll(SPOT.door);
       await lay(marek, M_LEAN, 320);
-      onTrack(222, 'left');
-      await rise(marek, M_LEAN, 450);
-      await walk(222, 186, 'left');
-      await walk(186, 16, 'left');
-      await walk(16, -40, 'left');
+      onTrack(sm.landingX, 'left');
+      await rise(marek, M_LEAN, 380);
+      await climb(sm.landingX, sm.pathX1, 'left');
+      await climb(sm.pathX1, sm.footX, 'left');
+      await climb(sm.footX, sm.pathX0, 'left');
       await lay(marek, M_LEAN, 380);
     },
     // the snow begins: flakes again, and it settles on the roofs, the fire escape and the sill
     async 'snow-start'() {
+      marker('snow-start');
       const s0 = snowing;
       await clock.tween(2600, (p) => setSnow(lerp(s0, 1, Math.min(1, p * 1.6)), lerp(s0, 1, p)), ease.inOut);
     },
     // back to the morning: the grade and the lights return, the stairwell folds away
     async present() {
-      d.marker(false);
+      d.marker(null);
       const n0 = night;
       await Promise.all([
         clock.tween(1600, (p) => setNight(lerp(n0, 0, p)), ease.inOut),
@@ -327,12 +391,27 @@ export function createCues(d: Deps) {
         clock.wait(200).then(() => lay(stairs.group, stairs.lean, 1000, stairs.contact)),
       ]);
     },
-    // the right sheet turns over onto the left page; the puppets fold flat first
-    async 'page-turn'() {
-      const pups = Object.values(d.stage.puppets);
+    // the end: Kim turns and goes, Harry follows him out to the right; they fold down at the
+    // page's edge. Then the candle goes out, and the room is left to the snow
+    async exit() {
       d.stage.ember.visible = false;
-      await clock.tween(500, (p) => { for (const pp of pups) pp.group.rotation.x = -lerp(pp.lean, FLAT, p) * DEG; }, ease.inOut);
-      await clock.tween(2600, (p) => d.turn(p), ease.linear, 'page-turn');
+      turnRound(pups.kim);
+      await Promise.all([
+        walkOff(pups.kim, 2.5),
+        clock.wait(500).then(() => walkOff(pups.harry, 3.5)),
+      ]);
+      await clock.wait(500);
+      // the room goes dim like a stage after the last scene; the reading lamp stays on the log
+      const e0 = post.uniforms.uExposure.value, k0 = lights.key.intensity, h0 = lights.hemi.intensity;
+      await Promise.all([
+        clock.tween(1500, (p) => { lights.candle.out = p; }, ease.inOut, 'candle-out'),
+        clock.wait(400).then(() => clock.tween(2400, (p) => {
+          lights.key.intensity = lerp(k0, k0 * 0.5, p);
+          lights.hemi.intensity = lerp(h0, h0 * 0.7, p);
+          post.uniforms.uExposure.value = lerp(e0, e0 * 0.92, p);
+        }, ease.inOut)),
+      ]);
+      lights.settle(); // the frame loop does not flicker the candle under reduced motion
     },
   };
 
@@ -353,11 +432,11 @@ export function createCues(d: Deps) {
   // entering the scene (§6.5): the pop-up rises from flat, row after row, then the puppets
   const rows: Group[][] = [
     [P.far.group, P.wall.group], [P.furniture.group], [P.desk.group], [P['front-chair'].group, P['front-right'].group],
-    [d.stage.puppets.harry.group, d.stage.puppets.kim.group],
+    [pups.harry.group, pups.kim.group],
   ];
   const upright = new Map<Group, number>(rows.flat().map((g) => [g, -g.rotation.x / DEG]));
   const contacts = () => [...popup.group.children, ...d.stage.group.children]
-    .filter((o): o is Mesh => o.name.startsWith('contact-') && o instanceof Mesh && o.name !== 'contact-die');
+    .filter((o): o is Mesh => o.name.startsWith('contact-') && o instanceof Mesh);
   const contactOpacity = new Map(contacts().map((c) => [c, (c.material as MeshBasicMaterial).opacity]));
   /** Lays the pop-up flat, ready to rise. */
   function flatten() {
@@ -384,6 +463,8 @@ export function createCues(d: Deps) {
       dog: [dog.mesh, head.mesh],
       marek: [marekMesh],
     },
+    /** The window's opening in the wall (world), for the snow behind it. */
+    window: { wall: P.wall, far: P.far },
     present,
     flatten,
     enter,

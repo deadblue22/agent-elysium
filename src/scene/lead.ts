@@ -1,17 +1,22 @@
 // A new lead (§6.5 新线索): when a piece of evidence turns up, an index card held by a strip of
-// tape drops onto the right page, in front of the puppets: 「新线索」, the lead in large type and
-// how many of the chapter's leads are found. It stays until the player clicks on (the
-// director waits on it like on a paragraph), then slides away. The card is the baked paper
-// (lead-card.svg) with the words painted over it in a canvas, so a language switch can repaint.
-import { CanvasTexture, Mesh, MeshBasicMaterial, MeshStandardMaterial, SRGBColorSpace } from 'three';
+// tape drops onto the front of the right page, in front of Harry and Kim: 「新线索」, the lead in
+// large type and how many of the chapter's leads are found. It stays until the player clicks
+// on (the director waits on it like on a paragraph), then it is filed: it flies to the table
+// beside the book and lands, smaller, on the stack of leads found so far. The card is the
+// baked paper (lead-card.svg) with the words painted over it in a canvas, so a language switch
+// can repaint every card.
+import { CanvasTexture, Group, Mesh, MeshStandardMaterial, PlaneGeometry, SRGBColorSpace } from 'three';
 import type { Art } from '../assets';
 import type { Lang } from '../content/schema';
 import { ease, lerp, type Clock } from '../play/clock';
 import { decal } from './paper';
-import { rectUV, surfaceGrid, wx, wz, xSamples, ySamples } from './space';
+import { DEG, wx, wz } from './space';
+import { TABLE } from './tabletop';
 
-/** Where the card lies (book px, card px 1:1): its left edge and its body's top edge. */
-const X0 = 706, TOP = 398;
+/** Where the card lands on the right page (book px, its middle) and its size there. */
+const DROP = { bx: 1040, by: 632, scale: 0.72, turn: -3 };
+/** Its size on the stack. */
+const FILED = 0.4;
 /** Canvas px per card px. */
 const RES = 3;
 /** The card body inside the SVG (the tape overhangs its top edge). */
@@ -23,48 +28,44 @@ const GOLD = '#8F6A1C', INK = '#1E1A16', MUTED = '#6E655C';
 
 export interface LeadText { heading: string; lead: string; count: number; total: number }
 
-export function createLeadCard(art: Art, sheet: (bx: number, by: number) => number, clock: Clock) {
+interface Card { mesh: Mesh; material: MeshStandardMaterial; canvas: HTMLCanvasElement; texture: CanvasTexture; text: (lang: Lang) => LeadText }
+
+/** sheet: world height of the right top sheet (with its curl) at (bx, by). */
+export function createLeadCard(art: Art, clock: Clock, sheet: (bx: number, by: number) => number) {
   const piece = art['lead-card'];
   const [vx, vy, vw, vh] = piece.viewBox;
-  const canvas = document.createElement('canvas');
-  canvas.width = vw * RES;
-  canvas.height = vh * RES;
-  const texture = new CanvasTexture(canvas);
-  texture.colorSpace = SRGBColorSpace;
-  texture.anisotropy = piece.texture.anisotropy;
+  // the card is stiff: on the page it rests on the highest point under it (the curled tear, or
+  // the rise of the pages toward the gutter), a little above the floor behind the tear
+  const hw = (vw * DROP.scale) / 2, hh = (vh * DROP.scale) / 2;
+  let top = 0;
+  for (let bx = DROP.bx - hw; bx <= DROP.bx + hw; bx += 8) for (let by = DROP.by - hh; by <= Math.min(720, DROP.by + hh); by += 4) top = Math.max(top, sheet(bx, by));
+  const ON_PAGE = top + 0.012;
+  const group = new Group();
+  group.name = 'leads';
+  // one card's shape, 1 world unit per 100 card px, lying flat, centred on the card body
+  const cx = BODY.x + BODY.w / 2, cy = BODY.y + BODY.h / 2;
+  const geometry = new PlaneGeometry(vw / 100, vh / 100);
+  geometry.translate((vx + vw / 2 - cx) / 100, -(vy + vh / 2 - cy) / 100, 0);
+  geometry.rotateX(-Math.PI / 2);
 
-  // the card at rest follows the page under it, centred on its own origin so it can turn
-  const bx0 = X0 + vx, bx1 = bx0 + vw, by0 = TOP + vy, by1 = by0 + vh;
-  const cx = (bx0 + bx1) / 2, cy = (by0 + by1) / 2;
-  const lift = 0.012;
-  const geometry = surfaceGrid(xSamples(bx0, bx1), ySamples(by0, by1, 10), (bx, by) => sheet(bx, by) + lift, rectUV(bx0, bx1, by0, by1));
-  const y0 = sheet(cx, cy);
-  geometry.translate(-wx(cx), -y0, -wz(cy));
-  const material = new MeshStandardMaterial({ map: texture, roughness: 0.9, alphaToCoverage: true });
-  const mesh = new Mesh(geometry, material);
-  mesh.name = 'lead-card';
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  mesh.visible = false;
-  const rest = { x: wx(cx), y: y0, z: wz(cy) };
+  // the stack's soft contact on the table, shown once the first card is filed
+  const under = decal(new PlaneGeometry((BODY.w * FILED) / 100 + 0.3, (BODY.h * FILED) / 100 + 0.3).rotateX(-Math.PI / 2), softRect(BODY.w * FILED + 30, BODY.h * FILED + 30, 15), 0.55);
+  under.position.set(TABLE.leads.x + 0.03, 0.002, TABLE.leads.z + 0.04);
+  under.rotation.y = TABLE.leads.turns[0] * DEG;
+  under.visible = false;
+  under.name = 'leads-contact';
+  group.add(under);
 
-  // its soft drop shadow on the page: the body's shape moved down and to the right, blurred
-  const OFF = 20, BLUR = 16;
-  const sx0 = X0 + BODY.x + OFF - BLUR, sx1 = X0 + BODY.w + OFF + BLUR, sy0 = TOP + OFF - BLUR, sy1 = TOP + BODY.h + OFF + BLUR;
-  const shadow = decal(surfaceGrid(xSamples(sx0, sx1), ySamples(sy0, sy1, 12), (bx, by) => sheet(bx, by) + 0.004, rectUV(sx0, sx1, sy0, sy1)), softRect(sx1 - sx0, sy1 - sy0, BLUR), 0.72);
-  shadow.name = 'lead-card-shadow';
-  shadow.visible = false;
-  const shadowMat = shadow.material as MeshBasicMaterial;
-
-  let current: ((lang: Lang) => LeadText) | null = null;
+  const cards: Card[] = [];
+  let showing: Card | null = null;
   let lang: Lang = 'zh';
-  const paint = () => {
-    const x = canvas.getContext('2d')!;
+
+  const paint = (c: Card) => {
+    const x = c.canvas.getContext('2d')!;
     x.setTransform(1, 0, 0, 1, 0, 0);
-    x.clearRect(0, 0, canvas.width, canvas.height);
-    x.drawImage(piece.texture.image as CanvasImageSource, 0, 0, canvas.width, canvas.height);
-    if (!current) return;
-    const t = current(lang);
+    x.clearRect(0, 0, c.canvas.width, c.canvas.height);
+    x.drawImage(piece.texture.image as CanvasImageSource, 0, 0, c.canvas.width, c.canvas.height);
+    const t = c.text(lang);
     x.setTransform(RES, 0, 0, RES, -vx * RES, -vy * RES); // card px
     x.textBaseline = 'alphabetic';
     const left = 22, right = BODY.w - 22, width = right - left;
@@ -107,42 +108,84 @@ export function createLeadCard(art: Art, sheet: (bx: number, by: number) => numb
       x.fillText(a, left, 90);
       x.fillText(b, left, 90 + size * 1.22);
     }
-    texture.needsUpdate = true;
+    c.texture.needsUpdate = true;
   };
 
-  const place = (p: number, tilt: number) => {
-    // p: 1 at rest; below 1 the card is in the air (above and a little behind its spot)
-    const h = 1 - p;
-    mesh.position.set(rest.x - 0.25 * h, rest.y + 1.6 * h, rest.z - 0.3 * h);
-    mesh.rotation.set(0.18 * h, 0, (-0.09 + tilt) * h);
-    shadowMat.opacity = 0.72 * Math.max(0, 1 - h * 3);
+  const newCard = (text: (lang: Lang) => LeadText): Card => {
+    const canvas = document.createElement('canvas');
+    canvas.width = vw * RES;
+    canvas.height = vh * RES;
+    const texture = new CanvasTexture(canvas);
+    texture.colorSpace = SRGBColorSpace;
+    texture.anisotropy = piece.texture.anisotropy;
+    const material = new MeshStandardMaterial({ map: texture, roughness: 0.9, alphaToCoverage: true });
+    const mesh = new Mesh(geometry, material);
+    mesh.name = 'lead-card';
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    group.add(mesh);
+    const c = { mesh, material, canvas, texture, text };
+    paint(c);
+    return c;
   };
+
+  /** Pose on the page (p = 1) or in the air above it (p < 1). */
+  const onPage = (m: Mesh, p: number, tilt: number) => {
+    const h = 1 - p;
+    m.scale.setScalar(DROP.scale);
+    m.position.set(wx(DROP.bx) - 0.3 * h, ON_PAGE + 1.8 * h, wz(DROP.by) - 0.4 * h);
+    m.rotation.set(0.2 * h, (DROP.turn + 5 * h) * DEG, (-0.08 + tilt) * h);
+  };
+  /** Pose of the n-th card on the stack. */
+  const stackPose = (n: number) => ({
+    x: TABLE.leads.x + 0.03 * n, y: 0.004 + 0.004 * n, z: TABLE.leads.z - 0.05 * n,
+    turn: TABLE.leads.turns[n % TABLE.leads.turns.length],
+  });
+
   return {
-    mesh, shadow,
-    /** Drops the card onto the page (resolves once it has landed). */
+    group,
+    /** The cards on the table, for the hover tip. */
+    get filed() { return cards.filter((c) => c !== showing).map((c) => c.mesh); },
+    /** Drops a new card onto the page (resolves once it has landed). */
     async show(text: (lang: Lang) => LeadText) {
-      current = text;
-      paint();
-      mesh.visible = shadow.visible = true;
-      material.opacity = 1;
-      await clock.tween(460, (p) => place(p, 0.05), ease.in, 'lead');
+      const c = newCard(text);
+      showing = c;
+      await clock.tween(460, (p) => onPage(c.mesh, p, 0.05), ease.in, 'lead');
       // a small bounce as it lands
-      await clock.tween(170, (q) => { place(1, 0); mesh.position.y = rest.y + 0.035 * Math.sin(Math.PI * q); }, ease.out, 'lead');
-      place(1, 0);
+      await clock.tween(170, (q) => { onPage(c.mesh, 1, 0); c.mesh.position.y = ON_PAGE + 0.035 * Math.sin(Math.PI * q); }, ease.out, 'lead');
+      onPage(c.mesh, 1, 0);
     },
-    /** Slides the card away off the page's fore-edge. */
+    /** Files the card on the page: it flies to the stack on the table and lands on top. */
     async dismiss() {
-      if (!mesh.visible) return;
-      await clock.tween(420, (p) => {
-        mesh.position.set(rest.x + lerp(0, 2.6, p), rest.y + 0.05 * Math.sin(Math.PI * p), rest.z + lerp(0, 0.35, p));
-        mesh.rotation.set(0, 0, lerp(0, -0.12, p));
-        material.opacity = 1 - Math.max(0, (p - 0.55) / 0.45);
-        shadowMat.opacity = 0.72 * (1 - Math.min(1, p * 2.5));
-      }, ease.in, 'lead');
-      mesh.visible = shadow.visible = false;
-      current = null;
+      const c = showing;
+      if (!c) return;
+      const n = cards.length;
+      const to = stackPose(n);
+      const from = c.mesh.position.clone(), turn0 = DROP.turn;
+      await clock.tween(620, (p) => {
+        const e = ease.inOut(p);
+        c.mesh.position.set(lerp(from.x, to.x, e), lerp(from.y, to.y, e) + 0.9 * Math.sin(Math.PI * p), lerp(from.z, to.z, e));
+        c.mesh.scale.setScalar(lerp(DROP.scale, FILED, e));
+        c.mesh.rotation.set(0, lerp(turn0, to.turn, e) * DEG, 0.12 * Math.sin(Math.PI * p));
+      }, ease.linear, 'lead');
+      c.mesh.position.set(to.x, to.y, to.z);
+      c.mesh.scale.setScalar(FILED);
+      c.mesh.rotation.set(0, to.turn * DEG, 0);
+      cards.push(c);
+      showing = null;
+      under.visible = true;
     },
-    setLang(l: Lang) { lang = l; if (current) paint(); },
+    setLang(l: Lang) { lang = l; for (const c of [...cards, ...(showing ? [showing] : [])]) paint(c); },
+    /** The style board: the first lead, already filed. */
+    fileAt(text: (lang: Lang) => LeadText) {
+      const c = newCard(text);
+      const to = stackPose(cards.length);
+      c.mesh.position.set(to.x, to.y, to.z);
+      c.mesh.scale.setScalar(FILED);
+      c.mesh.rotation.set(0, to.turn * DEG, 0);
+      cards.push(c);
+      under.visible = true;
+    },
   };
 }
 
