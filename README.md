@@ -4,6 +4,7 @@
 
 ## 文档
 
+- [交接文档](docs/handoff.md)：现状、命令、代码位置、约定、设计决定、用户偏好与待办，后续迭代从这里开始。
 - [方案设计](docs/design.md)：目标、参考 demo 拆解、角色、第一章完整剧本、游戏系统、视觉与动效、技术方案、里程碑。
 - [技术栈评估](docs/tech-eval.md)：为什么从 CSS 3D 迁移到 Three.js，文字页如何贴在纸面上。
 - [Three.js 画面](docs/style-board-three.png)、[英文版](docs/style-board-three-en.png)、[左页 1:1 裁切](docs/style-board-three-text.png)与[纸偶 2 倍裁切](docs/style-board-three-puppets.png)：当前画面基准。
