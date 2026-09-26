@@ -19,7 +19,7 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
   // (lower and more from the side than before: the rows' shadows fall across the floor beside
   // them, where the camera sees them, not behind them)
   const key = new DirectionalLight('#dae2ea', 4.7);
-  key.position.set(-12.5, 9.5, 2.2);
+  key.position.set(-11.5, 11.5, 1.2);
   key.target.position.set(0.3, 0, -0.8);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -78,14 +78,23 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
   group.add(flameSprite, halo);
 
   const base = flame.intensity;
-  /** Stage cues drive these: the candle brighter in the flashback, flickering hard at the blow. */
-  const candle = { boost: 1, flicker: 0.05 };
+  /**
+   * Stage cues drive these: the candle brighter in the flashback, flickering hard at the blow,
+   * and going out at the end (out: 0 burning .. 1 out).
+   */
+  const candle = { boost: 1, flicker: 0.05, out: 0 };
+  const halo0 = (halo.material as SpriteMaterial).opacity;
   const apply = (t: number) => {
     const f = Math.sin(t * 7.3) * 0.5 + Math.sin(t * 13.1 + 1.7) * 0.3 + Math.sin(t * 2.1) * 0.2;
     const hard = candle.flicker > 0.1 ? Math.sin(t * 31 + 0.7) * 0.6 + Math.sin(t * 53) * 0.4 : 0; // gusts
     const k = 1 + candle.flicker * (f + hard);
-    flame.intensity = base * candle.boost * Math.max(0.15, k);
-    flameSprite.scale.set(0.2, 0.36 * candle.boost ** 0.5 * (1 + 0.8 * candle.flicker * (f + hard)), 1);
+    const burning = 1 - candle.out;
+    flame.intensity = base * candle.boost * Math.max(0.15, k) * burning ** 1.5;
+    // the flame shrinks down onto the wick, and the halo goes with it
+    flameSprite.scale.set(0.2 * burning ** 0.4, 0.36 * candle.boost ** 0.5 * (1 + 0.8 * candle.flicker * (f + hard)) * burning, 1);
+    flameSprite.position.y = at.candleFlame.y - 0.13 * (1 - burning);
+    flameSprite.visible = burning > 0.01;
+    (halo.material as SpriteMaterial).opacity = halo0 * burning;
   };
   return {
     group, hemi, key, flame, lamp, windowGlow, candle,

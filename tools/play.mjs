@@ -9,7 +9,7 @@
 //   docs/m1-hover-clock.png  the hover tip on the clock, once the hands are known to be moved
 //   docs/m1-recon-2.png      the reconstruction at marek-blow's narration
 //   docs/m1-recon-4.png      the reconstruction at snow-start's narration
-//   docs/m1-end.png          the page turned: the blank page and 「第一章 完」
+//   docs/m1-end.png          the end: Harry and Kim gone, the candle out, 「第一章 完」 in the log
 //   docs/m1-end-en.png       the same path in English, its end
 // Fails on console errors or page errors, if an option on the path is missing or not in the
 // expected state, if a hover tip does not show, or if the end beat is never reached.
@@ -43,7 +43,7 @@ const PATH = [
   { id: 'window.lean', expect: { greyed: 'window.lean', morale: 3 } }, // 3 + 3 + 2 = 8 < 10: fails, morale 4 → 3
   { id: 'window.back' },
   { id: 'intro.reconstruct' }, // 5 + 6 + 4 + 2 = 17 ≥ 12
-  { id: 'recon.turn', end: true },
+  { id: 'recon.upstairs', end: true },
 ];
 /** Captures taken at a stop, by the stop's key. */
 const AT_STOP = { 'notice:1': 'm1-lead', 'line:narrator:2': 'm1-recon-2', 'line:narrator:4': 'm1-recon-4' };

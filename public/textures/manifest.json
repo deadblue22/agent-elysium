@@ -187,25 +187,29 @@
       "file": "textures/floor.png",
       "px": [
         2163,
-        493
+        1037
       ],
       "viewBox": [
         -6,
         -4,
         1352,
-        308
+        648
       ],
       "world": [
         13.52,
-        3.08
+        6.48
       ],
       "scale": 1.6,
       "meta": {
         "fold": 10,
-        "rowFurniture": 34,
-        "rowDesk": 56,
-        "rowFrontLeft": 64,
-        "rowFront": 145
+        "rowFurniture": 40,
+        "rowDesk": 96,
+        "rowFrontLeft": 128,
+        "rowFront": 250,
+        "rugX0": 380,
+        "rugY0": 76,
+        "rugX1": 1160,
+        "rugY1": 486
       }
     },
     "front-chair": {
@@ -386,80 +390,52 @@
         "feetX": 42
       }
     },
-    "page-end": {
-      "file": "textures/page-end.png",
-      "px": [
-        1340,
-        1200
-      ],
-      "viewBox": [
-        670,
-        0,
-        670,
-        600
-      ],
-      "world": [
-        6.7,
-        6
-      ],
-      "scale": 2,
-      "meta": {
-        "pageH": 600,
-        "tearMin": 183,
-        "tearMax": 290,
-        "columnY0": 120,
-        "puppetShift": 40,
-        "heartsY": 282
-      }
-    },
     "page-left": {
       "file": "textures/page-left.png",
       "px": [
         1340,
-        1200
+        1440
       ],
       "viewBox": [
         0,
         0,
         670,
-        600
+        720
       ],
       "world": [
         6.7,
-        6
+        7.2
       ],
       "scale": 2,
       "meta": {
-        "pageH": 600,
-        "tearMin": 74,
-        "tearMax": 108,
-        "columnY0": 120
+        "pageH": 720,
+        "tearMin": 160,
+        "tearMax": 194,
+        "columnY0": 206
       }
     },
     "page-right": {
       "file": "textures/page-right.png",
       "px": [
         1340,
-        1200
+        1440
       ],
       "viewBox": [
         670,
         0,
         670,
-        600
+        720
       ],
       "world": [
         6.7,
-        6
+        7.2
       ],
       "scale": 2,
       "meta": {
-        "pageH": 600,
-        "tearMin": 183,
-        "tearMax": 290,
-        "columnY0": 120,
-        "puppetShift": 40,
-        "heartsY": 282
+        "pageH": 720,
+        "tearMin": 580,
+        "tearMax": 633,
+        "columnY0": 206
       }
     },
     "pendulum": {

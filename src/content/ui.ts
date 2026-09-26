@@ -9,15 +9,13 @@ import type { Text } from './schema';
 const t = (zh: string, en: string): Text => ({ zh, en });
 
 export const ui = {
-  /** The chrome's time marker while the reconstruction plays (stage cue flashback). */
-  lastNight: t('昨晚 22:30', 'Last night, 22:30'),
+  /** The chrome's time marker while the reconstruction plays: what the time really was ({t}: 22:30). */
+  lastNight: t('昨晚 {t}', 'Last night, {t}'),
   /** A new lead: the log's boxed tag (「新线索　指针被拨过（1/3）」) and the card's heading. */
   leadTag: t('新线索', 'NEW LEAD'),
-  /** Under the morale hearts: 「线索 1/3」. */
-  leads: t('线索', 'LEADS'),
   /** The blinking continue marker at the bottom right of the log, while it waits for a click. */
   continue: t('▼ 继续', '▼ CONTINUE'),
-  /** The blank page under the right sheet (stage cue page-turn). */
+  /** The log's last line, once the candle is out. */
   chapterEnd: t('第一章 完', 'End of Chapter One'),
   /** Check tooltip: 「成功率 72%」. */
   chance: t('成功率', 'Chance'),

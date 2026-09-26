@@ -138,4 +138,6 @@ export type LogEntry =
   /** A currently shown option, numbered as shown; index is its place in the node's options. */
   | { kind: 'option'; number: number; index: number; option: Option; state?: 'enabled' | 'greyed' }
   /** A new piece of evidence: 「新线索：指针被拨过（1/3）」. `count` of `total` found so far. */
-  | { kind: 'notice'; flag: string; count: number; total: number };
+  | { kind: 'notice'; flag: string; count: number; total: number }
+  /** The chapter's end mark, 「第一章 完」 (the view appends it after the end beat). */
+  | { kind: 'end' };

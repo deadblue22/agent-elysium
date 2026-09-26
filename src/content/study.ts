@@ -319,11 +319,11 @@ const nodes: Node[] = [
       { speaker: 'necktie', text: t('我们抓到他了，宝贝！现在去喝一杯！就一杯！', "We got him, baby! Now let's get a drink! Just one!"),
         when: { skillAtLeast: { inlandEmpire: 5 } } },
     ],
-    options: [{ id: 'recon.turn', text: t('翻页。', 'Turn the page.'), next: 'study.end' }],
+    options: [{ id: 'recon.upstairs', text: t('「走吧，去二楼。」', '"Let\'s go. Second floor."'), next: 'study.end' }],
   },
   {
     id: 'study.end',
-    stage: ['page-turn'],
+    stage: ['exit'],
     lines: [],
     options: [],
     end: true,

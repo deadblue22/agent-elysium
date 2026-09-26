@@ -11,12 +11,12 @@ import { Box3, NoToneMapping, PCFShadowMap, PMREMGenerator, SRGBColorSpace, Scen
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { loadArt, loadFonts } from './assets';
 import type { Lang } from './content/schema';
-import { study } from './content/study';
+import { EVIDENCE_LABELS, study } from './content/study';
 import { chrome, clockMoment } from './content/study-clock';
 import { ui } from './content/ui';
 import { Runner, optionId } from './engine';
 import { PageHit } from './page/hit';
-import { FADE, Measurer, PAGE, layoutEndPage, layoutRightPage, textColumn, type PageLayout, type Rect } from './page/layout';
+import { FADE, Measurer, PAGE, layoutRightPage, textColumn, type PageLayout, type Rect } from './page/layout';
 import { PagePainter } from './page/painter';
 import { Clock } from './play/clock';
 import { Director } from './play/director';
@@ -29,7 +29,7 @@ import { createHearts } from './scene/hearts';
 import { createLights } from './scene/lights';
 import { createPopup, layers, roomLights } from './scene/popup';
 import { createPost } from './scene/post';
-import { createStage, heartsTop } from './scene/puppets';
+import { createStage } from './scene/puppets';
 import { createLeadCard } from './scene/lead';
 import { createHotspots } from './scene/hotspots';
 import { HOTSPOTS } from './content/hotspots';
@@ -103,12 +103,18 @@ function frameSize() {
 }
 
 /**
- * Canvas px per page px for the log: the page is about 1:1 with the 1600 frame across and
- * foreshortened to 0.55-0.77 along; 3x keeps the foreshortened glyphs crisp at 1:1.
- * The right page only carries two small labels.
+ * Canvas px per page px for the log: the page shows at about 0.85 frame px per page px across
+ * and a little less along; 3x keeps the glyphs crisp at 1:1 and on a 2x screen.
+ * The right page only carries its page number.
  */
 const inkScale = (w: number, pr: number) => Math.min(4, Math.max(3, (3 * w * pr) / FRAME.w));
 const labelScale = (w: number, pr: number) => Math.min(3, Math.max(1.5, (1.5 * w * pr) / FRAME.w));
+/**
+ * The log's glyphs are drawn this much taller than wide: the camera sees the left page at
+ * about 55 degrees, which squashes them to about 0.82 of their height; drawn 1.1x, they show
+ * at about 0.9, close to their true shape.
+ */
+const INK_STRETCH = 1.1;
 
 /** Frame position of a point on the top sheets (or at height h). */
 function onFrame(camera: PerspectiveCamera, bx: number, by: number, h = sheetY(bx, by)) {
@@ -143,6 +149,9 @@ function projectRect(camera: PerspectiveCamera, bx0: number, by0: number, bx1: n
   return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
 }
 
+/** 1330 minutes → 「22:10」 */
+const clockTime = (min: number) => `${Math.floor(min / 60) % 24}:${String(Math.round(min % 60)).padStart(2, '0')}`;
+
 /** ?dice=4-5,3-3 → [[4, 5], [3, 3]] */
 function parseDice(s: string | null): [number, number][] {
   if (!s) return [];
@@ -175,21 +184,19 @@ async function main() {
   const pr0 = Math.min(devicePixelRatio, 2);
   const leftInk = new PagePainter(anisotropy, inkScale(w0, pr0));
   const rightInk = new PagePainter(anisotropy, labelScale(w0, pr0));
-  const endInk = new PagePainter(anisotropy, labelScale(w0, pr0));
 
   const scene = new Scene();
   const t0 = performance.now();
-  const book = createBook(art, leftInk.texture, rightInk.texture, endInk.texture);
-  const popup = createPopup(art), stage = createStage(art, book.rightSheet);
-  const top = heartsTop(art);
-  const hearts = createHearts(art, top, book.rightSheet, clock, study.morale.max);
-  const lead = createLeadCard(art, book.rightSheet, clock);
-  stage.group.add(hearts.group);
-  const dice = createDice(stage.dice, clock);
+  const book = createBook(art, leftInk.texture, rightInk.texture);
+  const popup = createPopup(art), stage = createStage(art);
+  // on the table beside the book: the leads found, the morale hearts, the dice
+  const hearts = createHearts(art, clock, study.morale.max);
+  const lead = createLeadCard(art, clock, book.rightSheet);
+  const dice = createDice(art, clock);
   const buildMs = performance.now() - t0; // geometry, procedural textures and the baked occlusion
   const lights = createLights(roomLights(art.floor.meta));
   const cam = createCameraRig();
-  scene.add(createTable(art), book.group, popup.group, stage.group, lead.mesh, lead.shadow, lights.group, cam.rig);
+  scene.add(createTable(art), book.group, popup.group, stage.group, hearts.group, lead.group, dice.group, lights.group, cam.rig);
   // a soft, low environment light, so curved paper, page edges and board edges read through
   // gentle shading gradients and not only through the direct lights
   const pmrem = new PMREMGenerator(renderer);
@@ -201,24 +208,28 @@ async function main() {
   const tear = art['page-left'].meta;
   const col = textColumn(tear.columnY0);
   const column = projectRect(cam.camera, col.x0, col.y0, col.x1, col.y1);
+  // the ink is drawn INK_STRETCH times taller about the window's bottom, so the slanted page
+  // shows the glyphs in their true proportions; the log is laid out in a window that much shorter
+  leftInk.setStretch(INK_STRETCH, col.y1);
+  const logCol = { ...col, y0: col.y1 - (col.y1 - col.y0) / INK_STRETCH };
   const pageRect = projectRect(cam.camera, 0, tear.tearMin - 14, PAGE.w, PAGE.h);
-  const snow = createSnow(cam.camera, cam.lens, column);
-  scene.add(snow.points);
+  // snow outside the window: flakes behind the wall's window hole (wall.svg's window region)
+  const snow = createSnow(popup.pieces.wall.group, { x0: wx(342), x1: wx(628), y0: (440 - 338) / 100, y1: (440 - 76) / 100, depth: 0.2 }, cam.lens.focal);
   const post = createPost(renderer, scene, cam.camera);
   post.uniforms.uExposure.value = 1.08;
   post.uniforms.uQuiet.value.set(column.x / FRAME.w, 1 - (column.y + column.h) / FRAME.h, (column.x + column.w) / FRAME.w, 1 - column.y / FRAME.h);
 
-  // ---- the stage cues; everything on the right sheet turns with it at the end
-  let carried = false;
+  // ---- the stage cues
+  /** The time the flashback's marker shows (minutes), or null when it is hidden. */
+  let when: number | null = null;
+  const showWhen = () => {
+    if (when !== null) whenEl.textContent = ui.lastNight[lang].replace('{t}', clockTime(when));
+    whenEl.classList.toggle('on', when !== null);
+    whenEl.setAttribute('aria-hidden', String(when === null));
+  };
   const cues = createCues({
     art, clock, popup, stage, lights, post, snow,
-    marker: (on) => { whenEl.classList.toggle('on', on); whenEl.setAttribute('aria-hidden', String(!on)); },
-    turn: (p) => {
-      if (!carried) { carried = true; for (const o of [...stage.group.children]) book.carry(o); }
-      book.setTurn(p);
-      // the log is done: it fades as the sheet turns over it (the end spread is blank but for 「第一章 完」)
-      book.uniforms.left.uInkAlpha.value = 1 - Math.min(1, Math.max(0, (p - 0.25) / 0.6));
-    },
+    marker: (minutes) => { when = minutes; showWhen(); },
   });
 
   // ---- the pages
@@ -229,11 +240,11 @@ async function main() {
 
   const runner = new Runner(study, { seed: params.has('seed') ? Number(params.get('seed')) >>> 0 : undefined, forcedDice: parseDice(params.get('dice')) });
   let director: Director | null = null;
-  const log = new LogView(leftInk, measurer, col, clock, a11y, lang, (n) => { director?.choose(n); }, () => !!director?.idle);
+  const log = new LogView(leftInk, measurer, logCol, clock, a11y, lang, (n) => { director?.choose(n); }, () => !!director?.idle);
 
   /** Re-renders the hover tip in the current language (set once the hover tips exist). */
   let refreshHot = () => {};
-  /** Leads found so far (「线索 1/3」 under the hearts). */
+  /** Leads found so far (the stack of cards on the table; its hover tip lists them). */
   let leads = { count: 0, total: study.evidence.length };
 
   // who bobs while their line types (Harry for 你 lines, Kim for his)
@@ -245,31 +256,31 @@ async function main() {
     log.showFixed(clockMoment);
     hearts.set(3);
     leads = { count: 1, total: study.evidence.length }; // 指针被拨过
+    lead.fileAt((l) => ({ heading: ui.leadTag[l], lead: EVIDENCE_LABELS.clock_tampered[l], count: 1, total: study.evidence.length }));
   } else {
     hearts.set(study.morale.start);
     director = new Director(runner, clock, log, {
       dice, hearts, cues,
       lead,
-      leads: (count, total) => { leads = { count, total }; layoutRight(); invalidate(); },
+      leads: (count, total) => { leads = { count, total }; invalidate(); },
       speaking: (who) => { speaker = who; },
     });
     director.onIdle = () => { hit.refresh(); invalidate(); };
   }
 
   function layoutRight() {
-    rightInk.setLayout(layoutRightPage(lang, measurer, chrome.morale[lang], top, { label: ui.leads[lang], ...leads }));
+    rightInk.setLayout(layoutRightPage(lang, measurer));
   }
 
   function applyLang() {
     document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
     log.setLang(lang);
     layoutRight();
-    endInk.setLayout(layoutEndPage(lang, measurer, ui.chapterEnd[lang], art['page-end'].meta.tearMax));
     lead.setLang(lang);
     document.getElementById('title')!.textContent = chrome.title[lang];
     document.getElementById('chapter')!.textContent = chrome.chapter[lang];
     document.getElementById('log-heading')!.textContent = chrome.logHeading[lang];
-    whenEl.textContent = ui.lastNight[lang];
+    showWhen();
     refreshHot();
     for (const s of document.querySelectorAll<HTMLElement>('#lang [data-lang]')) s.classList.toggle('on', s.dataset.lang === lang);
     tipEl.hidden = true;
@@ -343,14 +354,10 @@ async function main() {
   // ---- hover tips on the stage (src/content/hotspots.ts): look only, never a click
   const hot = createHotspots({
     art, pieces: popup.pieces, floor: book.group.getObjectByName('floor') as Mesh,
-    puppets: { harry: stage.puppets.harry.mesh, kim: stage.puppets.kim.mesh }, dice: stage.dice.map((d) => d.mesh),
+    puppets: { harry: stage.puppets.harry.mesh, kim: stage.puppets.kim.mesh },
+    table: { dice: dice.meshes, morale: hearts.meshes, leads: () => lead.filed },
     cues: cues.parts,
-    blockers: [
-      { mesh: book.leftPage, piece: art['page-left'] }, { mesh: book.rightPage, piece: art['page-right'] },
-      { mesh: book.group.getObjectByName('page-end') as Mesh, piece: art['page-end'] },
-      { mesh: book.group.getObjectByName('page-right-back') as Mesh, piece: art['page-end'] },
-      { mesh: lead.mesh, piece: art['lead-card'] },
-    ],
+    blockers: [{ mesh: book.leftPage, piece: art['page-left'] }, { mesh: book.rightPage, piece: art['page-right'] }],
   });
   scene.add(hot.group);
   let hotKey: string | null = null, hotShown: string | null = null, hotTimer = 0;
@@ -363,8 +370,11 @@ async function main() {
     const spot = HOTSPOTS[hotShown];
     const state = hotState();
     const tip = spot.variants?.find((v) => holds(v.when, state, study))?.tip ?? spot.tip;
-    hotEl.querySelector('.name')!.textContent = spot.name[lang];
-    hotEl.querySelector('.line')!.textContent = tip[lang];
+    // the morale and the leads name their count; the leads list what was found
+    const count = hotShown === 'morale' ? ` ${state.morale} / ${study.morale.max}` : hotShown === 'leads' ? ` ${leads.count} / ${leads.total}` : '';
+    const found = hotShown === 'leads' ? study.evidence.filter((f) => state.flags.has(f)).map((f) => EVIDENCE_LABELS[f][lang]) : [];
+    hotEl.querySelector('.name')!.textContent = spot.name[lang] + count;
+    hotEl.querySelector('.line')!.textContent = found.length ? found.join(lang === 'zh' ? '；' : '; ') + (lang === 'zh' ? '。' : '.') : tip[lang];
     hotEl.hidden = false;
     // near the pointer, inside the frame, and never over the log's column
     const r = frameEl.getBoundingClientRect(), s = r.width / FRAME.w;
@@ -414,7 +424,6 @@ async function main() {
     snow.setScale((w * pr) / FRAME.w);
     leftInk.setScale(inkScale(w, pr));
     rightInk.setScale(labelScale(w, pr));
-    endInk.setScale(labelScale(w, pr));
     invalidate();
   }
   resize();
@@ -427,7 +436,7 @@ async function main() {
     webgl2: renderer.capabilities.isWebGL2,
     anisotropy,
     ink: { w: leftInk.size.w, h: leftInk.size.h },
-    metrics: { ...(STILL ? composition(cam.camera, art, log.layout) : {}), buildMs: Math.round(buildMs) },
+    metrics: { ...(STILL ? composition(cam.camera, art, log.layout, leftInk) : {}), buildMs: Math.round(buildMs) },
     points: { gutter: onFrame(cam.camera, 670, PAGE.h), corner: onFrame(cam.camera, 2 * 670, PAGE.h) },
     puppets: frameRect(cam.camera, ['harry', 'kim'].map((n) => new Box3().setFromObject(scene.getObjectByName(n)!))),
   };
@@ -533,7 +542,7 @@ async function main() {
  * glyph height/width at mid-window and the glyph height on the bottom line over the top
  * fully visible line.
  */
-function composition(camera: PerspectiveCamera, art: Awaited<ReturnType<typeof loadArt>>, log: PageLayout) {
+function composition(camera: PerspectiveCamera, art: Awaited<ReturnType<typeof loadArt>>, log: PageLayout, ink: PagePainter) {
   const P = (bx: number, by: number, up = 0, lean = 0, h = sheetY(bx, by)) => {
     const r = lean * DEG;
     const v = new Vector3(wx(bx), h + (up / 100) * Math.cos(r), wz(by) - (up / 100) * Math.sin(r)).project(camera);
@@ -544,25 +553,29 @@ function composition(camera: PerspectiveCamera, art: Awaited<ReturnType<typeof l
   // the pop-up measured where its cards stand on the flat part of the left page
   const rest = (k: string) => BASE_Y + 0.003 + envelope(335, L[k].hinge);
   const base = (k: string) => Y(335, L[k].hinge, 0, 0, rest(k));
+  /** Frame px per page px at page row by: along the page (v) and across it (h). */
   const scale = (by: number) => {
     const a = P(300, by), b = P(301, by), c = P(300, by + 1);
     return { v: c.y - a.y, h: b.x - a.x };
   };
   const w = log.window!;
-  // narration and voice text (the serif body), fully visible below the fade: baselines and em size
+  // narration and voice text (the serif body), fully visible below the fade: baselines and em
+  // size in layout px; the painter draws them INK_STRETCH times taller on the page
   const body = log.items.filter((i): i is Extract<typeof i, { t: 'text' }> => i.t === 'text' && /px "(Elysium Serif SC|EB Garamond)"/.test(i.font) && i.box.y >= w.y0 + FADE);
   const em = Math.max(...body.map((i) => Number(/(\d+(?:\.\d+)?)px/.exec(i.font)![1])));
   const baselines = [...new Set(body.map((i) => Math.round(i.y)))].sort((a, b) => a - b);
-  const top = baselines[0] - em * 0.4, bottom = baselines[baselines.length - 1] - em * 0.4, mid = scale((top + bottom) / 2);
-  const ink = 0.9 * em; // CJK glyphs carry about 0.9 em of ink
+  const top = ink.toPage(baselines[0] - em * 0.4), bottom = ink.toPage(baselines[baselines.length - 1] - em * 0.4);
+  const mid = scale((top + bottom) / 2), k = INK_STRETCH;
+  const glyph = 0.9 * em; // CJK glyphs carry about 0.9 em of ink
   const pitch = baselines.length > 1 ? Math.min(...baselines.slice(1).map((b, i) => b - baselines[i])) : 0;
   return {
     backdropTop: Y(335, L.wall.hinge, 418, L.wall.lean, rest('wall')), backdropBase: base('wall'),
     rowFurniture: base('furniture'), rowDesk: base('desk'), rowFront: base('front-chair'),
-    leftTearTop: Y(335, tl.tearMin), leftTearBottom: Y(335, tl.tearMax), tongue: Y(1090, tr.tearMax), nearEdge: Y(335, PAGE.h),
-    glyphHW: +(mid.v / mid.h).toFixed(3), glyphBottomOverTop: +(scale(bottom).v / scale(top).v).toFixed(3),
-    glyphPxTop: +(ink * scale(top).v).toFixed(1), glyphPxBottom: +(ink * scale(bottom).v).toFixed(1),
-    pitchPxTop: +(pitch * scale(top).v).toFixed(1), bodyEm: em,
+    leftTearTop: Y(335, tl.tearMin), leftTearBottom: Y(335, tl.tearMax), rightTear: Y(1090, tr.tearMax), nearEdge: Y(335, PAGE.h),
+    glyphHW: +((k * mid.v) / mid.h).toFixed(3), glyphBottomOverTop: +(scale(bottom).v / scale(top).v).toFixed(3),
+    glyphPxTop: +(glyph * k * scale(top).v).toFixed(1), glyphPxBottom: +(glyph * k * scale(bottom).v).toFixed(1),
+    glyphWidthPx: +(glyph * mid.h).toFixed(1), pitchPxTop: +(pitch * k * scale(top).v).toFixed(1), bodyEm: em,
+    lines: baselines.length,
   };
 }
 
