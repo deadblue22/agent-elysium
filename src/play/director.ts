@@ -33,7 +33,7 @@ export interface Stagehands {
   cues: { play(cue: string): Promise<void>; enter(): Promise<void> };
   /** Which puppet bobs while its line types. */
   speaking(who: 'harry' | 'kim' | null): void;
-  /** A line is about to be typed (?ui=de: the HUD's clock moves on, an inner voice flashes its name). */
+  /** A line is about to be typed (?ui=de: the HUD's clock moves on a minute). */
   line?(line: Line): void;
   /** The dice have settled on a check's result (?style=3 drops a slip beside them, ?ui=de raises a banner). */
   checked?(success: boolean): void;

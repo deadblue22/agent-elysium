@@ -272,7 +272,7 @@ async function main() {
   // ---- the music (the toggle left of the language switch; it starts on the first click or key)
   const music = createMusic({ button: document.getElementById('music') as HTMLButtonElement, still: STILL });
 
-  // ---- the original's HUD (?ui=de): portraits, morale, clock, cues, banners
+  // ---- the original's HUD (?ui=de): portraits, morale, clock, banners
   /** A HUD item's hover tip (morale's); set once the hover tips exist. */
   let hudHover: (key: string | null, at: { clientX: number; clientY: number }) => void = () => {};
   const hud = UI === 'de'
@@ -280,9 +280,6 @@ async function main() {
     : null;
   /** Where morale shows: the paper hearts on the table, or (?ui=de) the HUD over Harry's portrait. */
   const morale = hud ?? hearts!;
-  // an inner voice's cue sits on the top edge of the log's panel, over the text column's left
-  const cueAt = onFrame(cam.camera, col.x0, col.y0);
-  hud?.place({ x: cueAt.x - 4, y: cueAt.y - 30 });
 
   // ---- the stage cues
   /** The time the flashback's marker shows (minutes), or null when it is hidden. */
@@ -356,7 +353,7 @@ async function main() {
       chosen: () => details?.clear(),
       sound: sfx.play,
     });
-    director.onIdle = () => { hit.refresh(); hud?.quiet(); invalidate(); };
+    director.onIdle = () => { hit.refresh(); invalidate(); };
   }
 
   function layoutRight() {
