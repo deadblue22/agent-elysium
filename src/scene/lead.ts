@@ -147,6 +147,8 @@ export function createLeadCard(art: Art, clock: Clock, sheet: (bx: number, by: n
     group,
     /** The cards on the table, for the hover tip. */
     get filed() { return cards.filter((c) => c !== showing).map((c) => c.mesh); },
+    /** The card on the page or on its way to the table, if any (?paint keeps it crisp). */
+    get showing() { return showing?.mesh ?? null; },
     /** Drops a new card onto the page (resolves once it has landed). */
     async show(text: (lang: Lang) => LeadText) {
       const c = newCard(text);
