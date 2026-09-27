@@ -9,7 +9,7 @@
 - [技术栈评估](docs/tech-eval.md)：为什么从 CSS 3D 迁移到 Three.js，文字页如何贴在纸面上。
 - [Three.js 画面](docs/style-board-three.png)、[英文版](docs/style-board-three-en.png)、[左页 1:1 裁切](docs/style-board-three-text.png)与[纸偶 2 倍裁切](docs/style-board-three-puppets.png)：当前画面基准。
 - M1 通关截图（`npm run play` 生成）：[开场](docs/m1-intro.png)、[悬停金](docs/m1-hover-kim.png)、[新线索卡片](docs/m1-lead.png)、[骰子翻滚中](docs/m1-roll.png)、[悬停座钟](docs/m1-hover-clock.png)、[还原第二段](docs/m1-recon-2.png)、[还原第四段](docs/m1-recon-4.png)、[第一章 完](docs/m1-end.png)与[英文结尾](docs/m1-end-en.png)。
-- 第四轮的候选方案（用页面参数切换，待选定）：[相机取景](docs/view.md)（`?view=`）、[纸偶版本](docs/cast.md)（`?cast=`）、[原作风格参考与预设](docs/style-refs.md)（`?style=`）；[背景音乐与音效](docs/music.md)。
+- 第四轮的候选方案（用页面参数切换，待选定）：[相机取景](docs/view.md)（`?view=`）、[纸偶版本](docs/cast.md)（`?cast=`）、[原作风格参考与预设](docs/style-refs.md)（`?style=`）；第五轮更大胆的候选：[原作界面：对话面板与 HUD](docs/ui.md)（`?ui=de`）、[原作氛围：冬日与夜](docs/look.md)（`?look=winter|noir`）；[背景音乐与音效](docs/music.md)。
 - [风格板截图](docs/style-board.png)：M0 阶段的 CSS 3D 画面，作对照。
 - [早期布局示意图](docs/mockup-layout.png)：第一版平面示意，已被风格板取代，仅作对照。
 
@@ -50,16 +50,16 @@ npm test         # 对话引擎的单元测试
 
 `?still` 是风格板：第一章 `study.clock` 节点的一个静止瞬间（见微知著检定成功、第一条线索已归入桌面卡堆、士气 3/4）。左页日志自下而上排列，旧行升入撕口处淡出，鼠标滚轮可在左页上翻看历史。鼠标移动时相机有几度的视差，悬停左页的当前选项会高亮。右上角可切换中英文，游戏中切换会立即补全正在打字的一行并重排日志与选项，不重置进度。
 
-`bake`、`shot`、`play` 与 `extract-art` 通过 `tools/chromium.mjs` 选择浏览器（可用 `CHROMIUM_PATH` 覆盖）：macOS 上用本机 Google Chrome 与 GPU；云端容器里用预装的 Chromium，没有 GPU 时由 SwiftShader 提供 WebGL 2。页面参数：`?still` 显示风格板并冻结雪、颗粒与光标，用于截图；`?lang=en` 以英文打开；`?seed=N` 固定骰子种子；`?dice=4-5,3-3,5-6` 依次强制之后几次掷骰的点数；`?speed=N` 以 N 倍速播放动画与打字（测试用）；`?debug` 在 `window.__debug` 暴露场景对象。候选方案：`?view=0|1|2|3` 相机取景（默认 2，0 为第三轮之前的取景），`?cast=1|2|3|4` 纸偶版本（默认为原来的一对），`?style=1|2|3` 原作风格预设（数字可组合，如 `?style=13`；默认不启用）。`npm run play` 通过 `window.__play` 读取选项（编号、id、状态）并用数字键按 id 选择，在指定时刻冻结虚拟时钟截图，断言没有控制台错误且到达结尾。
+`bake`、`shot`、`play` 与 `extract-art` 通过 `tools/chromium.mjs` 选择浏览器（可用 `CHROMIUM_PATH` 覆盖）：macOS 上用本机 Google Chrome 与 GPU；云端容器里用预装的 Chromium，没有 GPU 时由 SwiftShader 提供 WebGL 2。页面参数：`?still` 显示风格板并冻结雪、颗粒与光标，用于截图；`?lang=en` 以英文打开；`?seed=N` 固定骰子种子；`?dice=4-5,3-3,5-6` 依次强制之后几次掷骰的点数；`?speed=N` 以 N 倍速播放动画与打字（测试用）；`?debug` 在 `window.__debug` 暴露场景对象。候选方案：`?view=0|1|2|3` 相机取景（默认 2，0 为第三轮之前的取景），`?cast=1|2|3|4` 纸偶版本（默认为原来的一对），`?style=1|2|3` 原作风格预设（数字可组合，如 `?style=13`；默认不启用），`?ui=de` 原作的深色对话面板与 HUD，`?look=winter|noir` 冬日或夜的灯光、调色与脏旧。参数可以组合，例如 `?look=winter&ui=de&cast=2`。`npm run play` 通过 `window.__play` 读取选项（编号、id、状态）并用数字键按 id 选择，在指定时刻冻结虚拟时钟截图，断言没有控制台错误且到达结尾。
 
 ## 模块
 
-- `src/scene/`：`table` 着色器绘制的胡桃木桌面（木板、年轮、导管、板缝），`book` 布面书壳、书芯与书口纸线、底页上的地板、两张撕开的顶页（左页撕到约四分之一深度，右页撕到接近页尾），`popup` 背景板五层，`puppets` 站在地板上的哈里与金和纸质立脚，`tabletop` 桌面道具的摆放，`dice` 桌面上的圆角纸骰与掷骰动画，`hearts` 桌面上对折的士气纸心，`lead` 新线索卡片（落在右页，点击后归入桌面卡堆），`hotspots` 悬停提示的拾取（按纹理透明度的射线命中、各背景层内的区域）与提亮，`cues` 全部舞台指令（窗扇、钟的指针与钟摆、窗外与窗台的积雪、楼梯与狗、马雷克在房间里的行走、调色与灯光、时间标记、结尾的退场与熄烛）和开场时纸片从书页上逐排翻起，`lights` 灯光与阴影，`penumbra` 主光的软阴影（PCSS，改写 three.js 的阴影着色器片段），`post` 颗粒、暗角、调色与夜色，`camera` 候选取景（`VIEWS`）与视差，`palette` 风格预设 2 的灯光与调色，`details` 风格预设 3 在运行时绘制的原作细节（交互标记、检定纸条等），`snow` 窗外的雪，`space` 坐标、书页截面曲线与纸片工具，`paper` 纸纹、布纹、书口纸线、烘焙的接触阴影与卡纸厚度（纸芯切边与纸背）。
+- `src/scene/`：`table` 着色器绘制的胡桃木桌面（木板、年轮、导管、板缝），`book` 布面书壳、书芯与书口纸线、底页上的地板、两张撕开的顶页（左页撕到约四分之一深度，右页撕到接近页尾），`popup` 背景板五层，`puppets` 站在地板上的哈里与金和纸质立脚，`tabletop` 桌面道具的摆放，`dice` 桌面上的圆角纸骰与掷骰动画，`hearts` 桌面上对折的士气纸心，`lead` 新线索卡片（落在右页，点击后归入桌面卡堆），`hotspots` 悬停提示的拾取（按纹理透明度的射线命中、各背景层内的区域）与提亮，`cues` 全部舞台指令（窗扇、钟的指针与钟摆、窗外与窗台的积雪、楼梯与狗、马雷克在房间里的行走、调色与灯光、时间标记、结尾的退场与熄烛）和开场时纸片从书页上逐排翻起，`lights` 灯光与阴影，`penumbra` 主光的软阴影（PCSS，改写 three.js 的阴影着色器片段），`post` 颗粒、暗角、调色与夜色，`camera` 候选取景（`VIEWS`）与视差，`palette` 风格预设 2 的灯光与调色，`details` 风格预设 3 在运行时绘制的原作细节（交互标记、检定纸条等），`mood` 冬日与夜两个氛围预设，`shaft` 窗洞的体积光束与浮尘，`grime` 运行时绘制的污渍与破败（墙纸水渍、地板积灰、书页霉斑、桌面刮痕），`snow` 窗外的雪，`space` 坐标、书页截面曲线与纸片工具，`paper` 纸纹、布纹、书口纸线、烘焙的接触阴影与卡纸厚度（纸芯切边与纸背）。
 - `src/play/`：`clock` 虚拟时钟（补间、等待、倍速、减少动态效果、测试用的冻结），`director` 逐个播放引擎给出的节拍，每段之后等待点击，并在等待玩家选择时接受输入，`log` 左页日志的逐字打出（按标点停顿）、滚动、选项、「▼ 继续」、读屏镜像与选项提示。
 - `src/page/`：`layout` 日志排版（说话者 + 破折号、结果标签、编号选项、置灰与红色检定标记；中文按字断行、避头尾，英文按词；自下而上锚定），`painter` 画布绘制（按取景纵向拉伸，默认 1.21 倍，抵消斜看纸面造成的字形压扁）、逐字显示、滚动窗口与撕口处的淡出，`hit` 射线命中选项。
 - `src/audio/`：`music` 背景音乐（`<audio>` 接入 Web Audio 的音量与低通滤波、开关、首次交互启动、剧情钩子），`sfx` 音效（合成配方、声像与混响、开关与首次交互启动）。
 - `public/audio/`：背景音乐录音。
-- `src/style.ts`：解析 `?style=`，风格预设的开关。
+- `src/style.ts`：解析 `?style=`，风格预设的开关；`src/ui.ts`：解析 `?ui=`。`src/play/hud.ts`、`portraits.ts`：`?ui=de` 的 HUD（头像、生命与士气、工具图标、时钟、技能标签与检定横幅）与自绘的圆形头像。
 - `src/engine/`：对话引擎（节点、检定、旗标、士气、白色重试与红色一次性），只产出节拍，不做动画。
 - `src/content/`：`schema` 类型（design.md 7.3），`skills` 九项技能、属性色、难度与标签格式，`study` 第一章全部节点，`study-clock` 风格板瞬间，`ui` 界面文字（时间标记、新线索、继续、第一章 完、成功率等），`hotspots` 悬停提示的名称与描述。
 - `assets/art/*.svg`：每张纸片一个矢量源文件，撕边与纸纹滤镜写在文件里，只在烘焙时运行。`floor-papers.json` 是地板上散落纸页的位置与大小，地板脚本与悬停提示共用。纸偶 `harry.svg`、`kim.svg` 为手绘，根元素的 `data-*` 属性给出脚底、立脚范围与烟头位置；`harry-v1`…`v4`、`kim-v1`…`v4` 是按原作不同参考图画的候选版本（`docs/cast.md`）。M1 新增的手绘纸片：`casement` 窗扇，`clock-hour`、`clock-minute`、`pendulum` 钟的指针与钟摆，`stairs` 楼梯与平台，`dog`、`dog-head` 房东太太的狗，`marek` 马雷克的剪影，`heart`、`heart-empty` 士气心形，`lead-card` 新线索卡片；`far-snow`、`sill-snow` 由 `extract-art` 从旧风格板拆出。地板（含地毯与散落纸页）与两张顶页的撕口也由 `extract-art` 生成，参数见脚本开头。
@@ -76,4 +76,4 @@ npm test         # 对话引擎的单元测试
 
 ## 当前阶段
 
-M1 最小 Demo：第一章可从开场完整玩到「第一章 完」，包括全部检定与骰子动画、旗标与士气、白色重试与红色一次性、还原成功的完整舞台动画与语言切换。M1 之后的第二次打磨调整了视角、文字尺寸与右页的作用（见 design.md 6.1）；第三次打磨针对质感：软阴影、卡纸厚度、木桌、桌面道具、开场与纹理体积（见 design.md 8 节）。第四轮加入读者视角的取景、背景音乐与音效，以及纸偶版本与原作风格预设两组候选方案，待选定后收敛。下一步是 M2。
+M1 最小 Demo：第一章可从开场完整玩到「第一章 完」，包括全部检定与骰子动画、旗标与士气、白色重试与红色一次性、还原成功的完整舞台动画与语言切换。M1 之后的第二次打磨调整了视角、文字尺寸与右页的作用（见 design.md 6.1）；第三次打磨针对质感：软阴影、卡纸厚度、木桌、桌面道具、开场与纹理体积（见 design.md 8 节）。第四轮加入读者视角的取景、背景音乐与音效，以及纸偶版本与原作风格预设两组候选方案；第五轮加入更大胆的原作界面（`?ui=de`）与氛围（`?look=`）候选，待选定后收敛。下一步是 M2。
