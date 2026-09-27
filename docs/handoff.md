@@ -46,9 +46,12 @@
   - 默认参数下画面与此前逐像素一致。
 - 第六轮（用户反馈：「`?look=winter&ui=de` 这个组合还不错，但有几个 UI 似乎没有实际用途。油画直接用在画面上效果并不好」）：
   - 冬日与原作界面改为默认。`?ui=book` 回到书页排法，`?look=warm` 回到暖色绘本，`?look=noir` 为夜；`?still&ui=book&look=warm` 与此前默认的静帧逐像素一致。
-  - HUD 只留本章用得上的部分：头像（说话者）、士气、时钟、技能标签与检定横幅。去掉生命（本章没有生命规则）、角色、物品、思维阁图标（不能点击）、日志图标与线索角标（与桌上线索卡堆重复）、托盘上的胶片编码。原作界面下桌上不再放纸心，士气只显示在 HUD 上：失去时横幅、下降音、格子逐个熄灭；悬停十字框显示士气提示。见 `docs/ui.md` 3.3 节。
+  - HUD 只留本章用得上的部分：头像（说话者）、士气、时钟与检定横幅。去掉生命（本章没有生命规则）、角色、物品、思维阁图标（不能点击）、日志图标与线索角标（与桌上线索卡堆重复）、托盘上的胶片编码。原作界面下桌上不再放纸心，士气只显示在 HUD 上：失去时横幅、下降音、格子逐个熄灭；悬停十字框显示士气提示。见 `docs/ui.md` 3.3 节。
   - 油画后期整体移除（代码、文档与截图），不再作为候选。原因：滤镜盖在整帧上，纸片、文字与桌面一起被涂抹，失去立体书的材质与清晰度。若之后仍要油画感，应画进素材（墙纸、窗外远景等纹理），不要做成整帧后期。
   - `tools/play.mjs` 新增 `--query`，在额外的页面参数下通关（例如 `--query "ui=book&look=warm"`）。
+  - 背景音乐再降约 10 dB（PR #10）。
+  - 深色面板的排版：字号小约一成（中文 22），行距 1.66 倍，两条日志之间空约 0.4 行，文字栏四周的边距加宽（`docs/ui.md` 3.4 节）。
+  - 去掉内心声音标签：用户认为「检定信息在书上弹出看起来不太真实」。平面的 HTML 标签叠在倾斜的书页上，看起来是贴上去的；技能名本来就按属性颜色印在日志里。
 - 本文件第 3–8 节描述合并后的 `main`。
 
 ## 3. 环境与命令
@@ -90,7 +93,7 @@
 | 立体层的铰接行与后倾角 | `src/scene/popup.ts` 的 `PIECES` |
 | 哈里与金的位置、大小 | `src/scene/puppets.ts` 的 `PUPPETS` |
 | 桌面道具（线索卡堆、纸心、骰子） | `src/scene/tabletop.ts` 的 `TABLE`；线索卡落点与尺寸在 `src/scene/lead.ts` 的 `DROP`、`FILED`。纸心只在 `?ui=book` 下出现 |
-| 日志字号与行高 | `src/page/layout.ts` 的 `SIZES`；文字栏范围 `textColumn`；纵向拉伸按取景取 `VIEWS[n].ink`（`src/main.ts` 的 `INK_STRETCH`） |
+| 日志字号与行高 | `src/page/layout.ts` 的 `SIZES`（书页排法）与 `SIZES_DE`（深色面板：字号、行距、段距 `gap`、选项间距 `optionGap`）；文字栏范围与边距 `textColumn`；纵向拉伸按取景取 `VIEWS[n].ink`（`src/main.ts` 的 `INK_STRETCH`） |
 | 打字速度、标点停顿 | `src/play/log.ts` 的 `TYPE_MS`、`PAUSES`；逐段停顿规则在 `src/play/director.ts` |
 | 灯光 | `src/scene/lights.ts`（半球光、左侧主光、蜡烛、窗光、台灯） |
 | 主光软阴影 | `src/scene/penumbra.ts`；光源角半径 `angle`（度）与最大半影 `max`（世界单位）在 `lights.ts` 调用 `softShadows` 处 |
@@ -106,7 +109,7 @@
 | 背景音乐 | 录音 `public/audio/elysium.mp3`；音量 `VOLUME`、回忆时的低通与音量 `COLD`、淡入淡出 `FADE` 在 `src/audio/music.ts`；剧情钩子经 `createCues` 的 `onCue` 回调接入。说明见 `docs/music.md` |
 | 音效 | 配方、音量与混响在 `src/audio/sfx.ts` 的 `createBank`（每个音效一段，按名称 `SoundName` 调用）；触发点：`src/play/log.ts` 的 `onType`（写字）、`src/play/director.ts`（继续、选择、内心声音、检定结果）、`src/scene/dice.ts` 的 `CONTACTS`（骰子落桌）、`hearts.ts`、`lead.ts`、`cues.ts`（纸片、脚步、窗扇、钟、风、蜡烛、钟摆） |
 | 纸偶版本 | `assets/art/harry-vN.svg`、`kim-vN.svg`（与原来的纸偶同样的 `data-*` 属性）；`?cast=N` 在 `src/main.ts` 加载后把 `art.harry`、`art.kim` 换成选中的版本，其余模块不需要改 |
-| 原作界面（默认；`?ui=book` 为书页排法） | 开关 `src/ui.ts`；日志的深色面板排版 `src/page/layout.ts` 的 `DE` 与 `painter.ts`；HUD `src/play/hud.ts`（头像、士气、时钟、技能标签、横幅）、头像 `src/play/portraits.ts`；样式在 `index.html` 的 `[data-ui]` 下；士气显示在 HUD 还是纸心由 `src/main.ts` 的 `morale` 决定。说明见 `docs/ui.md` |
+| 原作界面（默认；`?ui=book` 为书页排法） | 开关 `src/ui.ts`；日志的深色面板排版 `src/page/layout.ts` 的 `DE` 与 `painter.ts`；HUD `src/play/hud.ts`（头像、士气、时钟、横幅）、头像 `src/play/portraits.ts`；样式在 `index.html` 的 `[data-ui]` 下；士气显示在 HUD 还是纸心由 `src/main.ts` 的 `morale` 决定。说明见 `docs/ui.md` |
 | 氛围预设（默认冬日；`?look=noir|warm`） | 预设参数 `src/scene/mood.ts`；光束与浮尘 `shaft.ts`；脏旧 `grime.ts`（各纸片按自身坐标生成污渍）；在剧本指令读取灯光基准值之前生效。说明见 `docs/look.md` |
 | 原作风格预设 | 开关 `src/style.ts`；预设 1 在 `src/page/layout.ts`、`painter.ts`、`src/play/log.ts` 与 `index.html` 的 `data-style` 样式；预设 2 在 `src/scene/palette.ts` 与 `post.ts`；预设 3 在 `src/scene/details.ts`。参考与取舍见 `docs/style-refs.md` |
 
@@ -151,6 +154,8 @@
 | 背景音乐用用户提供的录音 | 用户希望用「Whirling-In-Rags」风格的曲子，由用户自行制作或取得并提供文件。此前的原创合成曲已删除。仓库公开，音频文件随仓库与部署公开 |
 | 默认改为冬日光线与原作界面 | 用户认为此前的画面太温馨、原作风格体现不够；第五轮的候选里选定 `?look=winter&ui=de` |
 | HUD 只放本章用得上的元素 | 用户指出几个 UI 没有实际用途。生命、工具栏、胶片编码没有对应的玩法；士气原先同时显示在纸心与 HUD 上，冬日光下纸心又看不清，改为只在 HUD 上 |
+| 书上不叠加 HUD 元素 | 内心声音标签叠在倾斜的书页上，不随透视与光照变化，用户认为不真实；HUD 只在画面四角 |
+| 深色面板用更小的字与更宽的行距、段距、边距 | 用户要求；此前几轮为了可读性放大过日志，密度偏高 |
 | 不做整帧油画后期 | 用户认为油画直接用在画面上效果不好：滤镜把纸片、文字与桌面一起涂抹，立体书的材质与清晰度都丢了 |
 
 ## 7. 用户偏好
@@ -166,6 +171,8 @@
   - 物件悬停要有提示。
   - 画面不要太温馨，要有原作的冷峻与破败感（第五轮）。
   - 界面上每个元素都要有实际用途，装饰性的 UI 去掉（第六轮）。
+  - 书上不要弹出平面的界面元素：屏幕空间的 HUD 只放画面四角，书上或桌上的信息要印进书页或做成实物（第六轮）。
+  - 日志的字可以小一些，行距、段距、页边距要明显（第六轮）。
   - 不要把油画滤镜直接盖在整帧上（第六轮）。
 - 人物形象、性格与语言风格采用原作。只是 Demo，不考虑版权。
 - 工作流：在分支上开发，开 PR；本地检查（`npm test`、`build`、`shot`、`play`）通过后直接合入 `main`，不停在 PR 等待审阅，由 Vercel 部署。
