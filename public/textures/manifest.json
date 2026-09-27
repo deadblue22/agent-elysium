@@ -2,7 +2,7 @@
   "unit": 100,
   "textures": {
     "casement": {
-      "file": "textures/casement.png",
+      "file": "textures/casement.webp",
       "px": [
         222,
         352
@@ -23,7 +23,7 @@
       }
     },
     "clock-hour": {
-      "file": "textures/clock-hour.png",
+      "file": "textures/clock-hour.webp",
       "px": [
         48,
         120
@@ -45,7 +45,7 @@
       }
     },
     "clock-minute": {
-      "file": "textures/clock-minute.png",
+      "file": "textures/clock-minute.webp",
       "px": [
         48,
         152
@@ -67,7 +67,7 @@
       }
     },
     "desk": {
-      "file": "textures/desk.png",
+      "file": "textures/desk.webp",
       "px": [
         848,
         420
@@ -85,7 +85,7 @@
       "scale": 2
     },
     "dice": {
-      "file": "textures/dice.png",
+      "file": "textures/dice.webp",
       "px": [
         720,
         120
@@ -103,7 +103,7 @@
       "scale": 3
     },
     "dog": {
-      "file": "textures/dog.png",
+      "file": "textures/dog.webp",
       "px": [
         184,
         60
@@ -126,7 +126,7 @@
       }
     },
     "dog-head": {
-      "file": "textures/dog-head.png",
+      "file": "textures/dog-head.webp",
       "px": [
         108,
         78
@@ -148,7 +148,7 @@
       }
     },
     "far": {
-      "file": "textures/far.png",
+      "file": "textures/far.webp",
       "px": [
         776,
         728
@@ -166,7 +166,7 @@
       "scale": 2
     },
     "far-snow": {
-      "file": "textures/far-snow.png",
+      "file": "textures/far-snow.webp",
       "px": [
         776,
         728
@@ -184,7 +184,7 @@
       "scale": 2
     },
     "floor": {
-      "file": "textures/floor.png",
+      "file": "textures/floor.webp",
       "px": [
         2163,
         1037
@@ -213,7 +213,7 @@
       }
     },
     "front-chair": {
-      "file": "textures/front-chair.png",
+      "file": "textures/front-chair.webp",
       "px": [
         420,
         336
@@ -231,7 +231,7 @@
       "scale": 2
     },
     "front-right": {
-      "file": "textures/front-right.png",
+      "file": "textures/front-right.webp",
       "px": [
         624,
         612
@@ -249,7 +249,7 @@
       "scale": 2
     },
     "furniture": {
-      "file": "textures/furniture.png",
+      "file": "textures/furniture.webp",
       "px": [
         2544,
         772
@@ -267,7 +267,7 @@
       "scale": 2
     },
     "harry": {
-      "file": "textures/harry.png",
+      "file": "textures/harry.webp",
       "px": [
         208,
         440
@@ -292,7 +292,7 @@
       }
     },
     "heart": {
-      "file": "textures/heart.png",
+      "file": "textures/heart.webp",
       "px": [
         84,
         87
@@ -310,7 +310,7 @@
       "scale": 3
     },
     "heart-empty": {
-      "file": "textures/heart-empty.png",
+      "file": "textures/heart-empty.webp",
       "px": [
         84,
         87
@@ -328,7 +328,7 @@
       "scale": 3
     },
     "kim": {
-      "file": "textures/kim.png",
+      "file": "textures/kim.webp",
       "px": [
         144,
         386
@@ -351,7 +351,7 @@
       }
     },
     "lead-card": {
-      "file": "textures/lead-card.png",
+      "file": "textures/lead-card.webp",
       "px": [
         952,
         436
@@ -369,7 +369,7 @@
       "scale": 2
     },
     "marek": {
-      "file": "textures/marek.png",
+      "file": "textures/marek.webp",
       "px": [
         128,
         396
@@ -391,7 +391,7 @@
       }
     },
     "page-left": {
-      "file": "textures/page-left.png",
+      "file": "textures/page-left.webp",
       "px": [
         1340,
         1440
@@ -415,7 +415,7 @@
       }
     },
     "page-right": {
-      "file": "textures/page-right.png",
+      "file": "textures/page-right.webp",
       "px": [
         1340,
         1440
@@ -439,7 +439,7 @@
       }
     },
     "pendulum": {
-      "file": "textures/pendulum.png",
+      "file": "textures/pendulum.webp",
       "px": [
         96,
         186
@@ -461,7 +461,7 @@
       }
     },
     "sill-snow": {
-      "file": "textures/sill-snow.png",
+      "file": "textures/sill-snow.webp",
       "px": [
         440,
         32
@@ -479,7 +479,7 @@
       "scale": 2
     },
     "stairs": {
-      "file": "textures/stairs.png",
+      "file": "textures/stairs.webp",
       "px": [
         488,
         464
@@ -504,26 +504,8 @@
         "landingX": 222
       }
     },
-    "table": {
-      "file": "textures/table.png",
-      "px": [
-        1600,
-        480
-      ],
-      "viewBox": [
-        0,
-        0,
-        1600,
-        480
-      ],
-      "world": [
-        16,
-        4.8
-      ],
-      "scale": 1
-    },
     "wall": {
-      "file": "textures/wall.png",
+      "file": "textures/wall.webp",
       "px": [
         2728,
         876

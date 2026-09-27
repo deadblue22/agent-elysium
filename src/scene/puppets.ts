@@ -7,7 +7,7 @@ import {
   AdditiveBlending, CanvasTexture, Color, Group, Mesh, MeshStandardMaterial, SRGBColorSpace, Sprite, SpriteMaterial, Vector3,
 } from 'three';
 import type { Art } from '../assets';
-import { standTab, standingContact } from './paper';
+import { cardEdge, standTab, standingContact } from './paper';
 import { baseY, leanNormal, paperMaterial, pointOnStanding, rectUV, standing, surfaceGrid, xSamples, ySamples, type StandOptions } from './space';
 
 /** The puppets lean back a little, as the pop-up's front rows do. */
@@ -50,6 +50,7 @@ export function createStage(art: Art) {
     const opts = { ...o, y: footY(name) };
     const { group: g, mesh } = standing(art[name], material, opts);
     mesh.name = name;
+    cardEdge(mesh, art[name].texture);
     group.add(g);
     puppets[name as 'harry' | 'kim'] = { group: g, mesh, lean: PUPPET_LEAN, y: mesh.position.y, opts };
     // the stand tab: the flap folded forward under the feet and glued to the floor

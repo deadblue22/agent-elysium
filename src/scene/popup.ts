@@ -4,7 +4,7 @@
 // FOLD and ROWS); the wall leans back most, rows nearer the reader stand more upright.
 import { Group, MeshBasicMaterial, Vector3, type Mesh } from 'three';
 import type { Art } from '../assets';
-import { standingContact } from './paper';
+import { cardEdge, standingContact } from './paper';
 import { BASE_Y, baseY, envelope, leanNormal, lift, paperMaterial, pointOnStanding, standing, type StandOptions } from './space';
 
 type Row = 'wall' | 'furniture' | 'desk' | 'frontLeft' | 'front';
@@ -72,7 +72,9 @@ export function createPopup(art: Art) {
     const opts = { ...o, y: LAYER_Y };
     const { group: g, mesh } = standing(piece, material, opts);
     mesh.name = name;
-    if (name === 'far') mesh.receiveShadow = false;
+    // the view outside the window neither takes nor casts shadows (it only shows through the hole)
+    if (name === 'far') mesh.receiveShadow = mesh.castShadow = false;
+    else cardEdge(mesh, piece.texture);
     group.add(g);
     pieces[name] = { group: g, mesh, opts };
     if (name === 'far') continue; // stands behind the wall

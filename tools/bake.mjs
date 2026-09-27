@@ -1,8 +1,12 @@
-// Bakes every paper piece in assets/art/*.svg into public/textures/<name>.png
+// Bakes every paper piece in assets/art/*.svg into public/textures/<name>.webp
 // (transparent background, 2x unless the SVG root says data-bake-scale="n"),
 // and writes public/textures/manifest.json with each texture's pixel size, viewBox,
 // world size (1 world unit = 100 SVG units, the legacy board's CSS pixels) and any
 // data-* attributes of the SVG root as `meta`.
+//
+// WebP at quality 0.92: the colour is lossy but within about 2 of 255 levels of the render,
+// the alpha channel is lossless (the torn edges and the hover tips' hit tests read it), and the
+// textures are about a tenth of the size of PNGs.
 //
 // The paper filters (torn edges, fibre, burnt rims) run here, once. The legacy `cutS`
 // filter also paints a small drop shadow under each piece: inside a piece that is the
@@ -22,6 +26,7 @@ const artDir = join(root, 'assets', 'art');
 const outDir = join(root, 'public', 'textures');
 mkdirSync(outDir, { recursive: true });
 const UNIT = 100;
+const QUALITY = 0.92;
 
 const only = process.argv.slice(2);
 const files = readdirSync(artDir).filter((f) => f.endsWith('.svg') && (!only.length || only.includes(basename(f, '.svg')))).sort();
@@ -71,7 +76,14 @@ for (const f of files) {
     }, [png.toString('base64'), alphaPng.toString('base64')]);
     png = Buffer.from(b64, 'base64');
   }
-  writeFileSync(join(outDir, `${name}.png`), png);
+  const webp = Buffer.from(await page.evaluate(async ([b64, q]) => {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = 'data:image/png;base64,' + b64; });
+    const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+    c.getContext('2d').drawImage(img, 0, 0);
+    return c.toDataURL('image/webp', q).split(',')[1];
+  }, [png.toString('base64'), QUALITY]), 'base64');
+  writeFileSync(join(outDir, `${name}.webp`), webp);
+  rmSync(join(outDir, `${name}.png`), { force: true });
   const px = [png.readUInt32BE(16), png.readUInt32BE(20)];
   // other data-* attributes on the root travel to the app (e.g. where a torn sheet's tear runs)
   const root = svg.match(/<svg\b[^>]*>/)[0];
@@ -79,14 +91,14 @@ for (const f of files) {
     .filter(([, k]) => k !== 'bake-scale')
     .map(([, k, v]) => [k.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase()), Number.isNaN(Number(v)) ? v : Number(v)]));
   manifest.textures[name] = {
-    file: `textures/${name}.png`,
+    file: `textures/${name}.webp`,
     px,
     viewBox: vb,
     world: [+(vb[2] / UNIT).toFixed(4), +(vb[3] / UNIT).toFixed(4)],
     scale,
     ...(Object.keys(meta).length ? { meta } : {}),
   };
-  console.log(`${name.padEnd(12)} ${String(px[0]).padStart(5)}x${String(px[1]).padEnd(5)} @${scale}x  ${(png.length / 1024).toFixed(0).padStart(5)} KB  ${Date.now() - t0} ms`);
+  console.log(`${name.padEnd(12)} ${String(px[0]).padStart(5)}x${String(px[1]).padEnd(5)} @${scale}x  ${(webp.length / 1024).toFixed(0).padStart(5)} KB  ${Date.now() - t0} ms`);
 }
 await browser.close();
 
@@ -95,10 +107,10 @@ const sources = new Set(readdirSync(artDir).filter((f) => f.endsWith('.svg')).ma
 for (const name of Object.keys(manifest.textures)) {
   if (sources.has(name)) continue;
   delete manifest.textures[name];
-  rmSync(join(outDir, `${name}.png`), { force: true });
+  for (const ext of ['webp', 'png']) rmSync(join(outDir, `${name}.${ext}`), { force: true });
   console.log(`${name.padEnd(12)} removed (no assets/art/${name}.svg)`);
 }
 manifest.textures = Object.fromEntries(Object.entries(manifest.textures).sort(([a], [b]) => a.localeCompare(b)));
 writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
-const total = Object.keys(manifest.textures).reduce((s, n) => s + readFileSync(join(outDir, `${n}.png`)).length, 0);
+const total = Object.values(manifest.textures).reduce((s, t) => s + readFileSync(join(outDir, basename(t.file))).length, 0);
 console.log(`manifest: ${Object.keys(manifest.textures).length} textures, ${(total / 1048576).toFixed(1)} MB on disk`);

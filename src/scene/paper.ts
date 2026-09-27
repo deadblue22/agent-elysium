@@ -3,8 +3,8 @@
 // the stacked page edges, and the contact shadows (ambient occlusion) that the static
 // pieces throw where they touch a surface, derived from their baked alpha.
 import {
-  CanvasTexture, DataTexture, Float32BufferAttribute, LinearMipmapLinearFilter, Mesh, MeshBasicMaterial, RepeatWrapping, RGBAFormat,
-  SRGBColorSpace, UnsignedByteType, type BufferGeometry, type Texture,
+  CanvasTexture, DataTexture, DoubleSide, Float32BufferAttribute, LinearMipmapLinearFilter, Mesh, MeshBasicMaterial, MeshStandardMaterial,
+  RepeatWrapping, RGBAFormat, SRGBColorSpace, UnsignedByteType, type BufferGeometry, type Texture,
 } from 'three';
 import type { ArtPiece } from '../assets';
 import { mulberry32 } from './snow';
@@ -159,6 +159,33 @@ export function pageEdges(): CanvasTexture {
   t.colorSpace = SRGBColorSpace;
   t.wrapS = RepeatWrapping;
   return t;
+}
+
+/** Card thickness (world units, about half a millimetre at the book's scale) and core colour. */
+export const CARD_T = 0.022;
+const CARD_CORE = '#d9cdb4';
+
+/**
+ * A card's thickness: a copy of the cut-out one card thickness behind it, in the colour of the
+ * card's core. The camera looks down on the pop-up, so the copy shows as a thin light line
+ * along every cut edge that faces up (the top of the bookshelf, a hat, the wall's scallops),
+ * where a real card's cut edge catches the light; the edges facing down stay hidden behind the
+ * card. Seen from behind (a card folded face down), it is the card's plain back. A child of the
+ * card's mesh: it moves, bobs, folds and hides with it.
+ */
+export function cardEdge(mesh: Mesh, map: Texture, thickness = CARD_T): Mesh {
+  const material = new MeshStandardMaterial({ map, color: CARD_CORE, roughness: 0.95, metalness: 0, alphaToCoverage: true, side: DoubleSide });
+  // the core colour everywhere, the cut-out's alpha
+  material.onBeforeCompile = (s) => {
+    s.fragmentShader = s.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n\tdiffuseColor.rgb = diffuse;');
+  };
+  material.customProgramCacheKey = () => 'card-edge';
+  const edge = new Mesh(mesh.geometry, material);
+  edge.position.z = -thickness;
+  edge.receiveShadow = true;
+  edge.name = `${mesh.name || 'card'}-edge`;
+  mesh.add(edge);
+  return edge;
 }
 
 /** A black decal whose alpha is the darkness, drawn over a surface (depth-tested, no depth write). */

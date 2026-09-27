@@ -4,7 +4,7 @@
 // front, nearest the reader's hand.
 export const TABLE = {
   /** The leads' stack: its middle, and each card's turn about the vertical (degrees). */
-  leads: { x: 8.25, z: -0.5, turns: [-6, 3, -2] },
+  leads: { x: 8.35, z: -0.45, turns: [-6, 3, -2] },
   /** The hearts: the first one's middle, the step between them, their depth. */
   hearts: { x: 7.45, step: 0.47, z: 0.85 },
   /** The dice's rest spots and turns (degrees). */

@@ -15,8 +15,8 @@ import { TABLE } from './tabletop';
 
 /** Where the card lands on the right page (book px, its middle) and its size there. */
 const DROP = { bx: 1040, by: 632, scale: 0.72, turn: -3 };
-/** Its size on the stack. */
-const FILED = 0.4;
+/** Its size on the stack: large enough that the top card's lead reads without the hover tip. */
+const FILED = 0.5;
 /** Canvas px per card px. */
 const RES = 3;
 /** The card body inside the SVG (the tape overhangs its top edge). */
