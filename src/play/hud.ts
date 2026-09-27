@@ -114,7 +114,7 @@ export function createHud(frame: HTMLElement, o: HudOptions) {
     const skill = SKILLS[s as keyof typeof SKILLS];
     voiceSkill.textContent = skillName(s as keyof typeof SKILLS, voiced!.sense, lang);
     voiceAttr.textContent = ATTRIBUTES[skill.attribute].name[lang];
-    voice.style.setProperty('--attr', ATTRIBUTES[skill.attribute].color);
+    voice.style.setProperty('--attr', ATTRIBUTES[skill.attribute].panel);
   };
   showMorale();
   showClock();

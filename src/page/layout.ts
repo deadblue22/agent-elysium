@@ -147,7 +147,7 @@ export const INK_ORIGINAL = {
  * a light grey body under white names, grey tags, orange-red options (#FC5424) after white
  * numbers, white when hovered; a white check on a pale slip, a red check on an orange-red one;
  * the green of its 「New task:」 lines; the cyan CONTINUE bar (#5CC4D6) and its red smear
- * (#8C2414). Skill names take their attribute's reference colour (ATTRIBUTES[].color).
+ * (#8C2414). Skill names take their attribute's panel colour (ATTRIBUTES[].panel).
  */
 export const INK_DE = {
   text: '#E4DFD4',     // the body
@@ -338,9 +338,9 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
   const maxW = col.x1 - col.x0;
   // the dark panel (de) is set like the original look, in the original's own light inks
   const dark = look.kind === 'de', orig = look.kind !== 'board', O = dark ? INK_DE : INK_ORIGINAL;
-  /** The body's ink, and a speaker's: skills in their attribute's ink on the page, in its reference colour on the panel. */
+  /** The body's ink, and a speaker's: skills in their attribute's ink on the page, in its panel colour on the panel. */
   const bodyInk = dark ? INK_DE.text : INK.log;
-  const inkOf = (s: Speaker, neutral: string) => speakerInk(s, neutral, dark ? 'color' : 'ink');
+  const inkOf = (s: Speaker, neutral: string) => speakerInk(s, neutral, dark ? 'panel' : 'ink');
   const narr: Style = { family: 'serif', size: S.narr, weight: 400, color: bodyInk, ls: 0, stroke: 0 };
   const mono = (color: string, stroke: number): Style => ({ family: 'mono', size: S.mono, weight: 400, color, ls: S.mono * 0.02, stroke });
   /** The face of the options and the player's words: the typewriter's, or the body's (the original look). */

@@ -317,10 +317,10 @@ async function main() {
     hearts.set(3);
     leads = { count: 1, total: study.evidence.length }; // 指针被拨过
     lead.fileAt((l) => ({ heading: ui.leadTag[l], lead: EVIDENCE_LABELS.clock_tampered[l], count: 1, total: study.evidence.length }));
-    // (the HUD's clock as it stands there in play: the lines up to it have each taken a minute)
+    // (the HUD's clock as it stands there in play: eleven lines, a minute each)
     hud?.setMorale(3);
     hud?.leads(1);
-    hud?.setTime(MORNING + 12);
+    hud?.setTime(MORNING + 11);
   } else {
     hearts.set(study.morale.start);
     /** Where the check banner goes: under the dice on the table (frame px). */

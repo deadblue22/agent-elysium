@@ -101,33 +101,48 @@ export function continueBar(ctx: CanvasRenderingContext2D, b: Rect) {
   ctx.clip();
   ctx.fillStyle = INK_DE.bar;
   ctx.fillRect(b.x, b.y, b.w, b.h);
-  // the smear: from about the middle the red takes over, unevenly
-  const s0 = b.x + b.w * 0.5, s1 = b.x + b.w * 0.74;
+  // the smear: from about the middle the red takes over, unevenly, a greyed band where the
+  // two paints meet
+  const s0 = b.x + b.w * 0.5, s1 = b.x + b.w * 0.76;
   const wash = ctx.createLinearGradient(s0, 0, s1, 0);
-  wash.addColorStop(0, 'rgba(140,36,20,0)');
-  wash.addColorStop(0.55, 'rgba(150,40,22,.55)');
-  wash.addColorStop(1, 'rgba(140,36,20,.94)');
+  wash.addColorStop(0, 'rgba(120,120,122,0)');
+  wash.addColorStop(0.35, 'rgba(118,96,94,.45)');
+  wash.addColorStop(0.7, 'rgba(146,44,26,.8)');
+  wash.addColorStop(1, 'rgba(140,36,20,.96)');
   ctx.fillStyle = wash;
   ctx.fillRect(s0, b.y, s1 - s0, b.h);
   ctx.fillStyle = INK_DE.splash;
   ctx.fillRect(s1, b.y, b.x + b.w - s1, b.h);
-  // marbling: blobs of red reaching into the cyan, cells of cyan left in the red, rings of both
-  for (let i = 0; i < 46; i++) {
-    const x = s0 - 24 + rnd() * (s1 - s0 + 30), y = b.y + rnd() * b.h, r = 2 + rnd() * 7;
-    ctx.fillStyle = `rgba(${rnd() > 0.5 ? '150,38,20' : '120,30,16'},${0.5 + rnd() * 0.4})`;
+  /** An irregular blob: a few overlapping ellipses turned every way. */
+  const blob = (x: number, y: number, r: number, fill: string) => {
+    ctx.fillStyle = fill;
+    for (let k = 0; k < 3; k++) {
+      ctx.beginPath();
+      ctx.ellipse(x + (rnd() - 0.5) * r, y + (rnd() - 0.5) * r * 0.6, r * (0.6 + rnd() * 0.8), r * (0.35 + rnd() * 0.4), rnd() * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+  // blotches of red reaching into the cyan and the grey, lighter red floating in the red
+  for (let i = 0; i < 26; i++) blob(s0 - 10 + rnd() * (s1 - s0 + 20), b.y + rnd() * b.h, 2.5 + rnd() * 6, `rgba(${rnd() > 0.5 ? '150,40,22' : '118,30,16'},${0.55 + rnd() * 0.4})`);
+  for (let i = 0; i < 14; i++) blob(s1 + rnd() * (b.x + b.w - s1), b.y + rnd() * b.h, 2 + rnd() * 6, `rgba(${rnd() > 0.5 ? '184,60,34' : '96,22,12'},${0.35 + rnd() * 0.35})`);
+  // veins of cyan left between the blotches, as marbled paint parts
+  for (let i = 0; i < 12; i++) {
+    const x = s0 + rnd() * (b.x + b.w - s0 - 10), y = b.y + rnd() * b.h;
+    ctx.strokeStyle = `rgba(110,198,214,${0.3 + rnd() * 0.35})`;
+    ctx.lineWidth = 0.5 + rnd() * 0.9;
     ctx.beginPath();
-    ctx.ellipse(x, y, r * (1 + rnd()), r, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  for (let i = 0; i < 40; i++) {
-    const x = s0 + rnd() * (b.x + b.w - s0), y = b.y + rnd() * b.h, r = 0.8 + rnd() * 3.6;
-    const cyan = rnd() > 0.35;
-    ctx.strokeStyle = cyan ? `rgba(120,206,222,${0.35 + rnd() * 0.4})` : `rgba(200,70,40,${0.4 + rnd() * 0.4})`;
-    ctx.lineWidth = 0.6 + rnd() * 0.8;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(x + 6 + rnd() * 14, y + (rnd() - 0.5) * 16, x + 10 + rnd() * 24, y + (rnd() - 0.5) * 10);
     ctx.stroke();
-    if (cyan && rnd() > 0.6) { ctx.fillStyle = 'rgba(92,196,214,.5)'; ctx.fill(); }
+  }
+  // and a few cells: rings, whole or broken
+  for (let i = 0; i < 16; i++) {
+    const x = s0 + 10 + rnd() * (b.x + b.w - s0 - 14), y = b.y + 2 + rnd() * (b.h - 4), r = 0.9 + rnd() * 3.4;
+    ctx.strokeStyle = rnd() > 0.4 ? `rgba(128,208,222,${0.35 + rnd() * 0.35})` : `rgba(236,140,112,${0.3 + rnd() * 0.3})`;
+    ctx.lineWidth = 0.5 + rnd() * 0.6;
+    ctx.beginPath();
+    ctx.arc(x, y, r, rnd() * Math.PI, Math.PI * (1.2 + rnd() * 0.8) + rnd() * Math.PI);
+    ctx.stroke();
   }
   // the paint's grain along the bar
   for (let i = 0; i < 24; i++) {
