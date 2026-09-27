@@ -80,10 +80,14 @@ export function speakerName(line: { speaker: Speaker; sense?: Sense }, lang: Lan
   return SPEAKERS[s][lang];
 }
 
-/** The ink a speaker's name is printed in: skills and the necktie in their attribute's colour, everyone else neutral. */
-export function speakerInk(s: Speaker, neutral: string): string {
-  if (isSkill(s)) return ATTRIBUTES[SKILLS[s].attribute].ink;
-  if (s === 'necktie') return ATTRIBUTES.psyche.ink;
+/**
+ * The ink a speaker's name is printed in: skills and the necktie in their attribute's colour,
+ * everyone else neutral. `tone`: the ink for the cream page, or the reference colour for a dark
+ * panel (?ui=de).
+ */
+export function speakerInk(s: Speaker, neutral: string, tone: 'ink' | 'color' = 'ink'): string {
+  if (isSkill(s)) return ATTRIBUTES[SKILLS[s].attribute][tone];
+  if (s === 'necktie') return ATTRIBUTES.psyche[tone];
   return neutral;
 }
 

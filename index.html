@@ -93,17 +93,17 @@
     radial-gradient(circle at 30% 22%,#8f877a 0 calc(1.3px * var(--s)),transparent calc(1.7px * var(--s))),radial-gradient(circle at 70% 22%,#8f877a 0 calc(1.3px * var(--s)),transparent calc(1.7px * var(--s))),
     radial-gradient(circle at 30% 50%,#8f877a 0 calc(1.3px * var(--s)),transparent calc(1.7px * var(--s))),radial-gradient(circle at 70% 50%,#8f877a 0 calc(1.3px * var(--s)),transparent calc(1.7px * var(--s))),
     radial-gradient(circle at 30% 78%,#8f877a 0 calc(1.3px * var(--s)),transparent calc(1.7px * var(--s))),radial-gradient(circle at 70% 78%,#8f877a 0 calc(1.3px * var(--s)),transparent calc(1.7px * var(--s)))}
-  /* ?style=1: hover tips as the original's captions: the sentence alone, light serif on a black
-     strip with brushed ends; a tip with a count keeps its name in front, as in the log
+  /* ?style=1, ?ui=de: hover tips as the original's captions: the sentence alone, light serif on a
+     black strip with brushed ends; a tip with a count keeps its name in front, as in the log
      (「士气 3 / 4 – 失败会让它流失……」) */
-  :root[data-style~="1"] .hot{max-width:calc(420px * max(var(--s), .8));padding:calc(5px * var(--s)) calc(16px * var(--s)) calc(6px * var(--s)) calc(18px * var(--s));
+  :root:is([data-style~="1"],[data-ui="de"]) .hot{max-width:calc(420px * max(var(--s), .8));padding:calc(5px * var(--s)) calc(16px * var(--s)) calc(6px * var(--s)) calc(18px * var(--s));
     background:rgba(11,10,9,.9);color:#ece5d7;border:none;box-shadow:none;
     clip-path:polygon(calc(9px * var(--s)) 0,calc(100% - 4px) calc(2px * var(--s)),100% 40%,calc(100% - 3px) 100%,calc(5px * var(--s)) calc(100% - 2px),0 64%,calc(4px * var(--s)) 32%)}
-  :root[data-style~="1"] .hot .name{display:inline;margin:0;font-family:var(--serif);font-weight:600;letter-spacing:0;color:#fbf8f1;font-size:max(16px, calc(16.5px * var(--s)))}
-  :root[data-style~="1"] .hot .name::after{content:" – ";font-weight:400;color:#ece5d7}
-  :root[data-style~="1"] .hot .name:empty{display:none}
-  :root[data-style~="1"] .hot .line{display:inline}
-  :root[data-style~="1"]:lang(en) .hot .name{font-family:"EB Garamond","Elysium Serif SC",serif;letter-spacing:.03em}
+  :root:is([data-style~="1"],[data-ui="de"]) .hot .name{display:inline;margin:0;font-family:var(--serif);font-weight:600;letter-spacing:0;color:#fbf8f1;font-size:max(16px, calc(16.5px * var(--s)))}
+  :root:is([data-style~="1"],[data-ui="de"]) .hot .name::after{content:" – ";font-weight:400;color:#ece5d7}
+  :root:is([data-style~="1"],[data-ui="de"]) .hot .name:empty{display:none}
+  :root:is([data-style~="1"],[data-ui="de"]) .hot .line{display:inline}
+  :root:is([data-style~="1"],[data-ui="de"]):lang(en) .hot .name{font-family:"EB Garamond","Elysium Serif SC",serif;letter-spacing:.03em}
 
   /* ?style=3: the title on the original's white plaque (its INVENTORY, THOUGHT CABINET: black
      condensed capitals on a white strip from the screen's edge, tilted a little; here its end

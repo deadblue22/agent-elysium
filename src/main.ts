@@ -10,6 +10,7 @@
 //   ?cast=N       Harry and Kim as drawn after reference N (assets/art/harry-vN.svg,
 //                 kim-vN.svg; docs/cast.md); without it, the current pair (harry.svg, kim.svg)
 //   ?style=1|2|3  a style preset after the original (src/style.ts, docs/style-refs.md); digits combine
+//   ?ui=de        the log on the original's dark dialogue panel, and its HUD (src/ui.ts, docs/ui.md)
 // prefers-reduced-motion: every tween jumps to its end, the snow and grain hold still.
 import { Box3, NoToneMapping, PCFShadowMap, PMREMGenerator, SRGBColorSpace, Scene, Vector2, Vector3, WebGLRenderer, type Mesh, type PerspectiveCamera } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -21,8 +22,9 @@ import { chrome, clockMoment } from './content/study-clock';
 import { ui } from './content/ui';
 import { Runner, optionId } from './engine';
 import { PageHit } from './page/hit';
-import { BOARD, FADE, Measurer, ORIGINAL, PAGE, layoutRightPage, textColumn, type PageLayout, type Rect } from './page/layout';
+import { BOARD, DE, FADE, Measurer, ORIGINAL, PAGE, layoutRightPage, textColumn, type PageLayout, type Rect } from './page/layout';
 import { parseStyle } from './style';
+import { parseUi } from './ui';
 import { PagePainter } from './page/painter';
 import { Clock } from './play/clock';
 import { Director } from './play/director';
@@ -107,8 +109,13 @@ const castOf = (name: string) => { const m = /^(?:harry|kim)-v(\d+)$/.exec(name)
 /** The style presets asked for (none: the current look). The chrome's CSS keys off data-style. */
 const STYLE = parseStyle(location.search);
 document.documentElement.dataset.style = [...STYLE].join(' ');
-/** How the log is set: the M0 board's, or (?style=1) the original's conventions. */
-const LOOK = STYLE.has(1) ? ORIGINAL : BOARD;
+/** The presentation after the original's interface (?ui=de), or null. Its CSS keys off data-ui. */
+const UI = parseUi(location.search);
+if (UI) document.documentElement.dataset.ui = UI;
+/** How the log is set: the M0 board's, (?style=1) the original's conventions, or (?ui=de) on its dark panel. */
+const LOOK = UI === 'de' ? DE : STYLE.has(1) ? ORIGINAL : BOARD;
+/** The option tooltip as the original's check card, and the hover tips as its captions. */
+const CAPTIONS = STYLE.has(1) || UI === 'de';
 
 const frameEl = document.getElementById('frame') as HTMLDivElement;
 const canvas = document.getElementById('gl') as HTMLCanvasElement;
@@ -235,8 +242,9 @@ async function main() {
   // the ink is drawn INK_STRETCH times taller about the window's bottom, so the slanted page
   // shows the glyphs in their true proportions; the log is laid out in a window that much shorter
   leftInk.setStretch(INK_STRETCH, col.y1);
-  // ?style=3: the original panel's scroll track and edge codes in the page's margins
-  if (STYLE.has(3)) leftInk.setDecor(true);
+  // ?style=3: the original panel's scroll track and edge codes in the page's margins (the dark
+  // panel has its own)
+  if (STYLE.has(3) && LOOK !== DE) leftInk.setDecor(true);
   const logCol = { ...col, y0: col.y1 - (col.y1 - col.y0) / INK_STRETCH };
   const pageRect = projectRect(cam.camera, 0, tear.tearMin - 14, PAGE.w, PAGE.h);
   // snow outside the window: flakes behind the wall's window hole (wall.svg's window region)
@@ -354,7 +362,7 @@ async function main() {
     hover: (index, at) => {
       leftInk.setHover(index !== null && (STILL || director?.idle) ? index : null);
       const view = index !== null && !STILL ? log.optionAt(index) : undefined;
-      renderTooltip(tipEl, view, lang, STYLE.has(1));
+      renderTooltip(tipEl, view, lang, CAPTIONS);
       if (view && at && !tipEl.hidden) {
         const r = frameEl.getBoundingClientRect();
         const x = Math.min(at.clientX - r.left + 18, r.width - tipEl.offsetWidth - 8);
@@ -420,8 +428,8 @@ async function main() {
     // the morale and the leads name their count; the leads list what was found
     const count = hotShown === 'morale' ? ` ${state.morale} / ${study.morale.max}` : hotShown === 'leads' ? ` ${leads.count} / ${leads.total}` : '';
     const found = hotShown === 'leads' ? study.evidence.filter((f) => state.flags.has(f)).map((f) => EVIDENCE_LABELS[f][lang]) : [];
-    // (?style=1: the original's caption is the sentence alone; a count keeps its name)
-    hotEl.querySelector('.name')!.textContent = STYLE.has(1) && !count ? '' : spot.name[lang] + count;
+    // (?style=1, ?ui=de: the original's caption is the sentence alone; a count keeps its name)
+    hotEl.querySelector('.name')!.textContent = CAPTIONS && !count ? '' : spot.name[lang] + count;
     hotEl.querySelector('.line')!.textContent = found.length ? found.join(lang === 'zh' ? '；' : '; ') + (lang === 'zh' ? '。' : '.') : tip[lang];
     hotEl.hidden = false;
     // near the pointer, inside the frame, and never over the log's column
