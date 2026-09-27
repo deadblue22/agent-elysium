@@ -18,7 +18,7 @@ import {
 import type { Art, ArtPiece } from '../assets';
 import { ease, lerp, type Clock } from '../play/clock';
 import type { createLights } from './lights';
-import { standingContact } from './paper';
+import { cardEdge, standingContact } from './paper';
 import { LAYER_Y, type PieceHandle } from './popup';
 import { DEG, LEAN_DEG, UNIT, baseY, paperMaterial, standing, wx, wz } from './space';
 
@@ -41,6 +41,12 @@ const REAL_TIME: Record<string, number> = {
 const SWING = 0.15, PERIOD = 1.1;
 /** A card lying (nearly) flat on its fold, before it rises (degrees back from the vertical). */
 const FLAT = 86;
+/**
+ * Before the book's pop-up rises, its cards lie folded forward, face down on the page, the rows
+ * nearer the head on top (degrees forward from the vertical); the puppets stand up from a
+ * steeper fold, so their heads stay over the page.
+ */
+const FOLDED = { rows: 80, puppets: 68 };
 /** Marek climbs this fast (stair px per s), a step every STEP px; he crosses the room faster. */
 const PACE = 105, ROOM_PACE = 170, STEP = 15;
 
@@ -154,6 +160,7 @@ export function createCues(d: Deps) {
     const opts = { ...o, baseY: piece.meta.soles, y: LAYER_Y };
     const { group, mesh } = standing(piece, paperMaterial(piece.texture, 0.92), opts);
     mesh.name = name;
+    cardEdge(mesh, piece.texture);
     const contact = standingContact(piece, opts, floorAt, { opacity: 0.9, behind: 16, front: 12 });
     contact.name = `contact-${name}`;
     stage.add(group, contact);
@@ -189,6 +196,7 @@ export function createCues(d: Deps) {
   const marekMesh = new Mesh(facing.right, marekMat);
   marekMesh.name = 'marek';
   marekMesh.castShadow = marekMesh.receiveShadow = true;
+  const marekEdge = cardEdge(marekMesh, mk.texture);
   const marek = new Group();
   marek.add(marekMesh);
   stage.add(marek);
@@ -203,13 +211,13 @@ export function createCues(d: Deps) {
   const place = (bx: number, hinge: number, h: number, face: 'left' | 'right') => {
     const l = M_LEAN * DEG;
     marek.position.set(wx(bx), LAYER_Y + (h * Math.cos(l)) / UNIT, wz(hinge) - (h * Math.sin(l)) / UNIT);
-    marekMesh.geometry = facing[face];
+    marekMesh.geometry = marekEdge.geometry = facing[face];
   };
   const onTrack = (sx: number, face: 'left' | 'right') => place(ST.x0 + sx * ST.scale, TRACK, treadH(sx) * ST.scale, face);
   const inRoom = (bx: number, face: 'left' | 'right') => place(bx, ROOM, 0, face);
   let at = SPOT.door;
-  /** A card's lean while it rises (p 0 → 1) or folds (1 → 0). */
-  const lean = (g: Group, deg: number, p: number) => { g.rotation.x = -lerp(FLAT, deg, p) * DEG; };
+  /** A card's lean while it rises (p 0 → 1) or folds (1 → 0), from lying back at `from` degrees. */
+  const lean = (g: Group, deg: number, p: number, from = FLAT) => { g.rotation.x = -lerp(from, deg, p) * DEG; };
   const rise = async (g: Group, deg: number, ms: number, contact?: Mesh) => {
     g.visible = true;
     if (contact) contact.visible = true;
@@ -429,24 +437,38 @@ export function createCues(d: Deps) {
   }
   present();
 
-  // entering the scene (§6.5): the pop-up rises from flat, row after row, then the puppets
+  // entering the scene (§6.5): the pop-up lies folded face down on the page, the plain backs of
+  // its cards up; row after row it swings up, the wall first (it lies on top), then the puppets.
+  // The casements open as the wall stands, the candle lights once the desk is up, the snow
+  // starts behind the window and Harry's cigarette glows once he is up
   const rows: Group[][] = [
     [P.far.group, P.wall.group], [P.furniture.group], [P.desk.group], [P['front-chair'].group, P['front-right'].group],
     [pups.harry.group, pups.kim.group],
   ];
+  const folded = (k: number) => -(k === rows.length - 1 ? FOLDED.puppets : FOLDED.rows);
   const upright = new Map<Group, number>(rows.flat().map((g) => [g, -g.rotation.x / DEG]));
   const contacts = () => [...popup.group.children, ...d.stage.group.children]
     .filter((o): o is Mesh => o.name.startsWith('contact-') && o instanceof Mesh);
   const contactOpacity = new Map(contacts().map((c) => [c, (c.material as MeshBasicMaterial).opacity]));
   /** Lays the pop-up flat, ready to rise. */
   function flatten() {
-    for (const g of rows.flat()) lean(g, upright.get(g)!, 0);
+    rows.forEach((row, k) => { for (const g of row) lean(g, upright.get(g)!, 0, folded(k)); });
     for (const c of contacts()) (c.material as MeshBasicMaterial).opacity = 0;
+    setOpen(0);
+    snow.setOpacity(0);
+    lights.candle.out = 1;
+    lights.settle();
+    d.stage.ember.visible = false;
   }
   async function enter() {
+    const RISE = 760, STAGGER = 160, up = (k: number) => STAGGER * k + RISE * 0.7; // a row is up
     await Promise.all([
-      ...rows.map((row, k) => clock.wait(150 * k).then(() => Promise.all(row.map((g) =>
-        clock.tween(700, (p) => lean(g, upright.get(g)!, p), ease.back, 'enter'))))),
+      ...rows.map((row, k) => clock.wait(STAGGER * k).then(() => Promise.all(row.map((g) =>
+        clock.tween(RISE, (p) => lean(g, upright.get(g)!, p, folded(k)), ease.back, 'enter'))))),
+      clock.wait(STAGGER).then(() => clock.tween(RISE * 0.9, (p) => setOpen(OPEN * p), ease.inOut)),
+      clock.wait(up(0)).then(() => clock.tween(900, (p) => snow.setOpacity(p), ease.inOut)),
+      clock.wait(up(2)).then(() => clock.tween(500, (p) => { lights.candle.out = 1 - p; lights.settle(); }, ease.out)),
+      clock.wait(up(rows.length - 1)).then(() => { d.stage.ember.visible = true; }),
       clock.wait(250).then(() => clock.tween(900, (p) => {
         for (const c of contacts()) (c.material as MeshBasicMaterial).opacity = (contactOpacity.get(c) ?? 0.75) * p;
       }, ease.inOut)),

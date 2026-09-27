@@ -15,6 +15,7 @@ import {
   AdditiveBlending, Box3, BufferGeometry, Color, Float32BufferAttribute, Group, Mesh, MeshBasicMaterial, Raycaster, Vector2, Vector3,
   type Camera, type Material, type Object3D, type Texture,
 } from 'three';
+import floorPapers from '../../assets/art/floor-papers.json';
 import type { Art, ArtPiece } from '../assets';
 import type { PieceHandle } from './popup';
 import { baseY, leanNormal, pointOnStanding, wx, wz, type StandOptions } from './space';
@@ -51,12 +52,10 @@ const REGIONS: Record<string, [string, Shape][]> = {
 };
 
 /**
- * The loose sheets printed on the floor (tools/extract-art.mjs: x, y from the fold, degrees),
- * each 30 x 22 px.
+ * The loose sheets printed on the floor, as tools/extract-art.mjs draws them: x, y from the
+ * fold, degrees, width, height.
  */
-const PAPERS: [number, number, number][] = [[300, 60, -14], [250, 104, 9], [612, 62, 22], [1000, 70, 12], [1230, 112, -11], [860, 150, -8],
-  [1060, 196, -24], [742, 216, 14], [1188, 318, 19], [1262, 404, -18], [724, 470, 6], [1004, 540, -9],
-  [1150, 560, 16], [840, 590, -20]];
+const PAPERS = floorPapers as [number, number, number, number, number][];
 
 /** A texture's alpha, at a reduced size, for picking. */
 class AlphaMask {
@@ -140,9 +139,9 @@ export function createHotspots(p: HotspotParts) {
   add(p.pieces.far.mesh, p.art.far, { key: 'window' });
   // the floor: the loose sheets, then the rug
   const fm = p.art.floor.meta;
-  const papers: [string, Shape][] = PAPERS.map(([x, y, deg]) => {
-    const r = (deg * Math.PI) / 180, c = Math.cos(r), s = Math.sin(r);
-    return ['papers', [[-17, -13], [17, -13], [17, 13], [-17, 13]].map(([u, v]) => [x + u * c - v * s, y + u * s + v * c] as [number, number])];
+  const papers: [string, Shape][] = PAPERS.map(([x, y, deg, w, h]) => {
+    const r = (deg * Math.PI) / 180, c = Math.cos(r), s = Math.sin(r), a = w / 2 + 2, b = h / 2 + 2;
+    return ['papers', [[-a, -b], [a, -b], [a, b], [-a, b]].map(([u, v]) => [x + u * c - v * s, y + u * s + v * c] as [number, number])];
   });
   add(p.floor, p.art.floor, {
     regions: [...papers, ['rug', [fm.rugX0, fm.rugY0, fm.rugX1, fm.rugY1]]],

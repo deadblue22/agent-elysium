@@ -4,6 +4,7 @@ import {
   AdditiveBlending, CanvasTexture, Color, DirectionalLight, Group, HemisphereLight, PointLight, SRGBColorSpace, SpotLight,
   Sprite, SpriteMaterial, type OrthographicCamera, type Vector3,
 } from 'three';
+import { softShadows } from './penumbra';
 import { glowTexture } from './puppets';
 
 export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; windowGlow: Vector3 }) {
@@ -27,8 +28,9 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
   sc.left = -10.5; sc.right = 10.5; sc.top = 10.5; sc.bottom = -10.5; sc.near = 4; sc.far = 36;
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.012;
-  key.shadow.radius = 1.6;   // a little crisper
   key.shadow.intensity = 1;
+  key.name = 'key';
+  softShadows(key, { angle: 4, max: 0.4 });
   group.add(key, key.target);
 
   // the candle: the only warm light in the room

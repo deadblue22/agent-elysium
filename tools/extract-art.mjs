@@ -14,7 +14,7 @@
 // generates. The puppets (harry.svg, kim.svg) are drawn by hand and are not touched.
 // Usage: node tools/extract-art.mjs
 import { chromium } from 'playwright-core';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { CHROMIUM, CHROMIUM_ARGS } from './chromium.mjs';
@@ -70,6 +70,8 @@ const DISP = { left: 7, right: 8 };
 const FRINGE = 7;
 /** Depth of the floor sheet from the fold: past the deepest point of the right tear. */
 const FLOOR_H = 640;
+/** Loose sheets on the floor: [x, y (fold-relative), turn in degrees, width, height]. */
+const PAPERS = JSON.parse(readFileSync(join(outDir, 'floor-papers.json'), 'utf8'));
 
 function mulberry32(a) {
   return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -183,7 +185,7 @@ const PIECES = [
       'data-fold': FOLD, 'data-row-furniture': ROWS.furniture, 'data-row-desk': ROWS.desk, 'data-row-front-left': ROWS.frontLeft, 'data-row-front': ROWS.front,
       'data-rug-x0': RUG.x0, 'data-rug-y0': RUG.y0, 'data-rug-x1': RUG.x1, 'data-rug-y1': RUG.y1, 'data-bake-scale': 1.6,
     },
-    data: { H: FLOOR_H, rows: ROWS, rug: RUG, tears: [tears.left.pts, tears.right.pts].map((pts) => pts.map(([x, y]) => [x, f1(y - FOLD)])) },
+    data: { H: FLOOR_H, rows: ROWS, rug: RUG, papers: PAPERS, tears: [tears.left.pts, tears.right.pts].map((pts) => pts.map(([x, y]) => [x, f1(y - FOLD)])) },
     edit: (svg, d) => {
       // the legacy board's floor script, re-run for the deeper sheet, printed in a faded,
       // dusty paper-toned grey-brown (a print of boards, not dark wood); the rug keeps its colour
@@ -226,13 +228,18 @@ const PIECES = [
         el('rect', { x: RX0 - 6, y: fy, width: 6, height: 1.4, fill: '#b89b70', opacity: 0.5 }, rug);
         el('rect', { x: RX1, y: fy, width: 6, height: 1.4, fill: '#b89b70', opacity: 0.5 }, rug);
       }
-      // loose sheets: behind the rows on the left, scattered across the room on the right
-      [[300, 60, -14], [250, 104, 9], [612, 62, 22], [1000, 70, 12], [1230, 112, -11], [860, 150, -8],
-        [1060, 196, -24], [742, 216, 14], [1188, 318, 19], [1262, 404, -18], [724, 470, 6], [1004, 540, -9],
-        [1150, 560, 16], [840, 590, -20]].forEach((p) => {
-        const g = el('g', { transform: `translate(${p[0]} ${p[1]}) rotate(${p[2]})` }, svg);
-        el('rect', { x: -15, y: -11, width: 30, height: 22, fill: '#d9d0bb' }, el('g', { filter: 'url(#cutS)' }, g));
-        for (let l = 0; l < 4; l++) el('rect', { x: -11, y: -7 + l * 4.5, width: (17 + R() * 5).toFixed(1), height: 0.8, fill: '#5d5445', opacity: 0.6 }, g);
+      // loose sheets fallen from the desk (assets/art/floor-papers.json, shared with the hover
+      // tips): ledger pages (upright, ruled, a margin line) and order slips (a few written lines),
+      // in the toned, dusty paper of the print, not white
+      d.papers.forEach(([x, y, deg, w, h]) => {
+        const g = el('g', { transform: `translate(${x} ${y}) rotate(${deg})` }, svg);
+        const ledger = h > w;
+        el('rect', { x: -w / 2, y: -h / 2, width: w, height: h, fill: ledger ? '#c4b99f' : '#cbc1aa' }, el('g', { filter: 'url(#cutS)' }, g));
+        if (ledger) el('rect', { x: -w / 2 + 6, y: -h / 2 + 2, width: 0.6, height: h - 4, fill: '#8a4a30', opacity: 0.35 }, g);
+        const lines = ledger ? 6 : 3, step = ledger ? 4.4 : 4.6, x0 = ledger ? -w / 2 + 8.5 : -w / 2 + 4;
+        for (let l = 0; l < lines; l++) {
+          el('rect', { x: x0, y: (-h / 2 + (ledger ? 5 : 5.5) + l * step).toFixed(1), width: ((ledger ? w - 12 : w - 9) * (0.55 + R() * 0.45)).toFixed(1), height: 0.7, fill: '#5d5445', opacity: 0.4 }, g);
+        }
       });
       // a faint gutter crease across the sheet (the base page lies flat; the fold barely shows)
       el('rect', { x: 663, y: 0, width: 14, height: H, fill: '#000', opacity: 0.18, filter: 'url(#soft4)' }, svg);
@@ -345,33 +352,6 @@ function tone(svg) {
       '$10.5 0 0 0 0.25  0.5 0 0 0 0.25  0.5 0 0 0 0.25  0 0 0 0 1$2');
 }
 
-// tileable wood (the legacy table filter, with stitchTiles so it repeats)
-const TABLE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 480" width="1600" height="480" data-bake-scale="1">
-  <!-- The table: the legacy board's wood filter with stitchTiles, so the tile repeats seamlessly. Two planks per tile.
-       Baked at 1x: it only ever shows dimly at the frame edges. -->
-  <defs>
-    <filter id="wood" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
-      <feTurbulence type="fractalNoise" baseFrequency="0.00125 0.01875" numOctaves="5" seed="12" stitchTiles="stitch" result="g"/>
-      <feColorMatrix in="g" type="matrix" values="0.36 0 0 0 -0.01  0.23 0 0 0 -0.008  0.15 0 0 0 -0.006  0 0 0 0 1" result="c"/>
-      <feTurbulence type="fractalNoise" baseFrequency="0.003125 0.160417" numOctaves="3" seed="5" stitchTiles="stitch" result="r"/>
-      <feColorMatrix in="r" type="matrix" values="0 0 0 0 0.02  0 0 0 0 0.01  0 0 0 0 0.005  -2.2 0 0 0 1.25" result="ra"/>
-      <feComposite in="ra" in2="c" operator="atop" result="w"/>
-      <feTurbulence type="fractalNoise" baseFrequency="0.9 0.9" numOctaves="2" seed="2" stitchTiles="stitch" result="p"/>
-      <feColorMatrix in="p" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -1.5 0 0 0 .9" result="pa"/>
-      <feComposite in="pa" in2="w" operator="atop"/>
-    </filter>
-  </defs>
-  <rect width="1600" height="480" filter="url(#wood)"/>
-  <rect y="0" width="1600" height="120" fill="#1a0f09" opacity=".22"/>
-  <rect y="360" width="1600" height="120" fill="#1a0f09" opacity=".22"/>
-  <rect y="120" width="1600" height="240" fill="#3b2415" opacity=".10"/>
-  <g stroke-linecap="butt">
-    <path d="M0,120 H1600 M0,360 H1600" stroke="#0a0604" stroke-width="3"/>
-    <path d="M0,122.5 H1600 M0,362.5 H1600" stroke="#6b4a31" stroke-opacity=".18"/>
-  </g>
-</svg>
-`;
-
 // six paper die faces in a row (right, left, top, bottom, near, far are assigned in the scene)
 function dice() {
   const P = { 1: [5], 2: [3, 7], 3: [3, 5, 7], 4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9] };
@@ -464,7 +444,5 @@ for (const { name, svg } of out) {
   writeFileSync(join(outDir, `${name}.svg`), tone(tidy(svg)) + '\n');
   console.log(`assets/art/${name}.svg`.padEnd(32), `${(svg.length / 1024).toFixed(1)} KB`);
 }
-writeFileSync(join(outDir, 'table.svg'), TABLE);
-console.log('assets/art/table.svg');
 writeFileSync(join(outDir, 'dice.svg'), dice());
 console.log('assets/art/dice.svg');

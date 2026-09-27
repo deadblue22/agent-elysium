@@ -196,7 +196,7 @@ async function main() {
   const buildMs = performance.now() - t0; // geometry, procedural textures and the baked occlusion
   const lights = createLights(roomLights(art.floor.meta));
   const cam = createCameraRig();
-  scene.add(createTable(art), book.group, popup.group, stage.group, hearts.group, lead.group, dice.group, lights.group, cam.rig);
+  scene.add(createTable(), book.group, popup.group, stage.group, hearts.group, lead.group, dice.group, lights.group, cam.rig);
   // a soft, low environment light, so curved paper, page edges and board edges read through
   // gentle shading gradients and not only through the direct lights
   const pmrem = new PMREMGenerator(renderer);

@@ -2,7 +2,8 @@
 // hearts. A roll throws them in from the right: they tumble for about 0.8 s and settle on
 // their rest spots showing the rolled faces. The tumble is one tween named 'dice' (a test
 // harness can freeze time in the middle of it).
-import { BoxGeometry, Euler, Group, Mesh, MeshStandardMaterial, PlaneGeometry, Quaternion, Vector3, type MeshBasicMaterial } from 'three';
+import { Euler, Group, Mesh, MeshStandardMaterial, PlaneGeometry, Quaternion, Vector3, type MeshBasicMaterial } from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { Art } from '../assets';
 import { ease, type Clock } from '../play/clock';
 import { contactSquare, decal } from './paper';
@@ -10,7 +11,7 @@ import { mulberry32 } from './snow';
 import { DEG } from './space';
 import { TABLE } from './tabletop';
 
-/** Faces per die in BoxGeometry order: +x (right), -x (left), +y (top), -y (bottom), +z (near), -z (far). */
+/** Faces per die in box order: +x (right), -x (left), +y (top), -y (bottom), +z (near), -z (far). */
 const FACES = [[1, 6, 4, 3, 2, 5], [6, 1, 5, 2, 3, 4]];
 const DIE = 0.44;
 
@@ -44,7 +45,8 @@ export function createDice(art: Art, clock: Clock) {
       t.offset.set((f - 1) / 6, 0);
       return new MeshStandardMaterial({ map: t, roughness: 0.85 });
     });
-    const mesh = new Mesh(new BoxGeometry(DIE, DIE, DIE), mats);
+    // folded card: the edges and corners are rounded a little, and catch the light
+    const mesh = new Mesh(new RoundedBoxGeometry(DIE, DIE, DIE, 3, 0.035), mats);
     mesh.position.set(spot.x, DIE / 2, spot.z);
     mesh.castShadow = mesh.receiveShadow = true;
     mesh.name = 'die';
