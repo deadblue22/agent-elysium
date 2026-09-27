@@ -366,6 +366,31 @@
         "emberY": 47.4
       }
     },
+    "harry-v4": {
+      "file": "textures/harry-v4.webp",
+      "px": [
+        208,
+        440
+      ],
+      "viewBox": [
+        30,
+        5,
+        104,
+        220
+      ],
+      "world": [
+        1.04,
+        2.2
+      ],
+      "scale": 2,
+      "meta": {
+        "soles": 219,
+        "feetX0": 47,
+        "feetX1": 123,
+        "emberX": 104.6,
+        "emberY": 46.4
+      }
+    },
     "heart": {
       "file": "textures/heart.webp",
       "px": [
@@ -473,6 +498,29 @@
     },
     "kim-v3": {
       "file": "textures/kim-v3.webp",
+      "px": [
+        144,
+        386
+      ],
+      "viewBox": [
+        12,
+        10,
+        72,
+        193
+      ],
+      "world": [
+        0.72,
+        1.93
+      ],
+      "scale": 2,
+      "meta": {
+        "soles": 201,
+        "feetX0": 32,
+        "feetX1": 72
+      }
+    },
+    "kim-v4": {
+      "file": "textures/kim-v4.webp",
       "px": [
         144,
         386

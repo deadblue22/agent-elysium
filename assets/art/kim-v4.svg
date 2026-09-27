@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="12 10 72 193" width="72" height="193" data-soles="201" data-feet-x0="32" data-feet-x1="72">
+<!-- Kim, version 4 (docs/cast.md): after the colour concept art of him. Thin; dark hair greased
+     back from a receding hairline, big ears, small thin-rimmed glasses. A maroon-red bomber worn open, its black collar lying flat, the sleeves pushed up
+     to dark ribbed cuffs on bare forearms; a white V-neck T-shirt; a round white patch on the
+     chest; a black belt with a holster at the hip; brown gloves; baggy olive cargo trousers,
+     a big pocket on the thigh, gathered at the shin into black boots. As in the drawing, one
+     hand is raised in front of him and the other rests at the holster. Faces left.
+     data-soles: the SVG y on the fold line; data-feet-x0/x1: the x range the stand tab covers. -->
+<defs>
+<filter id="cutS" x="-15%" y="-15%" width="135%" height="140%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" seed="9" result="tE"/>
+  <feDisplacementMap in="SourceGraphic" in2="tE" scale="2.4" xChannelSelector="R" yChannelSelector="G" result="shape"/>
+  <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="13" result="tF"/>
+  <feDiffuseLighting in="tF" surfaceScale="0.78" diffuseConstant="1" lighting-color="#fff" result="fib">
+    <feDistantLight azimuth="235" elevation="58"/>
+  </feDiffuseLighting>
+  <feComposite in="fib" in2="shape" operator="arithmetic" k1="0.55" k2="0" k3="0.5" k4="0" result="tex"/>
+  <feGaussianBlur in="shape" stdDeviation="2.4" result="sb"/>
+  <feComposite in="shape" in2="sb" operator="out" result="rimM"/>
+  <feFlood flood-color="#050508" flood-opacity="0.38"/>
+  <feComposite in2="rimM" operator="in" result="burn"/>
+  <feOffset in="shape" dx="0.4" dy="1.1" result="sOff"/>
+  <feComposite in="shape" in2="sOff" operator="out" result="edgeM"/>
+  <feFlood flood-color="#f1e5c8" flood-opacity="0.38"/>
+  <feComposite in2="edgeM" operator="in" result="edge"/>
+  <feGaussianBlur in="shape" stdDeviation="1.3" result="shB"/>
+  <feOffset in="shB" dx="1" dy="1.8" result="shO"/>
+  <feFlood flood-color="#060403" flood-opacity="0.55"/>
+  <feComposite in2="shO" operator="in" result="drop"/>
+  <feMerge><feMergeNode in="drop"/><feMergeNode in="tex"/><feMergeNode in="burn"/><feMergeNode in="edge"/></feMerge>
+</filter>
+<linearGradient id="maroon" x1="1" y1="0" x2="0" y2=".4">
+  <stop offset="0" stop-color="#6e1f1c"/><stop offset=".5" stop-color="#8c2a24"/><stop offset="1" stop-color="#a8392c"/>
+</linearGradient>
+<linearGradient id="maroonSleeve" x1="0" y1="0" x2="1" y2="1">
+  <stop offset="0" stop-color="#a5382b"/><stop offset="1" stop-color="#7a231f"/>
+</linearGradient>
+<pattern id="ribDark" patternUnits="userSpaceOnUse" width="2.2" height="4">
+  <rect width="2.2" height="4" fill="#2a2222"/>
+  <rect width=".7" height="4" fill="#151112"/>
+</pattern>
+<linearGradient id="cargo" x1="0" y1="0" x2="1" y2="0">
+  <stop offset="0" stop-color="#626c47"/><stop offset="1" stop-color="#4c5536"/>
+</linearGradient>
+</defs>
+
+<!-- far leg: baggy, olive, gathered into the boot -->
+<g filter="url(#cutS)">
+  <path fill="#434b30" d="M56,114 L71,114 C73.5,130 74,146 72.5,162 C71.5,170 70.5,177 70.8,183 L58,183 C58.4,176 58,169 57,162 C55.5,146 55.5,130 56,114 Z"/>
+</g>
+<g filter="url(#cutS)">
+  <path fill="url(#ribDark)" d="M57.8,181 L71,181 L71.2,190 L57.8,190 Z"/>
+  <path fill="#1b1716" d="M57.4,188.4 L71.4,188.4 L71.8,201 L48.4,201 C48.4,196 51.4,190.6 57.4,188.4 Z"/>
+</g>
+<!-- near leg: baggy in the thigh, a big pocket, gathered at the shin; the near boot -->
+<g filter="url(#cutS)">
+  <path fill="url(#cargo)" d="M45,112 L64,112 C66.5,127 67,142 65.5,157 C64.5,166 63,173 62.5,180.5 C58,183 51.5,183 46.8,180.5 C46.4,173 45.4,166 44.2,158 C42.6,143 42.8,127 45,112 Z"/>
+</g>
+<g filter="url(#cutS)">
+  <path fill="#56603e" d="M47.6,132 L60.4,131 L61.4,149 L48.6,150.4 Z"/>
+  <path fill="#6b7650" d="M47.4,131.4 L60.6,130.4 L60.8,134.6 L47.6,135.6 Z"/>
+</g>
+<g fill="none" stroke-linecap="round">
+  <path d="M54.5,118 C55.5,136 55.8,154 54.5,172" stroke="#394026" stroke-width=".9" opacity=".7"/>
+  <path d="M47.5,172 C51.5,175 57,175 61.8,172.6 M47.2,176.4 C51.2,179 56.4,179 61.2,177" stroke="#3d4428" stroke-width=".8" opacity=".75"/>
+</g>
+<g filter="url(#cutS)">
+  <path fill="url(#ribDark)" d="M47.2,179.4 L62.4,179.4 L62.6,189 L47.4,189 Z"/>
+  <path fill="#221c1a" d="M46.4,187.6 L62.8,187.6 L63.2,201 L33,201 C33,195.6 37.4,190.2 46.4,187.6 Z"/>
+  <path fill="#0f0c0b" d="M33,199.4 H63.2 V201 H33 Z"/>
+</g>
+<path d="M37,195 C41,193 45,192 49,192" stroke="#56494a" stroke-width=".8" fill="none" opacity=".6"/>
+
+<!-- the white V-neck at the open front, the black belt below the short jacket -->
+<g filter="url(#cutS)">
+  <path fill="#eceaf0" d="M43.4,58 L51,57 L50.6,110 L44.4,110 C43,93 42.8,75 43.4,58 Z"/>
+</g>
+<path d="M44.6,70 C44.4,82 44.6,95 45.4,106" stroke="#b7aecb" stroke-width=".9" fill="none" opacity=".85"/>
+<path fill="#171313" d="M44.4,108.6 L71.6,108.6 L71.4,114.6 L44.6,114.6 Z"/>
+<path fill="#b8b8b0" d="M46,108.8 L50.2,108.8 L50.2,114.4 L46,114.4 Z"/>
+<!-- the bomber: maroon, open, short at the waist -->
+<g filter="url(#cutS)">
+  <path fill="url(#maroon)" d="M50.5,53 L67,53 C72.5,57 75,64.5 75.4,75 C75.8,86 75.8,96 75,105 C73,108 69.5,109.4 64,109.4 L50.4,109.4 C49.6,100 49.2,90 49.4,80 C49.6,70 49.6,61 50.5,53 Z"/>
+</g>
+<g filter="url(#cutS)">
+  <circle cx="53.4" cy="72" r="3.4" fill="#ecebe6"/>
+</g>
+<g fill="none" stroke-linecap="round">
+  <path d="M51.8,62 C51.2,76 51.2,90 51.8,104" stroke="#c24a38" stroke-width=".9" opacity=".6"/>
+  <path d="M72.8,70 C73.8,80 74,90 73.6,100" stroke="#4e1614" stroke-width=".9" opacity=".6"/>
+</g>
+
+<!-- the far arm: raised in front of him, the gloved hand open -->
+<g filter="url(#cutS)">
+  <path fill="#7a231f" d="M51,62 L55,73.5 L46.4,77.6 L42,69.4 Z"/>
+  <path fill="url(#ribDark)" d="M42.4,68.8 L46.8,77.2 L42.8,79.4 L38.6,71.2 Z"/>
+  <path fill="#cfb194" d="M38.8,71.3 L42.6,79 L38.6,81 L35.2,73.8 Z"/>
+  <path fill="#5e3222" d="M35.6,73 C33.8,70.8 33.4,68 34.6,65.6 L33.4,60.6 L35.4,60.2 L36.8,64.6 L36.6,59.4 L38.6,59.4 L38.8,64.8 L40,60.2 L41.8,60.8 L40.8,66.2 C41.8,68.8 41.6,72 40,74.4 L38.4,76.4 Z"/>
+</g>
+
+<!-- the holster at the hip, the grip of the pistol -->
+<g filter="url(#cutS)">
+  <path fill="#4a2f22" d="M61,111 L70.4,110.4 L71,124.4 C68.4,126.6 64.4,126.8 62,125 Z"/>
+  <path fill="#55575a" d="M63.4,106.6 L68.6,106 L69.6,111.4 L64.4,112 Z"/>
+</g>
+<!-- the near arm: down, the sleeve pushed up; the gloved hand resting on the holster -->
+<g filter="url(#cutS)">
+  <path fill="url(#maroonSleeve)" d="M55.4,58 C61.4,54.4 69.4,55.6 72.4,62 C74.4,66.4 74.2,73 72.8,80 C71.8,85 70.6,89.6 70,93.6 L60,95.6 C59.2,89.6 58,83 56.6,77 C55.4,71.6 54.4,66 54.4,62 C54.4,60.6 54.8,59.2 55.4,58 Z"/>
+</g>
+<g fill="none" stroke-linecap="round">
+  <path d="M58.4,62 C61.8,58.8 67,58.6 70.2,61.6" stroke="#c9503c" stroke-width=".8" opacity=".55"/>
+  <path d="M59.6,75 C61,81 62.2,87 63,92" stroke="#4e1614" stroke-width=".8" opacity=".55"/>
+</g>
+<g filter="url(#cutS)">
+  <path fill="url(#ribDark)" d="M59.6,94 L70.4,92 L71.2,99.2 L60.6,101.2 Z"/>
+  <path fill="#d2b496" d="M61.4,100.6 L69.6,99.2 L69.4,106.4 L62,107.6 Z"/>
+  <path fill="#5e3222" d="M61,106.6 C63.8,105.2 67.8,105 70.2,106.4 C71.6,108.4 71.6,112 70.2,114.4 C67.8,116 63.8,115.8 61.8,114 C60.4,111.8 60.2,108.8 61,106.6 Z"/>
+</g>
+
+<!-- the head: a receding hairline, the hair greased flat; small thin-rimmed glasses -->
+<g transform="translate(57 52) scale(.88) translate(-57 -52)">
+  <path fill="#c9a37e" d="M52,44 L63,43 L64.5,55 L52.5,56 Z"/>
+  <!-- the black collar, lying flat -->
+  <g filter="url(#cutS)">
+    <path fill="#1d1717" d="M47,51.5 L65.5,48 L71,57.5 C64.5,59 57.5,60.2 49,61.4 Z"/>
+  </g>
+  <g filter="url(#cutS)">
+    <path fill="#d7b48c" d="M66,19 C60,15 50,15.5 45,19.5 C43,22.5 42.5,25.5 42.5,27.5 L42,30 C41,32 39.5,35 38.2,37.8 C37.8,38.8 38.3,39.8 39.6,40.2 C40.6,40.6 41.4,41.2 41.4,42.2 L41.8,43.8 C41.4,44.8 41.5,45.8 42,46.8 C42.5,48.8 43.2,50.6 45.2,51.6 C48.2,53 54,52.6 58,50.6 C62,48.6 66,43.6 67,37.6 C68,29.6 68,23.6 66,19 Z"/>
+  </g>
+  <path fill="#b08462" d="M56.6,37 C59,39.4 60.2,42.8 60.4,46.4 C58.4,48.8 55.4,50.6 52,51.6 C49.8,52.2 47.6,52.2 45.6,51.8 C50,50.2 53.6,47.2 55.2,43 C56,41 56.4,39 56.6,37 Z" opacity=".55"/>
+  <path d="M43.2,49.4 C45.4,51.2 48.8,51.6 51.8,50.8" stroke="#a88460" stroke-width=".7" fill="none" opacity=".7"/>
+  <path d="M42,41.8 L45.4,41.6" stroke="#3a2a22" stroke-width=".8" stroke-linecap="round" opacity=".8"/>
+  <path d="M44,27.8 C45.6,26.8 47.6,26.7 49.2,27.2" stroke="#2a221c" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+  <!-- the ear: big -->
+  <path fill="#c69673" d="M57.6,29.4 C61.6,28.4 64.4,31.6 63.8,36 C63.2,40 60.6,41.6 57.8,40.2 Z"/>
+  <path d="M59.2,32 C61,32.8 61.6,34.8 60.6,36.8" stroke="#8c6a4e" stroke-width=".7" fill="none"/>
+  <!-- the hair: greased flat, back from a high, receding line -->
+  <g filter="url(#cutS)">
+    <path fill="#25262a" d="M48.8,17.8 C52.8,13.6 60.2,12.2 66,14.2 C70.6,15.8 73,19.8 72.8,24.4 C72.6,29.4 71.6,34.4 69.6,39 C68.8,41 68,42.8 67.4,44.4 L65,44.2 C65.6,40 65.2,35.8 63.4,32.4 C62,30 60,28.4 57.8,27.6 L57.2,31.4 L55.6,31.2 C55.4,28.6 54.4,26.2 52.8,24.2 C51.2,22.2 49.8,20.2 48.8,17.8 Z"/>
+  </g>
+  <path d="M51.8,17.6 C56.8,14.8 63.4,14.6 68.6,17.8 M53.8,21 C58.8,18.8 65,19.2 70.2,22.8 M58.4,25.2 C62.6,24 67,25.4 70.6,28.8" stroke="#62666e" stroke-width=".7" fill="none" opacity=".75" stroke-linecap="round"/>
+  <!-- glasses: small, thin-rimmed, a little square -->
+  <path d="M48.6,30.6 L59.2,31.2" stroke="#2a2a2a" stroke-width=".7"/>
+  <rect x="42.6" y="28.4" width="6" height="4.8" rx="1.6" fill="#e2eaec" fill-opacity=".3" stroke="#222" stroke-width=".75"/>
+</g>
+</svg>
