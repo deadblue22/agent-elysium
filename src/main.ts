@@ -12,7 +12,6 @@
 //   ?style=1|2|3  a style preset after the original (src/style.ts, docs/style-refs.md); digits combine
 //   ?ui=de        the log on the original's dark dialogue panel, and its HUD (src/ui.ts, docs/ui.md)
 //   ?look=winter|noir  a bold light, mood and grime preset (src/scene/mood.ts, docs/look.md)
-//   ?paint=1|2    the frame repainted as an oil painting (src/scene/paint.ts, docs/paint.md); 2 bolder
 // prefers-reduced-motion: every tween jumps to its end, the snow and grain hold still.
 import { Box3, NoToneMapping, PCFShadowMap, PMREMGenerator, SRGBColorSpace, Scene, Vector2, Vector3, WebGLRenderer, type Mesh, type PerspectiveCamera } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -44,8 +43,6 @@ import { applyMood, moodShadows, parseMood } from './scene/mood';
 import { applyPainting } from './scene/palette';
 import { createPopup, layers, roomLights } from './scene/popup';
 import { createPost } from './scene/post';
-import { addPaint, parsePaint } from './scene/paint';
-import { paintWindowView } from './scene/paint-view';
 import { createStage } from './scene/puppets';
 import { createLeadCard } from './scene/lead';
 import { createHotspots } from './scene/hotspots';
@@ -125,8 +122,6 @@ const LOOK = UI === 'de' ? DE : STYLE.has(1) ? ORIGINAL : BOARD;
 const CAPTIONS = STYLE.has(1) || UI === 'de';
 /** The light, mood and grime preset (?look=winter|noir), or null for the default. */
 const MOOD = parseMood(location.search);
-/** The painted look (0: off). */
-const PAINT = parsePaint(location.search);
 
 const frameEl = document.getElementById('frame') as HTMLDivElement;
 const canvas = document.getElementById('gl') as HTMLCanvasElement;
@@ -210,8 +205,6 @@ async function main() {
   // only the chosen version of the puppets is loaded; it stands in for harry and kim everywhere
   // (the stage, the stand tabs and card edges, the hover tips, the ember, the opening and the end)
   const [art] = await Promise.all([loadArt(anisotropy, (name) => (castOf(name) ?? CAST) === CAST), loadFonts()]);
-  // ?paint: the view out of the window painted after Rostov (before anything takes its texture)
-  if (PAINT) paintWindowView(art, anisotropy);
   if (CAST) {
     for (const who of ['harry', 'kim']) {
       const piece = art[`${who}-v${CAST}`];
@@ -271,20 +264,6 @@ async function main() {
   // ?look=: the look's light, grade, shaft and grime (also before the cues)
   const mood = MOOD ? applyMood(MOOD, { art, scene, lights, post, popup, focal: cam.lens.focal }) : null;
   post.uniforms.uQuiet.value.set(column.x / FRAME.w, 1 - (column.y + column.h) / FRAME.h, (column.x + column.w) / FRAME.w, 1 - column.y / FRAME.h);
-  // ?paint: the graded frame repainted in oils. The log's column stays crisp, and its mask
-  // follows the page when the camera moves (the parallax would slide the glyphs into the
-  // paint); so does a new lead's card while it shows
-  const paint = PAINT ? addPaint(renderer, post, PAINT) : null;
-  const uvRect = (r: Rect) => [r.x / FRAME.w, 1 - (r.y + r.h) / FRAME.h, (r.x + r.w) / FRAME.w, 1 - r.y / FRAME.h] as const;
-  const followColumn = () => {
-    cam.rig.updateMatrixWorld(true);
-    post.uniforms.uQuiet.value.set(...uvRect(projectRect(cam.camera, col.x0, col.y0, col.x1, col.y1)));
-  };
-  const followLead = () => {
-    const card = lead.showing;
-    if (card) paint!.keep.set(...uvRect(frameRect(cam.camera, [new Box3().setFromObject(card)])));
-    else paint!.keep.set(0, 0, 0, 0);
-  };
 
   // ---- the music (the toggle left of the language switch; it starts on the first click or key)
   const music = createMusic({ button: document.getElementById('music') as HTMLButtonElement, still: STILL });
@@ -606,7 +585,7 @@ async function main() {
         return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height };
       },
       get hover() { return hotShown; },
-      snapCamera: () => { cam.snap(); if (PAINT) followColumn(); invalidate(); },
+      snapCamera: () => { cam.snap(); invalidate(); },
       resume: () => d.continue(),
       hold: (name, at) => clock.hold(name, at),
       get held() { return clock.held; },
@@ -628,7 +607,6 @@ async function main() {
     if (cam.update(dt)) {
       needsRender = true;
       hit.refresh();
-      if (PAINT) followColumn();
     }
     const ct = clock.now() / 1000;
     // the speaking puppet bobs about 2 px while its line types
@@ -642,7 +620,6 @@ async function main() {
       bobbing ||= bob[name] > 0;
     }
     cues.update(ct);
-    if (paint) followLead();
     if (details) {
       const on = STILL || (!!director?.idle && !director.ended);
       if (on !== markersOn) { markersOn = on; details.markers(on); needsRender = true; }
