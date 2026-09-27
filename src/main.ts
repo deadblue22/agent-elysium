@@ -1,7 +1,7 @@
 // 雪落之前 · chapter one, playable, rendered with Three.js.
 // URL flags:
 //   ?still        the style board: the study.clock moment, frozen (snow, grain, flicker,
-//                 cursor), no playing; for npm run shot
+//                 cursor), no playing, no music; for npm run shot
 //   ?lang=en      start in English
 //   ?seed=N       seed the dice;  ?dice=4-5,3-3,5-6  force the next rolls (then the seed's)
 //   ?speed=N      play animations and the typewriter N times faster (test harness)
@@ -13,6 +13,7 @@
 import { Box3, NoToneMapping, PCFShadowMap, PMREMGenerator, SRGBColorSpace, Scene, Vector2, Vector3, WebGLRenderer, type Mesh, type PerspectiveCamera } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { loadArt, loadFonts } from './assets';
+import { createMusic } from './audio/music';
 import type { Lang } from './content/schema';
 import { EVIDENCE_LABELS, study } from './content/study';
 import { chrome, clockMoment } from './content/study-clock';
@@ -233,6 +234,9 @@ async function main() {
   post.uniforms.uExposure.value = 1.08;
   post.uniforms.uQuiet.value.set(column.x / FRAME.w, 1 - (column.y + column.h) / FRAME.h, (column.x + column.w) / FRAME.w, 1 - column.y / FRAME.h);
 
+  // ---- the music (the toggle left of the language switch; it starts on the first click or key)
+  const music = createMusic({ button: document.getElementById('music') as HTMLButtonElement, still: STILL });
+
   // ---- the stage cues
   /** The time the flashback's marker shows (minutes), or null when it is hidden. */
   let when: number | null = null;
@@ -244,6 +248,7 @@ async function main() {
   const cues = createCues({
     art, clock, popup, stage, lights, post, snow,
     marker: (minutes) => { when = minutes; showWhen(); },
+    onCue: (cue) => music.cue(cue), // the flashback goes cold, the present warms, the exit fades out
   });
 
   // ---- the pages
@@ -464,7 +469,7 @@ async function main() {
     for (let i = 0; i < n; i++) { post.render(t); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); }
     return (performance.now() - tb) / n;
   };
-  if (params.has('debug')) Object.assign(window, { __debug: { leftInk, rightInk, scene, renderer, cam, post, lights, clock, cues, book, lead, hot, layout: () => log.layout } });
+  if (params.has('debug')) Object.assign(window, { __debug: { leftInk, rightInk, scene, renderer, cam, post, lights, clock, cues, book, lead, hot, music, layout: () => log.layout } });
 
   let frames = 0;
   if (director) {

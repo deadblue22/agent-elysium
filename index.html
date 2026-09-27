@@ -18,19 +18,26 @@
   #frame{position:absolute;left:50%;top:50%;width:1600px;height:900px;transform:translate(-50%,-50%);--s:1;overflow:hidden;background:#0b0806}
   #gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 
-  /* chrome: title and language toggle, outside the book's world */
+  /* chrome: title, the music and language toggles, outside the book's world */
   .chrome{position:absolute;left:0;top:0;width:100%;height:calc(80px * var(--s));pointer-events:none}
   .title{position:absolute;left:calc(40px * var(--s));top:calc(11px * var(--s));font-family:var(--serif);color:rgba(232,220,196,.74);font-size:calc(15px * var(--s));letter-spacing:.14em;white-space:nowrap}
   .title .ch{margin-left:.9em;font-size:.866em;color:rgba(232,220,196,.5);letter-spacing:.3em}
   .title::after{content:"";position:absolute;left:0;top:calc(25px * var(--s));width:calc(56px * var(--s));height:1px;background:rgba(194,86,43,.7)}
   :lang(en) .title{font-family:"EB Garamond",serif;letter-spacing:.06em;font-size:calc(16px * var(--s))}
   :lang(en) .title .ch{letter-spacing:.14em}
-  .lang{position:absolute;right:calc(36px * var(--s));top:calc(8px * var(--s));font-family:var(--sans);font-weight:600;font-size:calc(12.5px * var(--s));letter-spacing:.2em;color:rgba(232,220,196,.42);pointer-events:auto;cursor:pointer;
-    padding:calc(5px * var(--s)) calc(10px * var(--s)) calc(4px * var(--s));border:1px solid rgba(232,220,196,.2);background:none;line-height:1.2}
-  .lang:hover{border-color:rgba(232,220,196,.4)}
-  .lang:focus-visible{outline:1px solid rgba(194,86,43,.9);outline-offset:2px}
+  .tools{position:absolute;right:calc(36px * var(--s));top:calc(8px * var(--s));display:flex;gap:calc(8px * var(--s))}
+  .tools button{pointer-events:auto;cursor:pointer;border:1px solid rgba(232,220,196,.2);background:none;color:rgba(232,220,196,.42)}
+  .tools button:hover{border-color:rgba(232,220,196,.4)}
+  .tools button:focus-visible{outline:1px solid rgba(194,86,43,.9);outline-offset:2px}
+  .lang{font-family:var(--sans);font-weight:600;font-size:calc(12.5px * var(--s));letter-spacing:.2em;padding:calc(5px * var(--s)) calc(10px * var(--s)) calc(4px * var(--s));line-height:1.2}
   .lang .on{color:rgba(232,220,196,.9)}
   .lang .sep{margin:0 .4em;opacity:.6}
+  /* the music toggle: two beamed quavers, lit when on, dimmed and struck through when off */
+  .music{padding:0 calc(8px * var(--s));line-height:0}
+  .music svg{display:block;width:calc(15px * var(--s));height:calc(15px * var(--s))}
+  .music[aria-pressed="true"]{color:rgba(232,220,196,.9)}
+  .music[aria-pressed="true"] .strike{display:none}
+  .music .strike .gap{stroke:#0b0806;stroke-width:3.4}
 
   /* the flashback's time marker (stage cue flashback), centred over the book */
   .when{position:absolute;left:50%;top:calc(9px * var(--s));transform:translateX(-50%);font-family:var(--serif);font-size:calc(17px * var(--s));letter-spacing:.3em;
@@ -73,7 +80,14 @@
   <canvas id="gl" aria-hidden="true"></canvas>
   <header class="chrome">
     <div class="title"><span id="title">《雪落之前》</span><span class="ch" id="chapter">第一章</span></div>
-    <button class="lang" id="lang" type="button" aria-label="切换语言 / Switch language"><span data-lang="zh" class="on">中</span><span class="sep">/</span><span data-lang="en">EN</span></button>
+    <div class="tools">
+      <button class="music" id="music" type="button" aria-label="音乐 / Music" aria-pressed="true"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="currentColor">
+        <ellipse cx="4.1" cy="12.2" rx="2.4" ry="1.75" transform="rotate(-20 4.1 12.2)"/><ellipse cx="11.5" cy="10.6" rx="2.4" ry="1.75" transform="rotate(-20 11.5 10.6)"/>
+        <path d="M5.3 12V4.1l8.6-1.9v8.2h-1.3V5.1l-6 1.3V12z"/>
+        <g class="strike" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path class="gap" d="M2.2 2.2l11.6 11.6"/><path d="M2.2 2.2l11.6 11.6"/></g>
+      </svg></button>
+      <button class="lang" id="lang" type="button" aria-label="切换语言 / Switch language"><span data-lang="zh" class="on">中</span><span class="sep">/</span><span data-lang="en">EN</span></button>
+    </div>
   </header>
   <div class="when" id="when" aria-hidden="true">昨晚 22:30</div>
   <div class="tip" id="tip" role="tooltip" hidden></div>
