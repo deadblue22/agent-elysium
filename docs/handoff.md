@@ -42,7 +42,7 @@
 - 第五轮（用户反馈原作风格体现不够、场景太温馨，需要更大胆的尝试；附五张原作参考图）：三个子任务并行。
   - `?ui=de`：左页日志印成原作的深色对话面板（白色衬线字、粗体大写名称、按属性着色的技能名、检定纸条、青色继续条与红色颜料），画面四周加原作的 HUD（哈里与金的圆形头像、生命与士气格、工具图标与线索角标、按台词走的时钟、技能标签与检定横幅）。见 `docs/ui.md`。
   - `?look=winter`：低角度冬阳从窗洞射入，长而硬的蓝灰影，带灰尘的光束，台灯关闭，蜡烛成为唯一的暖色，降饱和调色；`?look=noir`：暗房、月光光束、蜡烛的暖光池与金色光点、深暗角。两者都叠加运行时绘制的脏旧。见 `docs/look.md`。
-  - `?paint=`：油画后期（进行中）。
+  - `?paint=1|2`：整帧重画成油画。先换到画家调色板，再用结构张量求笔触走向，做各向异性 Kuwahara 滤波；然后画两层笔触与刮刀痕，加暖褐底色、颜料起伏与画布纹理。日志栏与正在显示的新线索卡片保持清晰。窗外换成按 Rostov 概念画在运行时绘制的天空与港口。见 `docs/paint.md`。
   - 默认参数下画面与此前逐像素一致。
 - 本文件第 3–8 节描述合并后的 `main`。
 
@@ -61,7 +61,7 @@
 | `npm run bake [名称…]` | 把 `assets/art/*.svg` 烘焙成 `public/textures/*.webp` 与 `manifest.json` | 地板约 18 秒，其余数秒 | 地板约 2 秒 |
 | `npm run fonts` | 按全部台词重新裁剪字体子集（需要访问 Google Fonts） | — | — |
 
-页面参数：`?still` 风格板静帧；`?lang=en` 英文；`?seed=N` 骰子种子；`?dice=4-5,3-3` 强制掷骰点数；`?speed=N` 倍速；`?debug` 在 `window.__debug` 暴露场景对象；`?view=N` 取景候选；`?cast=N` 纸偶版本；`?style=1|2|3` 风格预设（可组合）；`?ui=de` 原作对话面板与 HUD；`?look=winter|noir` 氛围预设。`tools/play.mjs` 通过 `window.__play` 驱动游戏。
+页面参数：`?still` 风格板静帧；`?lang=en` 英文；`?seed=N` 骰子种子；`?dice=4-5,3-3` 强制掷骰点数；`?speed=N` 倍速；`?debug` 在 `window.__debug` 暴露场景对象；`?view=N` 取景候选；`?cast=N` 纸偶版本；`?style=1|2|3` 风格预设（可组合）；`?ui=de` 原作对话面板与 HUD；`?look=winter|noir` 氛围预设；`?paint=1|2` 油画渲染。`tools/play.mjs` 通过 `window.__play` 驱动游戏。
 
 浏览器：`tools/chromium.mjs` 决定 `bake`、`shot`、`play`、`extract-art` 使用的浏览器，可用 `CHROMIUM_PATH` 覆盖。
 
@@ -103,6 +103,7 @@
 | 纸偶版本 | `assets/art/harry-vN.svg`、`kim-vN.svg`（与原来的纸偶同样的 `data-*` 属性）；`?cast=N` 在 `src/main.ts` 加载后把 `art.harry`、`art.kim` 换成选中的版本，其余模块不需要改 |
 | 原作界面（`?ui=de`） | 开关 `src/ui.ts`；日志的深色面板排版 `src/page/layout.ts` 的 `DE` 与 `painter.ts`；HUD `src/play/hud.ts`、头像 `src/play/portraits.ts`；样式在 `index.html` 的 `[data-ui]` 下。说明见 `docs/ui.md` |
 | 氛围预设（`?look=`） | 预设参数 `src/scene/mood.ts`；光束与浮尘 `shaft.ts`；脏旧 `grime.ts`（各纸片按自身坐标生成污渍）；在剧本指令读取灯光基准值之前生效。说明见 `docs/look.md` |
+| 油画渲染（`?paint=`） | 后期通道 `src/scene/paint.ts`（接在胶片调色之后；保持清晰的区域：日志栏随视差移动的遮罩、新线索卡片），窗外远景 `src/scene/paint-view.ts`。说明见 `docs/paint.md` |
 | 原作风格预设 | 开关 `src/style.ts`；预设 1 在 `src/page/layout.ts`、`painter.ts`、`src/play/log.ts` 与 `index.html` 的 `data-style` 样式；预设 2 在 `src/scene/palette.ts` 与 `post.ts`；预设 3 在 `src/scene/details.ts`。参考与取舍见 `docs/style-refs.md` |
 
 ## 5. 约定
@@ -167,6 +168,13 @@
 - 纸偶：子任务推荐 v2（游戏内 3D 模型，服装、比例、鞋都可核对）。v2 的金双手背在身后，剧本里他多次翻开笔记本；可以把 v1 的脸（哈里的络腮胡、红眼圈，金的竖发、粗框眼镜）并入 v2。选定后更新 design.md 3.2、3.3、6.4。
 - 风格：子任务推荐以预设 1 为基础，叠加预设 3 的检定纸条与交互标记，预设 2 只取青色暗部、暗角与蜡烛辉光。待定细节：普通选项悬停的变化是否够明显、检定卡片写难度档位还是原作的概率描述词、继续条的颜色、交互标记是否按节点设定。
 - 音乐：只有开关，没有音量滑块；音量只凭电平估算，需要用户试听确认。
+- 第五轮的候选（`?ui`、`?look`、`?paint`）待用户选定。已知问题：
+  - `?paint` 与 `?look` 同开时调色会叠加，`noir` 加油画后房间大部分沉入暗部。
+  - `?paint` 会把场景里的小字画糊：桌面线索卡堆、右页页码、`?style=3` 的纸条。
+  - 光束不知道相机方向上的遮挡，书桌上方有一层淡雾。
+  - `winter` 的回忆里阳光方向不变，夜里仍有长影。
+  - `?look=noir&ui=de` 下深色面板上的选项偏暗。
+  - `?ui=de` 下士气在 HUD 与桌上纸心各显示一次。
 - 音效：只有开关，没有音量滑块；音量按离线渲染测量平衡过（骰子与重击书桌峰值约 −12 dBFS，写字约 −29 dBFS，其余在 −14 到 −41 dBFS）。写字声在音乐下面可能偏轻，需要试听后再调。
 
 - 纸偶没有按原作立绘校准，需要用户在对话中附参考图，或在环境设置中放行对应域名。

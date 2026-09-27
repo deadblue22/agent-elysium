@@ -198,6 +198,8 @@ export function createPost(renderer: WebGLRenderer, scene: Scene, camera: Camera
   composer.addPass(film);
   return {
     composer,
+    /** The film pass, for a pass that takes over its output (?paint, src/scene/paint.ts). */
+    film,
     uniforms: film.uniforms as typeof FilmShader.uniforms,
     /**
      * A glow round what is brighter than `threshold` in the linear scene (the candle's flame
