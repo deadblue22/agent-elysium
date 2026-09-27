@@ -8,7 +8,7 @@
 
 ## 1. 查看方式
 
-- 冬日是默认，不需要参数（`?look=winter` 仍然有效）；`?look=noir` 为夜；`?look=warm` 为此前的暖色绘本（第五轮之前的默认）。都可与 `?still`、`?view=`、`?cast=`、`?style=`、`?ui=`、`?lang=en` 组合，例如 `?still&look=noir&lang=en`。
+- 冬日是默认，不需要参数（`?look=winter` 仍然有效）；`?look=noir` 为夜；`?look=warm` 为此前的暖色绘本（第五轮之前的默认）。都可与 `?still`、`?view=`、`?style=`、`?ui=`、`?lang=en` 组合，例如 `?still&look=noir&lang=en`。
 - `?still&ui=book&look=warm` 的静帧与第六轮之前 `main` 的 `?still` 逐像素一致。
 - 与 `?style=2` 同用时，灯光与调色以本预设为准，预设 2 的斑驳与泛光保留。
 

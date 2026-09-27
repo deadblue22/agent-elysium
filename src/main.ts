@@ -7,8 +7,6 @@
 //   ?speed=N      play animations and the typewriter N times faster (test harness)
 //   ?view=N       a candidate camera framing (src/scene/camera.ts VIEWS); 0 the earlier one
 //   ?debug        expose the painters, scene and renderer on window.__debug
-//   ?cast=N       Harry and Kim as drawn after reference N (assets/art/harry-vN.svg,
-//                 kim-vN.svg; docs/cast.md); without it, the current pair (harry.svg, kim.svg)
 //   ?style=1|2|3  a style preset after the original (src/style.ts, docs/style-refs.md); digits combine
 //   ?ui=book      the log printed on the page, paper hearts, no HUD; by default the log is on the
 //                 original's dark dialogue panel, with its HUD (src/ui.ts, docs/ui.md)
@@ -108,10 +106,6 @@ const FROZEN = STILL || REDUCED;
 let lang: Lang = params.get('lang') === 'en' ? 'en' : 'zh';
 /** The camera's framing, and with it how tall the log's ink is drawn and how the table's boards run. */
 const VIEW = pickView(params.get('view'));
-/** The puppets' version (?cast=N); 0 is the current pair. */
-const CAST = Math.max(0, Math.floor(Number(params.get('cast'))) || 0);
-/** harry-v2 → 2 for the versioned puppets, null for every other piece. */
-const castOf = (name: string) => { const m = /^(?:harry|kim)-v(\d+)$/.exec(name); return m ? Number(m[1]) : null; };
 /** The style presets asked for (none: the current look). The chrome's CSS keys off data-style. */
 const STYLE = parseStyle(location.search);
 document.documentElement.dataset.style = [...STYLE].join(' ');
@@ -204,16 +198,7 @@ async function main() {
   renderer.setClearColor('#0b0806');
   const anisotropy = renderer.capabilities.getMaxAnisotropy();
 
-  // only the chosen version of the puppets is loaded; it stands in for harry and kim everywhere
-  // (the stage, the stand tabs and card edges, the hover tips, the ember, the opening and the end)
-  const [art] = await Promise.all([loadArt(anisotropy, (name) => (castOf(name) ?? CAST) === CAST), loadFonts()]);
-  if (CAST) {
-    for (const who of ['harry', 'kim']) {
-      const piece = art[`${who}-v${CAST}`];
-      if (piece) art[who] = piece;
-      else console.warn(`?cast=${CAST}: no ${who}-v${CAST} in the textures; showing ${who}`);
-    }
-  }
+  const [art] = await Promise.all([loadArt(anisotropy), loadFonts()]);
 
   const clock = new Clock();
   // ---- sound effects (the toggle left of the music's; they start on the first click or key)

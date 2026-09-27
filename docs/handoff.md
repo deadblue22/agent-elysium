@@ -31,7 +31,7 @@
 - 第四轮（分支 `claude/round4-view-bgm-cast-style`，基于 PR #2 的分支）：由四个子任务并行完成后合并。
   - 取景：相机改为坐在桌前的读者视角，默认视角 2（眼高约 47 cm、离书中心约 64 cm），书前留出桌面，桌面木板由近及远。`?view=0|1|2|3` 切换候选，0 为此前的取景（`docs/view.md`）。
   - 背景音乐：当时是 Web Audio 实时合成的原创芯片音乐，之后换成用户提供的录音（见下）。
-  - 纸偶：按原作四类参考图（对话肖像、游戏内 3D 模型、封面、设定图）各画一版，`?cast=1|2|3|4` 切换，默认仍是原来的一对（`docs/cast.md`）。参考图只在文档里外链。
+  - 纸偶：按原作四类参考图（对话肖像、游戏内 3D 模型、封面、设定图）各画一版，`?cast=1|2|3|4` 切换，默认仍是原来的一对。参考图只在文档里外链。第六轮选定新方向后删除。
   - 原作风格：三组参考（对话与界面、油画与光色、标志性细节）与对应的三个运行时预设，`?style=1|2|3` 可组合，默认不启用（`docs/style-refs.md`）。
   - 验证：单元测试 41 项、构建、中英文静帧、中英文无头通关（默认参数）均通过；各子任务在各自的候选参数下也完整通关过。
   - 待用户选定：取景、纸偶版本、风格预设的取舍，见第 8 节。
@@ -51,6 +51,7 @@
   - `tools/play.mjs` 新增 `--query`，在额外的页面参数下通关（例如 `--query "ui=book&look=warm"`）。
   - 背景音乐再降约 10 dB（PR #10）。
   - 深色面板的排版：字号小约一成（中文 22），行距 1.66 倍，两条日志之间空约 0.4 行，文字栏四周的边距加宽（`docs/ui.md` 3.4 节）。
+  - 纸偶：用户要求用十套不同的原作参考图各做一套人物设计、尝试不同风格与抽象程度（也可以直接抠原作的图），并做单独的预览页。五个子任务并行做了 v5–v14（设定图抠图、游戏画面抠图、肖像拼贴、封面丝网印、技能肖像、政治海报、夜色剪影、思维阁线稿、低多边形纸模、贴纸卡通），预览页只在本机。用户选定 v13 低多边形纸模：`assets/art/harry.svg`、`kim.svg` 改由 `tools/papercraft` 生成；第四轮的 v1–v4、`?cast` 参数与 `tools/cast.mjs` 删除。见 `docs/cast.md`。
   - 去掉内心声音标签：用户认为「检定信息在书上弹出看起来不太真实」。平面的 HTML 标签叠在倾斜的书页上，看起来是贴上去的；技能名本来就按属性颜色印在日志里。
   - 「你」的台词改为浅橙色（名字 #F48D66、话 #E6AA8E），与金的白色区分：用户反馈两个主角的名字和说话颜色区分不出来（`docs/ui.md` 3.5 节）。
 - 本文件第 3–8 节描述合并后的 `main`。
@@ -65,12 +66,12 @@
 | `npm run dev` | 开发服务器 | — | — |
 | `npm run shot` / `npm run shot -- --lang en` | 渲染风格板静帧，写 `docs/style-board-three*.png`，并打印构图、字形尺寸与帧耗时；`-- --view 0,1,2,3` 改为写各取景的 `docs/view-N.png` | 约 1 分钟 | 约 5 秒 |
 | `npm run play` | 无头通关中英文各一遍，写 `docs/m1-*.png`；`-- --only zh` 只跑中文；`-- --view N --out 目录` 在指定取景下通关并把截图写到别处；`-- --query "ui=book&look=warm"` 加页面参数 | 约 8 分钟（只跑中文约 5 分钟） | 约 2 分钟 |
-| `node tools/cast.mjs` | 渲染各纸偶版本，写 `docs/cast-v*.png` 与 `docs/cast-sheet.png` | — | 约 10 秒 |
+| `npm run papercraft` | 由 `tools/papercraft/harry.mjs`、`kim.mjs` 生成 `assets/art/harry.svg`、`kim.svg` 并烘焙 | — | 约 3 秒 |
 | `npm run extract-art` | 从 `demo/index.html` 重新生成提取类纸片的 SVG | 数秒 | 数秒 |
 | `npm run bake [名称…]` | 把 `assets/art/*.svg` 烘焙成 `public/textures/*.webp` 与 `manifest.json` | 地板约 18 秒，其余数秒 | 地板约 2 秒 |
 | `npm run fonts` | 按全部台词重新裁剪字体子集（需要访问 Google Fonts） | — | — |
 
-页面参数：`?still` 风格板静帧；`?lang=en` 英文；`?seed=N` 骰子种子；`?dice=4-5,3-3` 强制掷骰点数；`?speed=N` 倍速；`?debug` 在 `window.__debug` 暴露场景对象；`?view=N` 取景候选；`?cast=N` 纸偶版本；`?style=1|2|3` 风格预设（可组合，按书页排法设计）；`?ui=book` 书页排法（默认为原作对话面板与 HUD）；`?look=noir|warm` 夜或暖色绘本（默认为冬日）。`tools/play.mjs` 通过 `window.__play` 驱动游戏。
+页面参数：`?still` 风格板静帧；`?lang=en` 英文；`?seed=N` 骰子种子；`?dice=4-5,3-3` 强制掷骰点数；`?speed=N` 倍速；`?debug` 在 `window.__debug` 暴露场景对象；`?view=N` 取景候选；`?style=1|2|3` 风格预设（可组合，按书页排法设计）；`?ui=book` 书页排法（默认为原作对话面板与 HUD）；`?look=noir|warm` 夜或暖色绘本（默认为冬日）。`tools/play.mjs` 通过 `window.__play` 驱动游戏。
 
 浏览器：`tools/chromium.mjs` 决定 `bake`、`shot`、`play`、`extract-art` 使用的浏览器，可用 `CHROMIUM_PATH` 覆盖。
 
@@ -109,7 +110,7 @@
 | 检定、旗标、重试规则 | `src/engine/`（`runner.ts`、`rules.ts`），测试在 `runner.test.ts` |
 | 背景音乐 | 录音 `public/audio/elysium.mp3`；音量 `VOLUME`、回忆时的低通与音量 `COLD`、淡入淡出 `FADE` 在 `src/audio/music.ts`；剧情钩子经 `createCues` 的 `onCue` 回调接入。说明见 `docs/music.md` |
 | 音效 | 配方、音量与混响在 `src/audio/sfx.ts` 的 `createBank`（每个音效一段，按名称 `SoundName` 调用）；触发点：`src/play/log.ts` 的 `onType`（写字）、`src/play/director.ts`（继续、选择、内心声音、检定结果）、`src/scene/dice.ts` 的 `CONTACTS`（骰子落桌）、`hearts.ts`、`lead.ts`、`cues.ts`（纸片、脚步、窗扇、钟、风、蜡烛、钟摆） |
-| 纸偶版本 | `assets/art/harry-vN.svg`、`kim-vN.svg`（与原来的纸偶同样的 `data-*` 属性）；`?cast=N` 在 `src/main.ts` 加载后把 `art.harry`、`art.kim` 换成选中的版本，其余模块不需要改 |
+| 纸偶的造型 | `tools/papercraft/harry.mjs`、`kim.mjs`：材质颜色 `M`，各部件的截面环（形体与比例），`make()` 的朝向 `yaw` / `pitch`、光照、折线与切边的粗细；渲染器在 `lib3d.mjs`。改完运行 `npm run papercraft`。生成的 SVG 不要手改。根元素的 `data-*`（脚底、立脚范围、烟头）由脚本写出 |
 | 原作界面（默认；`?ui=book` 为书页排法） | 开关 `src/ui.ts`；日志的深色面板排版 `src/page/layout.ts` 的 `DE` 与 `painter.ts`；HUD `src/play/hud.ts`（头像、士气、时钟、横幅）、头像 `src/play/portraits.ts`；样式在 `index.html` 的 `[data-ui]` 下；士气显示在 HUD 还是纸心由 `src/main.ts` 的 `morale` 决定。说明见 `docs/ui.md` |
 | 氛围预设（默认冬日；`?look=noir|warm`） | 预设参数 `src/scene/mood.ts`；光束与浮尘 `shaft.ts`；脏旧 `grime.ts`（各纸片按自身坐标生成污渍）；在剧本指令读取灯光基准值之前生效。说明见 `docs/look.md` |
 | 原作风格预设 | 开关 `src/style.ts`；预设 1 在 `src/page/layout.ts`、`painter.ts`、`src/play/log.ts` 与 `index.html` 的 `data-style` 样式；预设 2 在 `src/scene/palette.ts` 与 `post.ts`；预设 3 在 `src/scene/details.ts`。参考与取舍见 `docs/style-refs.md` |
@@ -121,10 +122,10 @@
 - **美术流水线**：`assets/art/*.svg` 是源文件。`public/textures/` 由 `bake` 生成（WebP，质量 0.92，透明通道无损），不手改。
   - `extract-art` 会重新生成以下提取类纸片：far、far-snow、wall、sill-snow、furniture、desk、front-chair、front-right、floor、page-left、page-right、dice。要改这些纸片，改脚本，不要直接改 SVG，否则下次提取会被覆盖。
   - 木桌不是纸片，由 `src/scene/table.ts` 的着色器绘制，没有纹理。
-  - 以下为手绘纸片，不受 `extract-art` 影响：harry、kim、casement、clock-hour、clock-minute、pendulum、stairs、dog、dog-head、marek、heart、heart-empty、lead-card。
+  - 纸偶 harry、kim 由 `tools/papercraft` 生成。以下为手绘纸片，不受 `extract-art` 影响：casement、clock-hour、clock-minute、pendulum、stairs、dog、dog-head、marek、heart、heart-empty、lead-card。
   - SVG 根元素的 `data-*` 属性进入 `manifest.json` 的 `meta`，例如脚底位置、撕口范围、地毯范围。
 - **文字**：日志用 Canvas 2D 排版，作为纹理贴在左页网格上，点击用射线取 UV。排版在未拉伸的坐标里进行，绘制时按取景纵向拉伸（默认 1.21 倍）；`optionRects()` 返回拉伸后的真实页面坐标。
-- **候选方案**：`?view`、`?cast`、`?style`、`?look=noir` 是给用户比较用的开关。选定后把选中的一项设为默认，其余删掉或保留作对照，并同步本文件、README 与 design.md。第六轮选定的界面与氛围保留了此前的默认作对照（`?ui=book`、`?look=warm`）。
+- **候选方案**：`?view`、`?style`、`?look=noir` 是给用户比较用的开关。选定后把选中的一项设为默认，其余删掉或保留作对照，并同步本文件、README 与 design.md。第六轮选定的界面与氛围保留了此前的默认作对照（`?ui=book`、`?look=warm`）。
 - **音乐与音效**：只在第一次点击、触摸或按键之后创建 AudioContext（浏览器会对更早的尝试发出警告，`play` 把控制台警告当失败）；`?still` 不出声。音效与音乐各用一个 AudioContext、各有开关。场景模块通过注入的 `sound(name, options)` 发声（`createDice`、`createHearts`、`createLeadCard`、`createCues` 的参数，`Director` 的 `Stagehands.sound`），不直接依赖音频实现。
 - **参考图**：原作图片只在文档里外链，不进仓库；纸偶与界面都是自绘。
 - **动画**：一律走 `src/play/clock.ts` 的虚拟时钟（`tween`、`wait`），因此支持倍速、减少动态效果与测试冻结。引擎只产出节拍，`Director` 逐个播放。
@@ -145,7 +146,8 @@
 | 结尾不再翻页 | 右页现在是整块房间地板，翻页会穿过立着的家具；改为两人离场、熄烛 |
 | 雪只在窗外 | 室内飘雪不自然 |
 | 颗粒强度 0.05 | 用户认为噪点过重，多次下调 |
-| 纸偶按文字资料绘制 | 原作图片所在站点被网络策略拦截 |
+| 纸偶按文字资料绘制（此前） | 原作图片所在站点被网络策略拦截 |
+| 纸偶改为低多边形纸模型 | 第六轮用户从十个方向中选定：形体按 Rauno Somelar 的 3D 雕刻稿，颜色按游戏内模型；用生成器画，没有原作像素，可以放进公开仓库 |
 | 主光阴影用 PCSS | 窗光是大面积光源，影子应在落脚处清晰、随距离变软；统一的小半径 PCF 让桌面上的墙影又硬又暗。three.js r186 的 PCF 用比较采样器，读不到遮挡物深度，所以主光单独用普通深度纹理 |
 | 卡纸厚度用背面副本实现 | 相机从上方看，副本只在朝上的切边露出，与真实卡纸的受光方式一致；不需要为每张纸片生成挤出网格，副本同时充当纸背 |
 | 开场改为向前折叠 | 向后倒平时，高的纸片伸出书头、悬在桌面上方。真实立体书合上时纸片向前折在书页上；朝前折叠后越靠后的纸片越在上层，由后往前翻起时不会互相穿过 |
@@ -184,7 +186,6 @@
 待用户选定（第四轮的候选方案）：
 
 - 取景：推荐视角 2；视角 3 更有实物感，但上下字号差 19%、日志少约 2 行。选定后删掉其余候选并更新 design.md 6.1 与本文件。
-- 纸偶：子任务推荐 v2（游戏内 3D 模型，服装、比例、鞋都可核对）。v2 的金双手背在身后，剧本里他多次翻开笔记本；可以把 v1 的脸（哈里的络腮胡、红眼圈，金的竖发、粗框眼镜）并入 v2。选定后更新 design.md 3.2、3.3、6.4。
 - 风格：子任务推荐以预设 1 为基础，叠加预设 3 的检定纸条与交互标记，预设 2 只取青色暗部、暗角与蜡烛辉光。待定细节：普通选项悬停的变化是否够明显、检定卡片写难度档位还是原作的概率描述词、继续条的颜色、交互标记是否按节点设定。
 - 音乐：只有开关，没有音量滑块。用户试听后两次要求调小，现在比原文件低约 19 dB（−34.7 LUFS），骰子与检定比它高 7–9 LU，写字低 6–9 LU（`docs/music.md`）。
 - 音效：只有开关，没有音量滑块；音量按离线渲染测量平衡过（骰子与重击书桌峰值约 −12 dBFS，写字约 −29 dBFS，其余在 −14 到 −41 dBFS）。写字声在音乐下面可能偏轻，需要试听后再调。
@@ -194,7 +195,7 @@
   - `?look=noir` 下深色面板上的选项偏暗。
   - 第四轮的 `?style=1`、`?style=3` 按书页排法设计，在深色面板下大部分不起作用；要看原样需加 `ui=book&look=warm`。
 
-- 纸偶没有按原作立绘校准，需要用户在对话中附参考图，或在环境设置中放行对应域名。
+- 纸偶（低多边形纸模）：1 倍下哈里的眼睛很小，靠胡子、鼻子、头发和烟认人；头约占身高的六分之一，比此前的纸偶小；折痕要 2 倍才明显。马雷克、狗等其他纸片仍是平面剪纸。
 - 主光软阴影的采样盘按像素旋转，宽半影里有细小的噪点，被颗粒掩盖。弱 GPU 上帧耗时会增加（M4 Pro 上 1600 × 900 约 8 毫秒）。
 - 回忆中的楼梯与狗仍从向后平躺升起，升起途中穿过家具层，大部分被墙与家具挡住。
 - 纸心的对折在书右侧的墙影里不明显（那里只有台灯照明）。
