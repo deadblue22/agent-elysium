@@ -35,7 +35,10 @@
   - 原作风格：三组参考（对话与界面、油画与光色、标志性细节）与对应的三个运行时预设，`?style=1|2|3` 可组合，默认不启用（`docs/style-refs.md`）。
   - 验证：单元测试 41 项、构建、中英文静帧、中英文无头通关（默认参数）均通过；各子任务在各自的候选参数下也完整通关过。
   - 待用户选定：取景、纸偶版本、风格预设的取舍，见第 8 节。
-- 本文件第 3–8 节描述第四轮合并后的代码。
+- PR #2 与第四轮（PR #4）已合入 `main`。第四轮之后：
+  - 音效：用 Web Audio 实时合成（`src/audio/sfx.ts`），覆盖写字、骰子、检定、内心声音、线索、士气、纸片、窗扇、钟、脚步、蜡烛等；右上角独立开关。
+  - 背景音乐由用户另行处理，暂不改动。
+- 本文件第 3–8 节描述合并后的 `main`。
 
 ## 3. 环境与命令
 
@@ -90,6 +93,7 @@
 | 悬停提示 | 文案在 `src/content/hotspots.ts`；拾取区域在 `src/scene/hotspots.ts` 的 `REGIONS` |
 | 检定、旗标、重试规则 | `src/engine/`（`runner.ts`、`rules.ts`），测试在 `runner.test.ts` |
 | 背景音乐 | 乐谱 `src/audio/score.ts`（音符、段落、速度），音色与混响 `src/audio/engine.ts`，开关、启动、剧情钩子 `src/audio/music.ts`；剧情钩子经 `createCues` 的 `onCue` 回调接入。说明见 `docs/music.md` |
+| 音效 | 配方、音量与混响在 `src/audio/sfx.ts` 的 `createBank`（每个音效一段，按名称 `SoundName` 调用）；触发点：`src/play/log.ts` 的 `onType`（写字）、`src/play/director.ts`（继续、选择、内心声音、检定结果）、`src/scene/dice.ts` 的 `CONTACTS`（骰子落桌）、`hearts.ts`、`lead.ts`、`cues.ts`（纸片、脚步、窗扇、钟、风、蜡烛、钟摆） |
 | 纸偶版本 | `assets/art/harry-vN.svg`、`kim-vN.svg`（与原来的纸偶同样的 `data-*` 属性）；`?cast=N` 在 `src/main.ts` 加载后把 `art.harry`、`art.kim` 换成选中的版本，其余模块不需要改 |
 | 原作风格预设 | 开关 `src/style.ts`；预设 1 在 `src/page/layout.ts`、`painter.ts`、`src/play/log.ts` 与 `index.html` 的 `data-style` 样式；预设 2 在 `src/scene/palette.ts` 与 `post.ts`；预设 3 在 `src/scene/details.ts`。参考与取舍见 `docs/style-refs.md` |
 
@@ -104,7 +108,7 @@
   - SVG 根元素的 `data-*` 属性进入 `manifest.json` 的 `meta`，例如脚底位置、撕口范围、地毯范围。
 - **文字**：日志用 Canvas 2D 排版，作为纹理贴在左页网格上，点击用射线取 UV。排版在未拉伸的坐标里进行，绘制时按取景纵向拉伸（默认 1.21 倍）；`optionRects()` 返回拉伸后的真实页面坐标。
 - **候选方案**：`?view`、`?cast`、`?style` 是给用户比较用的开关。选定后把选中的一项设为默认，其余删掉或保留作对照，并同步本文件、README 与 design.md。
-- **音乐**：只在第一次点击、触摸或按键之后创建 AudioContext（浏览器会对更早的尝试发出警告，`play` 把控制台警告当失败）；`?still` 不出声。
+- **音乐与音效**：只在第一次点击、触摸或按键之后创建 AudioContext（浏览器会对更早的尝试发出警告，`play` 把控制台警告当失败）；`?still` 不出声。音效与音乐各用一个 AudioContext、各有开关。场景模块通过注入的 `sound(name, options)` 发声（`createDice`、`createHearts`、`createLeadCard`、`createCues` 的参数，`Director` 的 `Stagehands.sound`），不直接依赖音频实现。
 - **参考图**：原作图片只在文档里外链，不进仓库；纸偶与界面都是自绘。
 - **动画**：一律走 `src/play/clock.ts` 的虚拟时钟（`tween`、`wait`），因此支持倍速、减少动态效果与测试冻结。引擎只产出节拍，`Director` 逐个播放。
 - **卡纸**：用 `standing()` 立起的纸片调用 `cardEdge()`，得到纸芯切边与纸背。平放在地板或桌面上的纸片（地板、线索卡、纸心）不加。
@@ -145,7 +149,7 @@
   - 每段话停下等点击，打字不要太快。
   - 物件悬停要有提示。
 - 人物形象、性格与语言风格采用原作。只是 Demo，不考虑版权。
-- 工作流：在分支上开发，开 PR 合并到 `main`，由 Vercel 部署。
+- 工作流：在分支上开发，开 PR；本地检查（`npm test`、`build`、`shot`、`play`）通过后直接合入 `main`，不停在 PR 等待审阅，由 Vercel 部署。
 
 ## 8. 已知问题与候选工作
 
@@ -154,7 +158,8 @@
 - 取景：推荐视角 2；视角 3 更有实物感，但上下字号差 19%、日志少约 2 行。选定后删掉其余候选并更新 design.md 6.1 与本文件。
 - 纸偶：子任务推荐 v2（游戏内 3D 模型，服装、比例、鞋都可核对）。v2 的金双手背在身后，剧本里他多次翻开笔记本；可以把 v1 的脸（哈里的络腮胡、红眼圈，金的竖发、粗框眼镜）并入 v2。选定后更新 design.md 3.2、3.3、6.4。
 - 风格：子任务推荐以预设 1 为基础，叠加预设 3 的检定纸条与交互标记，预设 2 只取青色暗部、暗角与蜡烛辉光。待定细节：普通选项悬停的变化是否够明显、检定卡片写难度档位还是原作的概率描述词、继续条的颜色、交互标记是否按节点设定。
-- 音乐：只有开关，没有音量滑块；钟的嘀嗒在现在的段落里也有（钟其实停着）；马雷克按住钟摆时是否让钟声停止；离线渲染试听的脚本是否收进 `tools/`。
+- 音乐：用户另行处理，暂不改动。
+- 音效：只有开关，没有音量滑块；音量按离线渲染测量平衡过（重击书桌峰值约 −12.5 dBFS，其余在 −14 到 −40 dBFS），需要人耳试听后再调。
 
 - 纸偶没有按原作立绘校准，需要用户在对话中附参考图，或在环境设置中放行对应域名。
 - 主光软阴影的采样盘按像素旋转，宽半影里有细小的噪点，被颗粒掩盖。弱 GPU 上帧耗时会增加（M4 Pro 上 1600 × 900 约 8 毫秒）。
@@ -171,7 +176,7 @@
 
 ## 9. 迭代流程
 
-1. 从 `main` 建分支。PR #2 与第四轮未合并时，从 `claude/round4-view-bgm-cast-style` 继续。
+1. 从 `main` 建分支。
 2. 修改后依次运行 `npm test`、`npm run build`、`npm run shot`（中英文）。改到交互或动画时，再跑 `npm run play`。
 3. 同步更新 README、`docs/design.md`、本文件与截图。
-4. 提交并推送，开 PR 到 `main`。Vercel 生成预览部署，在浏览器中确认后合并。
+4. 提交并推送，开 PR 到 `main`，检查通过后直接合并（用户要求不停在 PR）。Vercel 从 `main` 部署。

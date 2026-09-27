@@ -7,6 +7,7 @@
 // can repaint every card.
 import { CanvasTexture, Group, Mesh, MeshStandardMaterial, PlaneGeometry, SRGBColorSpace } from 'three';
 import type { Art } from '../assets';
+import { panAt, type Sound } from '../audio/sfx';
 import type { Lang } from '../content/schema';
 import { ease, lerp, type Clock } from '../play/clock';
 import { decal } from './paper';
@@ -31,7 +32,7 @@ export interface LeadText { heading: string; lead: string; count: number; total:
 interface Card { mesh: Mesh; material: MeshStandardMaterial; canvas: HTMLCanvasElement; texture: CanvasTexture; text: (lang: Lang) => LeadText }
 
 /** sheet: world height of the right top sheet (with its curl) at (bx, by). */
-export function createLeadCard(art: Art, clock: Clock, sheet: (bx: number, by: number) => number) {
+export function createLeadCard(art: Art, clock: Clock, sheet: (bx: number, by: number) => number, sound: Sound = () => {}) {
   const piece = art['lead-card'];
   const [vx, vy, vw, vh] = piece.viewBox;
   // the card is stiff: on the page it rests on the highest point under it (the curled tear, or
@@ -150,7 +151,9 @@ export function createLeadCard(art: Art, clock: Clock, sheet: (bx: number, by: n
     async show(text: (lang: Lang) => LeadText) {
       const c = newCard(text);
       showing = c;
+      sound('lead-drop', { pan: panAt(wx(DROP.bx)) });
       await clock.tween(460, (p) => onPage(c.mesh, p, 0.05), ease.in, 'lead');
+      sound('paper-land', { pan: panAt(wx(DROP.bx)), size: 0.8 });
       // a small bounce as it lands
       await clock.tween(170, (q) => { onPage(c.mesh, 1, 0); c.mesh.position.y = ON_PAGE + 0.035 * Math.sin(Math.PI * q); }, ease.out, 'lead');
       onPage(c.mesh, 1, 0);
@@ -162,6 +165,7 @@ export function createLeadCard(art: Art, clock: Clock, sheet: (bx: number, by: n
       const n = cards.length;
       const to = stackPose(n);
       const from = c.mesh.position.clone(), turn0 = DROP.turn;
+      sound('lead-file', { pan: panAt(from.x), panTo: panAt(to.x) });
       await clock.tween(620, (p) => {
         const e = ease.inOut(p);
         c.mesh.position.set(lerp(from.x, to.x, e), lerp(from.y, to.y, e) + 0.9 * Math.sin(Math.PI * p), lerp(from.z, to.z, e));
@@ -171,6 +175,7 @@ export function createLeadCard(art: Art, clock: Clock, sheet: (bx: number, by: n
       c.mesh.position.set(to.x, to.y, to.z);
       c.mesh.scale.setScalar(FILED);
       c.mesh.rotation.set(0, to.turn * DEG, 0);
+      sound('paper-land', { pan: panAt(to.x), size: 0.3 });
       cards.push(c);
       showing = null;
       under.visible = true;

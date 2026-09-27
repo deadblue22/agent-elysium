@@ -16,6 +16,7 @@ import {
   DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, type Material, type Object3D,
 } from 'three';
 import type { Art, ArtPiece } from '../assets';
+import { panAt, type Sound, type SoundOptions } from '../audio/sfx';
 import { ease, lerp, type Clock } from '../play/clock';
 import type { createLights } from './lights';
 import { cardEdge, standingContact } from './paper';
@@ -64,6 +65,8 @@ interface Deps {
   marker: (minutes: number | null) => void;
   /** Told each cue as it starts, so the music can follow the story (src/audio/music.ts). */
   onCue?: (cue: string) => void;
+  /** Sound effects (src/audio/sfx.ts): the cards, the steps, the room's own sounds. */
+  sound?: Sound;
 }
 
 /**
@@ -98,6 +101,7 @@ function overlay(host: PieceHandle, piece: ArtPiece, sx: number, sy: number, mat
 
 export function createCues(d: Deps) {
   const { art, clock, popup, lights, post, snow } = d;
+  const sound: Sound = d.sound ?? (() => {});
   const P = popup.pieces;
   const fold0 = art.floor.meta.fold;
 
@@ -136,6 +140,8 @@ export function createCues(d: Deps) {
     hour.pivot.rotation.z = -(((min / 60) % 12) / 12) * 2 * Math.PI;
   };
   let swing = 0;
+  /** The pendulum's last half swing (its ticks). */
+  let beat = -1;
 
   // ---------------------------------------------------------------- the snow
   const farSnowMat = new MeshBasicMaterial({ map: art['far-snow'].texture, color: '#d8dde0', transparent: true, depthWrite: false });
@@ -220,12 +226,14 @@ export function createCues(d: Deps) {
   let at = SPOT.door;
   /** A card's lean while it rises (p 0 → 1) or folds (1 → 0), from lying back at `from` degrees. */
   const lean = (g: Group, deg: number, p: number, from = FLAT) => { g.rotation.x = -lerp(from, deg, p) * DEG; };
-  const rise = async (g: Group, deg: number, ms: number, contact?: Mesh) => {
+  const rise = async (g: Group, deg: number, ms: number, contact?: Mesh, heard: SoundOptions = {}) => {
     g.visible = true;
     if (contact) contact.visible = true;
+    sound('card-rise', { pan: panAt(g.position.x), ...heard });
     await clock.tween(ms, (p) => { lean(g, deg, p); if (contact) (contact.material as MeshBasicMaterial).opacity = 0.9 * Math.min(1, Math.max(0, p)); }, ease.back);
   };
-  const lay = async (g: Group, deg: number, ms: number, contact?: Mesh) => {
+  const lay = async (g: Group, deg: number, ms: number, contact?: Mesh, heard: SoundOptions = {}) => {
+    sound('card-fold', { pan: panAt(g.position.x), ...heard });
     await clock.tween(ms, (p) => { lean(g, deg, 1 - p); if (contact) (contact.material as MeshBasicMaterial).opacity = 0.9 * (1 - p); }, ease.in);
     g.visible = false;
     if (contact) contact.visible = false;
@@ -235,21 +243,32 @@ export function createCues(d: Deps) {
     mesh.position.y = 0.012 * Math.abs(Math.sin(phase));
     mesh.rotation.z = 0.02 * Math.sin(phase) * (face === 'right' ? -1 : 1);
   };
+  /** Counts a walker's footfalls: a step sounds each time the bob's phase passes a multiple of pi. */
+  const footfalls = (x: () => number, heard: SoundOptions = {}) => {
+    let n = 0;
+    return (phase: number) => {
+      const k = Math.floor(phase / Math.PI);
+      if (k > n) { n = k; sound('step', { pan: panAt(x()), ...heard }); }
+    };
+  };
   const still = (mesh: Mesh) => { mesh.position.y = 0; mesh.rotation.z = 0; };
   const climb = async (from: number, to: number, face: 'left' | 'right') => {
-    const dist = Math.abs(to - from);
+    const dist = Math.abs(to - from), foot = footfalls(() => marek.position.x, { tone: 'tock', size: 0.6 }); // wooden treads
     await clock.tween((dist / PACE) * 1000, (p) => {
       onTrack(lerp(from, to, p), face);
       step(marekMesh, (Math.PI * dist * p) / STEP, face);
+      foot((Math.PI * dist * p) / STEP);
     }, ease.linear, 'marek-walk');
     still(marekMesh);
   };
   const stroll = async (to: number) => {
     const from = at, dist = Math.abs(to - from), face = to < from ? 'left' : 'right';
+    const foot = footfalls(() => marek.position.x, { size: 0.5 });
     at = to;
     await clock.tween((dist / ROOM_PACE) * 1000, (p) => {
       inRoom(lerp(from, to, ease.inOut(p)), face);
       step(marekMesh, (Math.PI * dist * ease.inOut(p)) / (STEP * 1.3), face);
+      foot((Math.PI * dist * ease.inOut(p)) / (STEP * 1.3));
     }, ease.linear, 'marek-walk');
     still(marekMesh);
   };
@@ -284,15 +303,21 @@ export function createCues(d: Deps) {
       const o = d.stage.group.getObjectByName(name);
       if (o) o.visible = false;
     }
+    const foot = footfalls(() => g.position.x, { size: 0.35 });
     await clock.tween((dist / 150) * 1000, (q) => {
       const e = ease.inOut(q);
       g.position.x = x0 + dx * e;
       g.position.y = y0 + 0.014 * Math.abs(Math.sin((Math.PI * dist * e) / 20));
+      foot((Math.PI * dist * e) / 20);
     }, ease.linear, 'exit');
     g.position.y = y0;
+    sound('card-fold', { pan: panAt(g.position.x), size: 0.35 });
     await clock.tween(420, (q) => { lean(g, p.lean, 1 - q); }, ease.in, 'exit');
     g.visible = false;
   };
+
+  /** Where the room's sounds come from (stereo positions). */
+  const PAN = { window: panAt(wx(485)), clock: panAt(wx(970)), desk: panAt(wx(600)), candle: panAt(wx(770)), stairs: panAt(wx(ST.x0 + 110 * ST.scale)) };
 
   // ---------------------------------------------------------------- the cues
   const cues: Record<string, () => Promise<void>> = {
@@ -301,6 +326,9 @@ export function createCues(d: Deps) {
     async flashback() {
       marker('flashback');
       const t0 = time, o0 = open, n0 = night;
+      sound('rewind');
+      sound('casement', { pan: PAN.window, dur: 0.9, delay: 0.1 });
+      sound('clock-hands', { pan: PAN.clock, dur: 1.2 });
       await Promise.all([
         clock.tween(1400, (p) => setNight(lerp(n0, 1, p)), ease.inOut),
         clock.tween(900, (p) => setOpen(lerp(o0, 0, p)), ease.inOut),
@@ -316,8 +344,8 @@ export function createCues(d: Deps) {
     // the stairwell rises from the floor on the right, the dog asleep at its foot
     async 'raise-stairs'() {
       await Promise.all([
-        rise(stairs.group, stairs.lean, 1100, stairs.contact),
-        clock.wait(260).then(() => rise(dog.group, dog.lean, 800, dog.contact)),
+        rise(stairs.group, stairs.lean, 1100, stairs.contact, { pan: PAN.stairs, size: 0.9 }),
+        clock.wait(260).then(() => rise(dog.group, dog.lean, 800, dog.contact, { pan: PAN.stairs, size: 0.3 })),
       ]);
     },
     // Marek comes up the stairs (the dog lifts its head, and lowers it again), goes through
@@ -325,7 +353,7 @@ export function createCues(d: Deps) {
     async 'marek-climb'() {
       onTrack(sm.pathX0, 'right');
       lean(marek, M_LEAN, 0);
-      await rise(marek, M_LEAN, 450);
+      await rise(marek, M_LEAN, 450, undefined, { size: 0.3 });
       await climb(sm.pathX0, sm.footX, 'right');
       await Promise.all([
         climb(sm.footX, sm.pathX1, 'right'),
@@ -345,6 +373,7 @@ export function createCues(d: Deps) {
       marker('marek-blow');
       inRoom(SPOT.desk, 'right'); // he turns to the chair
       await clock.wait(300);
+      sound('blow', { pan: PAN.desk });
       const e0 = base.exposure;
       await Promise.all([
         clock.tween(110, (p) => { marekMesh.position.x = 0.07 * p; marekMesh.rotation.z = -0.1 * p; }, ease.out)
@@ -360,8 +389,10 @@ export function createCues(d: Deps) {
       await stroll(SPOT.clock);
       marker('clock-set');
       const t0 = time;
+      sound('clock-hands', { pan: PAN.clock, dur: 1.6 });
       await clock.tween(1600, (p) => setTime(lerp(t0, STOPPED, p)), ease.inOut);
       const s0 = swing;
+      sound('tick', { pan: PAN.clock, size: 1, tone: 'tock', delay: 0.35 }); // a hand stops the pendulum
       await clock.tween(420, (p) => { swing = s0 * (1 - p); }, ease.out);
       swing = 0;
     },
@@ -370,6 +401,8 @@ export function createCues(d: Deps) {
       await stroll(SPOT.window);
       marker('window-open');
       const o0 = open;
+      sound('casement', { pan: PAN.window, dur: 1.1 });
+      sound('wind', { pan: PAN.window, dur: 2.2, delay: 0.35 });
       await clock.tween(1300, (p) => setOpen(lerp(o0, OPEN, p)), ease.back, 'window-open');
     },
     // Marek goes back out behind the stairwell and down the stairs; the dog sleeps on
@@ -388,17 +421,19 @@ export function createCues(d: Deps) {
     async 'snow-start'() {
       marker('snow-start');
       const s0 = snowing;
+      sound('wind', { pan: PAN.window, dur: 2.8, gain: 0.55 });
       await clock.tween(2600, (p) => setSnow(lerp(s0, 1, Math.min(1, p * 1.6)), lerp(s0, 1, p)), ease.inOut);
     },
     // back to the morning: the grade and the lights return, the stairwell folds away
     async present() {
       d.marker(null);
       const n0 = night;
+      sound('return');
       await Promise.all([
         clock.tween(1600, (p) => setNight(lerp(n0, 0, p)), ease.inOut),
-        marek.visible ? lay(marek, M_LEAN, 400) : Promise.resolve(),
-        lay(dog.group, dog.lean, 800, dog.contact),
-        clock.wait(200).then(() => lay(stairs.group, stairs.lean, 1000, stairs.contact)),
+        marek.visible ? lay(marek, M_LEAN, 400, undefined, { size: 0.3 }) : Promise.resolve(),
+        lay(dog.group, dog.lean, 800, dog.contact, { pan: PAN.stairs, size: 0.3 }),
+        clock.wait(200).then(() => lay(stairs.group, stairs.lean, 1000, stairs.contact, { pan: PAN.stairs, size: 0.9 })),
       ]);
     },
     // the end: Kim turns and goes, Harry follows him out to the right; they fold down at the
@@ -413,6 +448,7 @@ export function createCues(d: Deps) {
       await clock.wait(500);
       // the room goes dim like a stage after the last scene; the reading lamp stays on the log
       const e0 = post.uniforms.uExposure.value, k0 = lights.key.intensity, h0 = lights.hemi.intensity;
+      sound('candle-out', { pan: PAN.candle });
       await Promise.all([
         clock.tween(1500, (p) => { lights.candle.out = p; }, ease.inOut, 'candle-out'),
         clock.wait(400).then(() => clock.tween(2400, (p) => {
@@ -464,12 +500,22 @@ export function createCues(d: Deps) {
   }
   async function enter() {
     const RISE = 760, STAGGER = 160, up = (k: number) => STAGGER * k + RISE * 0.7; // a row is up
+    /** Each row's swish, by how big its cards are: the wall, the furniture, the desk, the front props, the puppets. */
+    const SIZES = [1, 0.8, 0.55, 0.45, 0.3];
     await Promise.all([
-      ...rows.map((row, k) => clock.wait(STAGGER * k).then(() => Promise.all(row.map((g) =>
-        clock.tween(RISE, (p) => lean(g, upright.get(g)!, p, folded(k)), ease.back, 'enter'))))),
-      clock.wait(STAGGER).then(() => clock.tween(RISE * 0.9, (p) => setOpen(OPEN * p), ease.inOut)),
+      ...rows.map((row, k) => clock.wait(STAGGER * k).then(() => {
+        sound('card-rise', { size: SIZES[k] });
+        return Promise.all(row.map((g) => clock.tween(RISE, (p) => lean(g, upright.get(g)!, p, folded(k)), ease.back, 'enter')));
+      })),
+      clock.wait(STAGGER).then(() => {
+        sound('casement', { pan: PAN.window, dur: (RISE * 0.9) / 1000, gain: 0.5 });
+        return clock.tween(RISE * 0.9, (p) => setOpen(OPEN * p), ease.inOut);
+      }),
       clock.wait(up(0)).then(() => clock.tween(900, (p) => snow.setOpacity(p), ease.inOut)),
-      clock.wait(up(2)).then(() => clock.tween(500, (p) => { lights.candle.out = 1 - p; lights.settle(); }, ease.out)),
+      clock.wait(up(2)).then(() => {
+        sound('candle-light', { pan: PAN.candle });
+        return clock.tween(500, (p) => { lights.candle.out = 1 - p; lights.settle(); }, ease.out);
+      }),
       clock.wait(up(rows.length - 1)).then(() => { d.stage.ember.visible = true; }),
       clock.wait(250).then(() => clock.tween(900, (p) => {
         for (const c of contacts()) (c.material as MeshBasicMaterial).opacity = (contactOpacity.get(c) ?? 0.75) * p;
@@ -501,7 +547,14 @@ export function createCues(d: Deps) {
     },
     has: (cue: string) => cue in cues,
     /** Per frame: the pendulum (t: clock seconds). */
-    update(t: number) { pendulum.pivot.rotation.z = swing * Math.sin((2 * Math.PI * t) / PERIOD); },
+    update(t: number) {
+      const phase = Math.floor((2 * t) / PERIOD); // half swings: the bob passes the middle at each
+      pendulum.pivot.rotation.z = swing * Math.sin((2 * Math.PI * t) / PERIOD);
+      if (phase !== beat) {
+        if (swing > 0.01 && beat >= 0) sound('tick', { pan: PAN.clock, size: swing / SWING, tone: phase % 2 ? 'tock' : undefined });
+        beat = phase;
+      }
+    },
     /** True while something moves without a tween (the pendulum): keep rendering. */
     get animating() { return swing > 0; },
   };

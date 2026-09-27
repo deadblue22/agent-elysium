@@ -17,6 +17,7 @@ import type { Lang, Line, SkillId } from '../content/schema';
 import { SKILLS } from '../content/skills';
 import { EVIDENCE_LABELS } from '../content/study';
 import { ui } from '../content/ui';
+import type { Sound } from '../audio/sfx';
 import type { Beat, RollResult, Runner } from '../engine';
 import type { LeadText } from '../scene/lead';
 import { PARALLEL } from '../scene/cues';
@@ -36,7 +37,12 @@ export interface Stagehands {
   checked?(success: boolean): void;
   /** An option was chosen (?style=3 takes the slips away). */
   chosen?(): void;
+  /** Sound effects (src/audio/sfx.ts). */
+  sound?: Sound;
 }
+
+/** The log is on the left page: its sounds come from the left. */
+const PAGE_PAN = -0.4;
 
 /** Rest after a line that does not stop (ms), after a stop's click, after the dice line. */
 const REST = { line: 200, stop: 120, roll: 350, end: 600 };
@@ -71,6 +77,7 @@ export class Director {
     const view = this.runner.options().find((o) => o.number === number);
     if (!view || view.state !== 'enabled') return false;
     this.idle = false;
+    this.hands.sound?.('choose', { pan: PAGE_PAN });
     this.log.chose(view.option);
     this.hands.chosen?.();
     this.log.clearOptions();
@@ -85,7 +92,7 @@ export class Director {
    */
   proceed(): boolean {
     if (this.log.typing) { this.log.finishLine(); return true; }
-    if (this.advance) { const go = this.advance; this.advance = null; go(); return true; }
+    if (this.advance) { const go = this.advance; this.advance = null; this.hands.sound?.('continue', { pan: PAGE_PAN }); go(); return true; }
     return false;
   }
 
@@ -199,6 +206,7 @@ export class Director {
     const s = line.speaker;
     const who = s === 'you' ? 'harry' : s === 'kim' ? 'kim' : null;
     const voice = (typeof s === 'string' && s in SKILLS) || s === 'necktie';
+    if (voice) this.hands.sound?.('voice', { pan: PAGE_PAN, tone: s === 'necktie' ? 'psyche' : SKILLS[s as SkillId].attribute });
     await this.log.append({ kind: 'line', line }, {
       pause: voice ? 300 : 0,
       speaking: (on) => this.hands.speaking(on ? who : null),
@@ -208,6 +216,7 @@ export class Director {
   private async roll(r: RollResult) {
     await this.clock.wait(150);
     await this.hands.dice.roll(r.dice);
+    this.hands.sound?.(r.success ? 'check-success' : 'check-failure', { pan: 0.2 });
     this.hands.checked?.(r.success);
     await this.log.append({ kind: 'check', check: r.check, dice: r.dice, total: r.total, success: r.success });
     await this.clock.wait(REST.roll);
