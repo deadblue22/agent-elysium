@@ -7,13 +7,16 @@ export type Attribute = 'intellect' | 'psyche' | 'physique' | 'motorics';
 /**
  * The original's four attribute colours (§6.2): `color` is the reference value (for dark
  * backgrounds); `ink` is the same hue darkened to the same luminance (0.125) for all four,
- * so skill names printed on the cream page read with equal contrast (about 4.4 : 1).
+ * so skill names printed on the cream page read with equal contrast (about 4.4 : 1); `panel`
+ * is the reference value on the dark panel (?ui=de), psyche and physique lifted so they read at
+ * 4.5 : 1 or more there as rendered (the original's own psyche on its panel, #8C6CEC, is also
+ * lighter than the reference).
  */
-export const ATTRIBUTES: Record<Attribute, { name: Text; color: string; ink: string }> = {
-  intellect: { name: { zh: '智力', en: 'Intellect' }, color: '#5CB9D6', ink: '#2F6A81' },
-  psyche: { name: { zh: '精神', en: 'Psyche' }, color: '#8466CC', ink: '#6C54AA' },
-  physique: { name: { zh: '体格', en: 'Physique' }, color: '#C84466', ink: '#AC3A57' },
-  motorics: { name: { zh: '身手', en: 'Motorics' }, color: '#E0B43A', ink: '#7A5E1C' },
+export const ATTRIBUTES: Record<Attribute, { name: Text; color: string; ink: string; panel: string }> = {
+  intellect: { name: { zh: '智力', en: 'Intellect' }, color: '#5CB9D6', ink: '#2F6A81', panel: '#5CB9D6' },
+  psyche: { name: { zh: '精神', en: 'Psyche' }, color: '#8466CC', ink: '#6C54AA', panel: '#9A7EF0' },
+  physique: { name: { zh: '体格', en: 'Physique' }, color: '#C84466', ink: '#AC3A57', panel: '#DE5C84' },
+  motorics: { name: { zh: '身手', en: 'Motorics' }, color: '#E0B43A', ink: '#7A5E1C', panel: '#E0B43A' },
 };
 
 export interface Skill { name: Text; attribute: Attribute; value: number }
@@ -80,10 +83,14 @@ export function speakerName(line: { speaker: Speaker; sense?: Sense }, lang: Lan
   return SPEAKERS[s][lang];
 }
 
-/** The ink a speaker's name is printed in: skills and the necktie in their attribute's colour, everyone else neutral. */
-export function speakerInk(s: Speaker, neutral: string): string {
-  if (isSkill(s)) return ATTRIBUTES[SKILLS[s].attribute].ink;
-  if (s === 'necktie') return ATTRIBUTES.psyche.ink;
+/**
+ * The ink a speaker's name is printed in: skills and the necktie in their attribute's colour,
+ * everyone else neutral. `tone`: the ink for the cream page, or the colour for the dark panel
+ * (?ui=de).
+ */
+export function speakerInk(s: Speaker, neutral: string, tone: 'ink' | 'panel' = 'ink'): string {
+  if (isSkill(s)) return ATTRIBUTES[SKILLS[s].attribute][tone];
+  if (s === 'necktie') return ATTRIBUTES.psyche[tone];
   return neutral;
 }
 
