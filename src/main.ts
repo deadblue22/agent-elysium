@@ -430,6 +430,9 @@ async function main() {
   let resizeTimer = 0;
   addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = window.setTimeout(resize, 120); });
 
+  // the puppets' rect below needs their world matrices, which are otherwise first set by a render
+  // (without this the rect missed the lean and the crop cut off their feet)
+  scene.updateMatrixWorld();
   window.__shot = {
     page: pageRect, column,
     renderer: rendererName(renderer),
