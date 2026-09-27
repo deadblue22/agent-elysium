@@ -15,6 +15,7 @@ import { Box3, NoToneMapping, PCFShadowMap, PMREMGenerator, SRGBColorSpace, Scen
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { loadArt, loadFonts } from './assets';
 import { createMusic } from './audio/music';
+import { createSfx } from './audio/sfx';
 import type { Lang } from './content/schema';
 import { EVIDENCE_LABELS, study } from './content/study';
 import { chrome, clockMoment } from './content/study-clock';
@@ -201,6 +202,8 @@ async function main() {
   }
 
   const clock = new Clock();
+  // ---- sound effects (the toggle left of the music's; they start on the first click or key)
+  const sfx = createSfx({ button: document.getElementById('sfx') as HTMLButtonElement, still: STILL });
   clock.speed = Math.max(0.1, Number(params.get('speed')) || 1);
   clock.reduced = FROZEN;
 
@@ -214,9 +217,9 @@ async function main() {
   const book = createBook(art, leftInk.texture, rightInk.texture);
   const popup = createPopup(art), stage = createStage(art);
   // on the table beside the book: the leads found, the morale hearts, the dice
-  const hearts = createHearts(art, clock, study.morale.max, { blue: STYLE.has(1) });
-  const lead = createLeadCard(art, clock, book.rightSheet);
-  const dice = createDice(art, clock);
+  const hearts = createHearts(art, clock, study.morale.max, { blue: STYLE.has(1), sound: sfx.play });
+  const lead = createLeadCard(art, clock, book.rightSheet, sfx.play);
+  const dice = createDice(art, clock, sfx.play);
   const buildMs = performance.now() - t0; // geometry, procedural textures and the baked occlusion
   const lights = createLights(roomLights(art.floor.meta));
   const cam = createCameraRig(VIEW);
@@ -269,6 +272,7 @@ async function main() {
     art, clock, popup, stage, lights, post, snow,
     marker: (minutes) => { when = minutes; showWhen(); },
     onCue: (cue) => music.cue(cue), // the flashback goes cold, the present warms, the exit fades out
+    sound: sfx.play,
   });
 
   // ---- the pages
@@ -280,6 +284,8 @@ async function main() {
   const runner = new Runner(study, { seed: params.has('seed') ? Number(params.get('seed')) >>> 0 : undefined, forcedDice: parseDice(params.get('dice')) });
   let director: Director | null = null;
   const log = new LogView(leftInk, measurer, logCol, clock, a11y, lang, (n) => { director?.choose(n); }, () => !!director?.idle, LOOK);
+  // a pencil writes the log as it types (on the left page)
+  log.onType = (count) => sfx.play('write', { count, pan: -0.45 });
 
   /** Re-renders the hover tip in the current language (set once the hover tips exist). */
   let refreshHot = () => {};
@@ -309,6 +315,7 @@ async function main() {
       speaking: (who) => { speaker = who; },
       checked: (success) => { void details?.check(success); },
       chosen: () => details?.clear(),
+      sound: sfx.play,
     });
     director.onIdle = () => { hit.refresh(); invalidate(); };
   }
@@ -350,9 +357,14 @@ async function main() {
     const view = log.optionAt(index);
     if (view) director?.choose(view.number);
   };
+  /** The option under the pointer, so a new one ticks once. */
+  let hovered: number | null = null;
   const hit = new PageHit(canvas, cam.camera, book.leftPage, () => leftInk.optionRects(), {
     hover: (index, at) => {
-      leftInk.setHover(index !== null && (STILL || director?.idle) ? index : null);
+      const lit = index !== null && (STILL || director?.idle) ? index : null;
+      if (lit !== null && lit !== hovered && log.optionAt(lit)?.state === 'enabled') sfx.play('hover', { pan: -0.4 });
+      hovered = lit;
+      leftInk.setHover(lit);
       const view = index !== null && !STILL ? log.optionAt(index) : undefined;
       renderTooltip(tipEl, view, lang, STYLE.has(1));
       if (view && at && !tipEl.hidden) {
@@ -508,7 +520,7 @@ async function main() {
     for (let i = 0; i < n; i++) { post.render(t); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); }
     return (performance.now() - tb) / n;
   };
-  if (params.has('debug')) Object.assign(window, { __debug: { leftInk, rightInk, scene, renderer, cam, post, lights, clock, cues, book, lead, hot, music, layout: () => log.layout } });
+  if (params.has('debug')) Object.assign(window, { __debug: { leftInk, rightInk, scene, renderer, cam, post, lights, clock, cues, book, lead, hot, music, sfx, layout: () => log.layout } });
 
   let frames = 0;
   if (director) {

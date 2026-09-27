@@ -6,6 +6,7 @@
 // way as it turns, so it lands a tent again.
 import { CanvasTexture, DoubleSide, Group, Mesh, MeshStandardMaterial, PlaneGeometry, SRGBColorSpace, type Texture } from 'three';
 import type { Art } from '../assets';
+import { panAt, type Sound } from '../audio/sfx';
 import { ease, type Clock } from '../play/clock';
 import { TABLE } from './tabletop';
 
@@ -17,7 +18,8 @@ const FOLD = 0.16;
 const MORALE_HUE = 194 / 360;
 
 /** `blue`: the hearts in the original's morale blue (?style=1). */
-export function createHearts(art: Art, clock: Clock, max = 4, o: { blue?: boolean } = {}) {
+export function createHearts(art: Art, clock: Clock, max = 4, o: { blue?: boolean; sound?: Sound } = {}) {
+  const sound = o.sound ?? (() => {});
   const group = new Group();
   group.name = 'hearts';
   const [, , vw, vh] = art.heart.viewBox;
@@ -58,16 +60,20 @@ export function createHearts(art: Art, clock: Clock, max = 4, o: { blue?: boolea
     /** Animates the hearts that change, one after another. */
     async to(v: number) {
       const changed = hearts.filter((h, i) => h.full !== i < v);
+      const lost = v < hearts.filter((x) => x.full).length;
       value = v;
-      for (const h of v < hearts.filter((x) => x.full).length ? changed.reverse() : changed) {
+      if (changed.length) sound(lost ? 'morale-down' : 'morale-up', { pan: panAt(TABLE.hearts.x + TABLE.hearts.step * 1.5) });
+      for (const h of lost ? changed.reverse() : changed) {
         const target = !h.full;
         let swapped = false;
+        sound('heart-flip', { pan: panAt(h.pivot.position.x) });
         await clock.tween(700, (t) => {
           h.pivot.position.y = 0.004 + 0.3 * Math.sin(Math.PI * t);
           h.pivot.rotation.z = Math.PI * t;
           h.mesh.scale.y = Math.cos(Math.PI * t); // the fold opens flat and closes the other way
           if (t >= 0.5 && !swapped) { swapped = true; show(h, target); }
         }, ease.inOut);
+        sound('paper-land', { pan: panAt(h.pivot.position.x), size: 0.1 });
         h.pivot.rotation.z = 0; // symmetric: a half turn looks the same as none
         h.mesh.scale.y = 1;
         h.pivot.position.y = 0.004;

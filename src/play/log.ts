@@ -57,6 +57,8 @@ export class LogView {
   private fixed: LogEntry[] | null = null;
   /** Options chosen so far (the original look prints them dimmer when they come round again). */
   private chosen = new WeakSet<Option>();
+  /** Told how many characters appeared at each step of the typing (the pencil's strokes). */
+  onType: (count: number) => void = () => {};
 
   constructor(
     private painter: PagePainter,
@@ -135,13 +137,17 @@ export class LogView {
       o.speaking?.(true);
       const at = typeSchedule(entry.line.text[this.lang], this.lang);
       const T = at[at.length - 1] ?? 0;
+      let shown = 0;
       await this.clock.tween(T, (p) => {
         // how many characters are due at this time (the language may change mid-line: that
         // finishes the line, so the count only needs to be right for the language it began in)
         const now = p * T;
         let lo = 0, hi = at.length;
         while (lo < hi) { const mid = (lo + hi) >> 1; if (at[mid] <= now + 1e-6) lo = mid + 1; else hi = mid; }
-        this.setReveal({ entry: idx, chars: p >= 1 ? this.layout.chars[idx] ?? lo : lo });
+        const chars = p >= 1 ? this.layout.chars[idx] ?? lo : lo;
+        if (chars > shown && p < 1) this.onType(chars - shown); // a line completed at once gets no scribble
+        shown = Math.max(shown, chars);
+        this.setReveal({ entry: idx, chars });
       }, ease.linear, 'type');
       o.speaking?.(false);
     }
