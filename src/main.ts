@@ -10,6 +10,7 @@
 //   ?cast=N       Harry and Kim as drawn after reference N (assets/art/harry-vN.svg,
 //                 kim-vN.svg; docs/cast.md); without it, the current pair (harry.svg, kim.svg)
 //   ?style=1|2|3  a style preset after the original (src/style.ts, docs/style-refs.md); digits combine
+//   ?look=winter|noir  a bold light, mood and grime preset (src/scene/mood.ts, docs/look.md)
 // prefers-reduced-motion: every tween jumps to its end, the snow and grain hold still.
 import { Box3, NoToneMapping, PCFShadowMap, PMREMGenerator, SRGBColorSpace, Scene, Vector2, Vector3, WebGLRenderer, type Mesh, type PerspectiveCamera } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -34,6 +35,7 @@ import { createDetails, type Details } from './scene/details';
 import { createDice } from './scene/dice';
 import { createHearts } from './scene/hearts';
 import { createLights } from './scene/lights';
+import { applyMood, moodShadows, parseMood } from './scene/mood';
 import { applyPainting } from './scene/palette';
 import { createPopup, layers, roomLights } from './scene/popup';
 import { createPost } from './scene/post';
@@ -109,6 +111,8 @@ const STYLE = parseStyle(location.search);
 document.documentElement.dataset.style = [...STYLE].join(' ');
 /** How the log is set: the M0 board's, or (?style=1) the original's conventions. */
 const LOOK = STYLE.has(1) ? ORIGINAL : BOARD;
+/** The light, mood and grime preset (?look=winter|noir), or null for the default. */
+const MOOD = parseMood(location.search);
 
 const frameEl = document.getElementById('frame') as HTMLDivElement;
 const canvas = document.getElementById('gl') as HTMLCanvasElement;
@@ -218,7 +222,7 @@ async function main() {
   const lead = createLeadCard(art, clock, book.rightSheet);
   const dice = createDice(art, clock);
   const buildMs = performance.now() - t0; // geometry, procedural textures and the baked occlusion
-  const lights = createLights(roomLights(art.floor.meta));
+  const lights = createLights(roomLights(art.floor.meta), { soft: moodShadows(MOOD) });
   const cam = createCameraRig(VIEW);
   scene.add(createTable(VIEW.boards), book.group, popup.group, stage.group, hearts.group, lead.group, dice.group, lights.group, cam.rig);
   // a soft, low environment light, so curved paper, page edges and board edges read through
@@ -245,6 +249,8 @@ async function main() {
   post.uniforms.uExposure.value = 1.08;
   // ?style=2: the original's painted light and colour (before the cues read their base values)
   if (STYLE.has(2)) applyPainting(lights, post);
+  // ?look=: the look's light, grade, shaft and grime (also before the cues)
+  const mood = MOOD ? applyMood(MOOD, { art, scene, lights, post, popup, focal: cam.lens.focal }) : null;
   post.uniforms.uQuiet.value.set(column.x / FRAME.w, 1 - (column.y + column.h) / FRAME.h, (column.x + column.w) / FRAME.w, 1 - column.y / FRAME.h);
 
   // ---- the music (the toggle left of the language switch; it starts on the first click or key)
@@ -480,6 +486,7 @@ async function main() {
     renderer.setSize(w, h, false);
     post.setSize(w, h, pr);
     snow.setScale((w * pr) / FRAME.w);
+    mood?.setScale((w * pr) / FRAME.w);
     leftInk.setScale(inkScale(w, pr));
     rightInk.setScale(labelScale(w, pr));
     invalidate();
@@ -508,7 +515,7 @@ async function main() {
     for (let i = 0; i < n; i++) { post.render(t); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); }
     return (performance.now() - tb) / n;
   };
-  if (params.has('debug')) Object.assign(window, { __debug: { leftInk, rightInk, scene, renderer, cam, post, lights, clock, cues, book, lead, hot, music, layout: () => log.layout } });
+  if (params.has('debug')) Object.assign(window, { __debug: { leftInk, rightInk, scene, renderer, cam, post, lights, clock, cues, book, lead, hot, music, mood, layout: () => log.layout } });
 
   let frames = 0;
   if (director) {
@@ -580,6 +587,7 @@ async function main() {
       lights.update(t);
       needsRender = true;
     }
+    if (mood?.update(t)) needsRender = true;
     // shadows follow what moves, and a few frames more: a tween's last step, and what its
     // continuation changes (a card hidden once it has folded), land after it stops
     if (clock.moving || bobbing || clock.changes !== changes) shadowFrames = 3;
