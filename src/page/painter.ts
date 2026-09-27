@@ -13,7 +13,7 @@
 // read with their true proportions. The layout stays unstretched (its own page px); the
 // painter maps it, and hands out option boxes in the page's real px.
 import { CanvasTexture, LinearFilter, LinearMipmapLinearFilter, SRGBColorSpace } from 'three';
-import { INK, PAGE, type DrawItem, type PageLayout, type Rect } from './layout';
+import { INK, INK_ORIGINAL, PAGE, type DrawItem, type PageLayout, type Rect } from './layout';
 
 /** When scrolled back, the newest lines leave through the bottom of the window over this many page px. */
 const BOTTOM_FADE = 16;
@@ -38,6 +38,8 @@ export class PagePainter {
   /** Vertical stretch of the ink about the row `anchor` (page px): page y = anchor + (y - anchor) * stretch. */
   private stretch = 1;
   private anchor = 0;
+  /** The original panel's furniture in the margins (?style=3): the scroll track, the edge codes. */
+  private decor = false;
 
   constructor(anisotropy: number, scale: number) {
     this.ctx = this.canvas.getContext('2d', { alpha: true })!;
@@ -63,6 +65,12 @@ export class PagePainter {
   }
 
   get size() { return { w: this.canvas.width, h: this.canvas.height, scale: this.scale }; }
+
+  /** Prints the original panel's scroll track and edge codes in the margins (?style=3). */
+  setDecor(on: boolean) {
+    this.decor = on;
+    if (this.layout) this.paint(null);
+  }
 
   /** Draws the layout `s` times taller about the page row `anchor`. */
   setStretch(s: number, anchor: number) {
@@ -154,7 +162,18 @@ export class PagePainter {
 
   private markerRect(): Rect {
     const m = this.layout?.marker;
+    if (m?.bar) return { x: m.bar.x - 4, y: m.bar.y - 4, w: m.bar.w + 8, h: m.bar.h + 8 };
     return m ? { x: m.x - 4, y: m.y - 22, w: PAGE.w - m.x, h: 30 } : { x: 0, y: 0, w: 0, h: 0 };
+  }
+
+  /**
+   * The checks' bars (the original look), in layout px at scroll 0: every check sits on one,
+   * a white check on a white slip of paper, a red check on an orange-red one.
+   */
+  private bars(): { rect: Rect; check: 'white' | 'red' }[] {
+    const l = this.layout;
+    if (!l || l.look.checks !== 'bars') return [];
+    return l.options.flatMap((o) => (o.check ? [{ rect: { x: o.rect.x + 5, y: o.rect.y + 2, w: o.rect.w - 10, h: o.rect.h - 3 }, check: o.check }] : []));
   }
 
   /** Repaints the whole page (rect = null) or only what lies inside rect (page px, as drawn). */
@@ -179,6 +198,18 @@ export class PagePainter {
     ctx.lineJoin = 'round';
     const shifted = { x: r.x, y: r.y - dy, w: r.w, h: r.h };
     ctx.translate(0, dy);
+    for (const b of this.bars()) {
+      // the original's check bars as slips of paper, their right ends torn: a hairline of
+      // shadow under the white one, which is only a little lighter than the page
+      const { x, y, w, h } = b.rect;
+      ctx.globalAlpha = 1;
+      if (b.check === 'white') {
+        ctx.fillStyle = 'rgba(70,56,40,.2)';
+        roughRect(ctx, { x: x + 0.8, y: y + 1.2, w, h }, 3);
+      }
+      ctx.fillStyle = b.check === 'white' ? INK_ORIGINAL.white : INK_ORIGINAL.red;
+      roughRect(ctx, { x, y, w, h }, 3);
+    }
     for (const it of this.layout?.items ?? []) {
       if (!intersects(shifted, it.box)) continue;
       const shown = this.shown(it);
@@ -187,20 +218,32 @@ export class PagePainter {
     }
     ctx.restore();
     if (win) this.fades(r, win);
+    if (win && this.decor) this.margins(r, win);
     const mk = this.layout?.marker;
     if (mk && this.marker) {
-      // it pulses with the cursor between full and dim, so it never disappears
+      // it pulses with the cursor between full and dim, so it never disappears (the bar holds
+      // still; only its arrow pulses)
       ctx.save();
       this.transform();
       ctx.beginPath();
       ctx.rect(r.x, r.y, r.w, r.h);
       ctx.clip();
+      if (mk.bar) continueBar(ctx, mk.bar);
       ctx.font = mk.font;
       ctx.fillStyle = mk.color;
-      ctx.globalAlpha = this.cursorOn ? 1 : 0.6;
+      ctx.globalAlpha = this.cursorOn || mk.bar ? 1 : 0.6;
       ctx.textBaseline = 'alphabetic';
       let x = mk.x;
       for (const ch of mk.text) { ctx.fillText(ch, x, mk.y); x += ctx.measureText(ch).width + mk.ls; }
+      if (mk.bar) {
+        // the arrow after the word: ►
+        const s = mk.bar.h * 0.36, x0 = x - mk.ls + s * 0.9, cy = mk.bar.y + mk.bar.h / 2;
+        ctx.globalAlpha = this.cursorOn ? 1 : 0.55;
+        ctx.beginPath();
+        ctx.moveTo(x0, cy - s * 0.62); ctx.lineTo(x0 + s * 1.15, cy); ctx.lineTo(x0, cy + s * 0.62);
+        ctx.closePath();
+        ctx.fill();
+      }
       ctx.restore();
     }
     this.texture.needsUpdate = true;
@@ -237,6 +280,54 @@ export class PagePainter {
       ctx.fillStyle = bottom;
       ctx.fillRect(0, win.y1 + 8 - BOTTOM_FADE, PAGE.w, BOTTOM_FADE);
     }
+    ctx.restore();
+  }
+
+  /**
+   * The original panel's furniture, printed in the margins: down the right margin the scroll
+   * track (a hairline with a cap at its top) and its white knob where the reader is in the
+   * history (at the bottom: the newest line); down the outer margin the edge codes, set small
+   * and faint like the codes along the panel's film-strip edge (here they read as printer's marks).
+   */
+  private margins(r: Rect, win: NonNullable<PageLayout['window']>) {
+    const { ctx } = this;
+    ctx.save();
+    this.transform();
+    ctx.beginPath();
+    ctx.rect(r.x, r.y, r.w, r.h);
+    ctx.clip();
+    ctx.globalAlpha = 1;
+    const x = 615, y0 = win.y0 + win.fade * 0.35, y1 = win.y1 + 4;
+    ctx.strokeStyle = 'rgba(38,32,26,.42)';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(x, y0 + 2); ctx.lineTo(x, y1);
+    ctx.moveTo(x - 3.5, y0 + 6); ctx.lineTo(x, y0); ctx.lineTo(x + 3.5, y0 + 6);
+    ctx.stroke();
+    const max = this.layout?.scrollMax ?? 0;
+    const ky = y1 - 5 - (max ? (this.scroll / max) * (y1 - y0 - 16) : 0);
+    ctx.fillStyle = '#F6F1E7';
+    ctx.strokeStyle = 'rgba(38,32,26,.72)';
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.arc(x, ky, 4.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(38,32,26,.3)';
+    ctx.font = '500 9px "Barlow Condensed", "Inter", sans-serif';
+    ctx.textBaseline = 'middle';
+    ['01A16', '01A17', '01A18'].forEach((code, i) => {
+      const cy = win.y0 + 70 + i * 140;
+      if (cy > win.y1 - 20) return;
+      ctx.save();
+      ctx.translate(13, cy);
+      ctx.rotate(-Math.PI / 2);
+      let cx = -14;
+      for (const ch of code) { ctx.fillText(ch, cx, 0); cx += ctx.measureText(ch).width + 1.4; }
+      ctx.restore();
+      ctx.fillRect(10, cy + 24, 6, 0.8);
+      ctx.fillRect(10, cy - 24, 6, 0.8);
+    });
     ctx.restore();
   }
 
@@ -277,8 +368,12 @@ export class PagePainter {
       ctx.fillRect(it.box.x, it.box.y, it.box.w, it.box.h);
       return;
     }
-    const greyed = it.option !== undefined && this.layout?.options.find((o) => o.index === it.option)?.greyed;
-    const color = it.option !== undefined && it.option === this.hover && !greyed ? INK.hover : it.color;
+    const opt = it.option !== undefined ? this.layout?.options.find((o) => o.index === it.option) : undefined;
+    const hovered = !!opt && it.option === this.hover && !opt.greyed;
+    // hovered words: the board's brighter rust; in the original they turn white, its brightest
+    // ink: on the page, black, and on a red check's bar, light
+    const original = this.layout?.look.checks === 'bars';
+    const color = !hovered ? it.color : !original ? INK.hover : opt.check === 'red' ? INK_ORIGINAL.redHover : INK_ORIGINAL.hover;
     const text = shown === Infinity ? it.text : [...it.text].slice(0, shown).join('');
     ctx.font = it.font;
     ctx.globalAlpha = it.alpha;
@@ -301,4 +396,44 @@ export class PagePainter {
 
 function intersects(a: Rect, b: Rect) {
   return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+}
+
+/** A small seeded PRNG (the same brush marks on every repaint). */
+function prng(seed: number) {
+  let s = seed >>> 0 || 1;
+  return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return (s >>> 0) / 4294967296; };
+}
+
+/** Fills a rect whose right end is brushed: its corner points jitter up to `jag` px inward. */
+function roughRect(ctx: CanvasRenderingContext2D, r: Rect, jag: number) {
+  const rnd = prng(Math.round(r.y * 7 + r.w * 3));
+  const n = Math.max(2, Math.round(r.h / 7));
+  ctx.beginPath();
+  ctx.moveTo(r.x, r.y);
+  for (let i = 0; i <= n; i++) ctx.lineTo(r.x + r.w - jag * rnd(), r.y + (r.h * i) / n);
+  ctx.lineTo(r.x, r.y + r.h);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/**
+ * The original's CONTINUE bar, printed: a red strip across the column with a brushed right
+ * end, faint streaks along it and a darker wash toward that end.
+ */
+function continueBar(ctx: CanvasRenderingContext2D, b: Rect & { fill: string }) {
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = b.fill;
+  roughRect(ctx, b, 5);
+  const wash = ctx.createLinearGradient(b.x, 0, b.x + b.w, 0);
+  wash.addColorStop(0, 'rgba(60,8,4,0)');
+  wash.addColorStop(0.5, 'rgba(60,8,4,0)');
+  wash.addColorStop(1, 'rgba(60,8,4,.3)');
+  ctx.fillStyle = wash;
+  ctx.fillRect(b.x, b.y, b.w - 5, b.h);
+  const rnd = prng(29);
+  for (let i = 0; i < 14; i++) {
+    const x = b.x + b.w * (0.3 + rnd() * 0.55), y = b.y + 1.5 + rnd() * (b.h - 3), w = b.w * (0.06 + rnd() * 0.2);
+    ctx.fillStyle = rnd() > 0.45 ? 'rgba(255,196,160,.1)' : 'rgba(40,6,2,.18)';
+    ctx.fillRect(x, y, Math.max(0, Math.min(w, b.x + b.w - 8 - x)), 0.7 + rnd() * 1.3);
+  }
 }

@@ -47,6 +47,7 @@ const FACES: [family: string, file: string, weight: string][] = [
   ['EB Garamond', 'eb-garamond-600.woff2', '600'],
   ['Inter', 'inter-600.woff2', '600'],
   ['JetBrains Mono', 'jetbrains-mono-400.woff2', '400'],
+  ['Barlow Condensed', 'barlow-condensed-500.woff2', '500'],
 ];
 
 /** Resolves once every face is loaded, so the first canvas paint never uses a fallback font. */

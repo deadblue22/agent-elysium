@@ -15,6 +15,10 @@ export const ui = {
   leadTag: t('新线索', 'NEW LEAD'),
   /** The blinking continue marker at the bottom right of the log, while it waits for a click. */
   continue: t('▼ 继续', '▼ CONTINUE'),
+  /** The same as the original's CONTINUE bar (?style=1), its arrow drawn after it. */
+  continueBar: t('继续', 'CONTINUE'),
+  /** A new lead as the original's system line (?style=1): 「新线索：指针被拨过（1/3）」. */
+  leadLine: t('新线索：', 'New lead: '),
   /** The log's last line, once the candle is out. */
   chapterEnd: t('第一章 完', 'End of Chapter One'),
   /** Check tooltip: 「成功率 72%」. */
@@ -27,6 +31,13 @@ export const ui = {
   redCheck: t('红色检定：只有一次机会。', 'Red check: one attempt only.'),
   /** A white check can be retried later. */
   whiteCheck: t('白色检定：失败后可以再试。', 'White check: can be retried after a failure.'),
+  /** The check card's two fixed rolls (?style=1): snake eyes always fail, boxcars always pass (§5.2). */
+  alwaysLoses: t('必定失败', 'ALWAYS LOSES'),
+  alwaysWins: t('必定成功', 'ALWAYS WINS'),
+  /** The slips on the table (?style=3), as the original's banners. */
+  checkSuccess: t('检定成功', 'CHECK SUCCESS'),
+  checkFailure: t('检定失败', 'CHECK FAILURE'),
+  moraleSlip: t('士气受损', 'DAMAGED MORALE'),
 };
 
 /** Snake eyes and boxcars (§5.3), printed after the roll. */

@@ -9,6 +9,7 @@
 //   ?debug        expose the painters, scene and renderer on window.__debug
 //   ?cast=N       Harry and Kim as drawn after reference N (assets/art/harry-vN.svg,
 //                 kim-vN.svg; docs/cast.md); without it, the current pair (harry.svg, kim.svg)
+//   ?style=1|2|3  a style preset after the original (src/style.ts, docs/style-refs.md); digits combine
 // prefers-reduced-motion: every tween jumps to its end, the snow and grain hold still.
 import { Box3, NoToneMapping, PCFShadowMap, PMREMGenerator, SRGBColorSpace, Scene, Vector2, Vector3, WebGLRenderer, type Mesh, type PerspectiveCamera } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -20,7 +21,8 @@ import { chrome, clockMoment } from './content/study-clock';
 import { ui } from './content/ui';
 import { Runner, optionId } from './engine';
 import { PageHit } from './page/hit';
-import { FADE, Measurer, PAGE, layoutRightPage, textColumn, type PageLayout, type Rect } from './page/layout';
+import { BOARD, FADE, Measurer, ORIGINAL, PAGE, layoutRightPage, textColumn, type PageLayout, type Rect } from './page/layout';
+import { parseStyle } from './style';
 import { PagePainter } from './page/painter';
 import { Clock } from './play/clock';
 import { Director } from './play/director';
@@ -28,9 +30,11 @@ import { LogView, renderTooltip } from './play/log';
 import { createBook } from './scene/book';
 import { FRAME, createCameraRig, pickView } from './scene/camera';
 import { createCues } from './scene/cues';
+import { createDetails, type Details } from './scene/details';
 import { createDice } from './scene/dice';
 import { createHearts } from './scene/hearts';
 import { createLights } from './scene/lights';
+import { applyPainting } from './scene/palette';
 import { createPopup, layers, roomLights } from './scene/popup';
 import { createPost } from './scene/post';
 import { createStage } from './scene/puppets';
@@ -100,6 +104,11 @@ const VIEW = pickView(params.get('view'));
 const CAST = Math.max(0, Math.floor(Number(params.get('cast'))) || 0);
 /** harry-v2 → 2 for the versioned puppets, null for every other piece. */
 const castOf = (name: string) => { const m = /^(?:harry|kim)-v(\d+)$/.exec(name); return m ? Number(m[1]) : null; };
+/** The style presets asked for (none: the current look). The chrome's CSS keys off data-style. */
+const STYLE = parseStyle(location.search);
+document.documentElement.dataset.style = [...STYLE].join(' ');
+/** How the log is set: the M0 board's, or (?style=1) the original's conventions. */
+const LOOK = STYLE.has(1) ? ORIGINAL : BOARD;
 
 const frameEl = document.getElementById('frame') as HTMLDivElement;
 const canvas = document.getElementById('gl') as HTMLCanvasElement;
@@ -205,7 +214,7 @@ async function main() {
   const book = createBook(art, leftInk.texture, rightInk.texture);
   const popup = createPopup(art), stage = createStage(art);
   // on the table beside the book: the leads found, the morale hearts, the dice
-  const hearts = createHearts(art, clock, study.morale.max);
+  const hearts = createHearts(art, clock, study.morale.max, { blue: STYLE.has(1) });
   const lead = createLeadCard(art, clock, book.rightSheet);
   const dice = createDice(art, clock);
   const buildMs = performance.now() - t0; // geometry, procedural textures and the baked occlusion
@@ -221,17 +230,21 @@ async function main() {
 
   // the log starts under the left sheet's tear (its extent comes from the SVG, via the manifest)
   const tear = art['page-left'].meta;
-  const col = textColumn(tear.columnY0);
+  const col = textColumn(tear.columnY0, LOOK);
   const column = projectRect(cam.camera, col.x0, col.y0, col.x1, col.y1);
   // the ink is drawn INK_STRETCH times taller about the window's bottom, so the slanted page
   // shows the glyphs in their true proportions; the log is laid out in a window that much shorter
   leftInk.setStretch(INK_STRETCH, col.y1);
+  // ?style=3: the original panel's scroll track and edge codes in the page's margins
+  if (STYLE.has(3)) leftInk.setDecor(true);
   const logCol = { ...col, y0: col.y1 - (col.y1 - col.y0) / INK_STRETCH };
   const pageRect = projectRect(cam.camera, 0, tear.tearMin - 14, PAGE.w, PAGE.h);
   // snow outside the window: flakes behind the wall's window hole (wall.svg's window region)
   const snow = createSnow(popup.pieces.wall.group, { x0: wx(342), x1: wx(628), y0: (440 - 338) / 100, y1: (440 - 76) / 100, depth: 0.2 }, cam.lens.focal);
   const post = createPost(renderer, scene, cam.camera);
   post.uniforms.uExposure.value = 1.08;
+  // ?style=2: the original's painted light and colour (before the cues read their base values)
+  if (STYLE.has(2)) applyPainting(lights, post);
   post.uniforms.uQuiet.value.set(column.x / FRAME.w, 1 - (column.y + column.h) / FRAME.h, (column.x + column.w) / FRAME.w, 1 - column.y / FRAME.h);
 
   // ---- the music (the toggle left of the language switch; it starts on the first click or key)
@@ -241,7 +254,14 @@ async function main() {
   /** The time the flashback's marker shows (minutes), or null when it is hidden. */
   let when: number | null = null;
   const showWhen = () => {
-    if (when !== null) whenEl.textContent = ui.lastNight[lang].replace('{t}', clockTime(when));
+    if (when !== null && STYLE.has(3)) {
+      // ?style=3: as the original's HUD clock, the time large and the day small after it
+      const t = document.createElement('span'), d = document.createElement('span');
+      t.textContent = clockTime(when);
+      d.className = 'day';
+      d.textContent = ui.lastNight[lang].replace('{t}', '').replace(/[,，\s]+$/, '');
+      whenEl.replaceChildren(t, d);
+    } else if (when !== null) whenEl.textContent = ui.lastNight[lang].replace('{t}', clockTime(when));
     whenEl.classList.toggle('on', when !== null);
     whenEl.setAttribute('aria-hidden', String(when === null));
   };
@@ -259,7 +279,7 @@ async function main() {
 
   const runner = new Runner(study, { seed: params.has('seed') ? Number(params.get('seed')) >>> 0 : undefined, forcedDice: parseDice(params.get('dice')) });
   let director: Director | null = null;
-  const log = new LogView(leftInk, measurer, logCol, clock, a11y, lang, (n) => { director?.choose(n); }, () => !!director?.idle);
+  const log = new LogView(leftInk, measurer, logCol, clock, a11y, lang, (n) => { director?.choose(n); }, () => !!director?.idle, LOOK);
 
   /** Re-renders the hover tip in the current language (set once the hover tips exist). */
   let refreshHot = () => {};
@@ -269,6 +289,8 @@ async function main() {
   // who bobs while their line types (Harry for 你 lines, Kim for his)
   let speaker: 'harry' | 'kim' | null = null;
   const bob = { harry: 0, kim: 0 };
+  /** ?style=3: the original's interaction markers and check / morale slips (made once the hover targets exist). */
+  let details: Details | null = null;
 
   if (STILL) {
     // the style board: study.clock right after Visual Calculus passes; morale 3 of 4
@@ -279,10 +301,14 @@ async function main() {
   } else {
     hearts.set(study.morale.start);
     director = new Director(runner, clock, log, {
-      dice, hearts, cues,
+      dice, cues,
       lead,
+      // a lost point also drops the morale slip (?style=3)
+      hearts: { to: async (v) => { const d = v - hearts.value; await hearts.to(v); if (d) void details?.morale(d); } },
       leads: (count, total) => { leads = { count, total }; invalidate(); },
       speaking: (who) => { speaker = who; },
+      checked: (success) => { void details?.check(success); },
+      chosen: () => details?.clear(),
     });
     director.onIdle = () => { hit.refresh(); invalidate(); };
   }
@@ -296,7 +322,9 @@ async function main() {
     log.setLang(lang);
     layoutRight();
     lead.setLang(lang);
-    document.getElementById('title')!.textContent = chrome.title[lang];
+    details?.setLang(lang);
+    // ?style=3 sets the title on the original's white plaque, without the title marks
+    document.getElementById('title')!.textContent = STYLE.has(3) ? chrome.title[lang].replace(/[《》]/g, '') : chrome.title[lang];
     document.getElementById('chapter')!.textContent = chrome.chapter[lang];
     document.getElementById('log-heading')!.textContent = chrome.logHeading[lang];
     showWhen();
@@ -326,7 +354,7 @@ async function main() {
     hover: (index, at) => {
       leftInk.setHover(index !== null && (STILL || director?.idle) ? index : null);
       const view = index !== null && !STILL ? log.optionAt(index) : undefined;
-      renderTooltip(tipEl, view, lang);
+      renderTooltip(tipEl, view, lang, STYLE.has(1));
       if (view && at && !tipEl.hidden) {
         const r = frameEl.getBoundingClientRect();
         const x = Math.min(at.clientX - r.left + 18, r.width - tipEl.offsetWidth - 8);
@@ -392,7 +420,8 @@ async function main() {
     // the morale and the leads name their count; the leads list what was found
     const count = hotShown === 'morale' ? ` ${state.morale} / ${study.morale.max}` : hotShown === 'leads' ? ` ${leads.count} / ${leads.total}` : '';
     const found = hotShown === 'leads' ? study.evidence.filter((f) => state.flags.has(f)).map((f) => EVIDENCE_LABELS[f][lang]) : [];
-    hotEl.querySelector('.name')!.textContent = spot.name[lang] + count;
+    // (?style=1: the original's caption is the sentence alone; a count keeps its name)
+    hotEl.querySelector('.name')!.textContent = STYLE.has(1) && !count ? '' : spot.name[lang] + count;
     hotEl.querySelector('.line')!.textContent = found.length ? found.join(lang === 'zh' ? '；' : '; ') + (lang === 'zh' ? '。' : '.') : tip[lang];
     hotEl.hidden = false;
     // near the pointer, inside the frame, and never over the log's column
@@ -412,9 +441,10 @@ async function main() {
     hotKey = key;
     clearTimeout(hotTimer);
     hot.highlight(null);
+    details?.hover(null);
     hotShown = null;
     hotEl.hidden = true;
-    if (key) hotTimer = window.setTimeout(() => { hotShown = key; hot.highlight(key); renderHot(); invalidate(); }, 120);
+    if (key) hotTimer = window.setTimeout(() => { hotShown = key; hot.highlight(key); details?.hover(key); renderHot(); invalidate(); }, 120);
     invalidate();
   };
   const ndc = new Vector2();
@@ -429,6 +459,15 @@ async function main() {
   });
   canvas.addEventListener('pointerleave', () => setHot(null));
   refreshHot = () => { if (hotShown) renderHot(); };
+
+  if (STYLE.has(3)) {
+    // (the targets' world matrices may not be current before the first render)
+    details = createDetails({ clock, camera: cam.camera, centers: (k) => { scene.updateMatrixWorld(); return hot.center(k); }, lang });
+    scene.add(details.group);
+    if (STILL) void details.check(true, true); // the style board's moment: Visual Calculus has just passed
+  }
+  /** The markers show while the options wait (always on the style board). */
+  let markersOn: boolean | null = null;
 
   // ---- size
   function resize() {
@@ -531,6 +570,10 @@ async function main() {
       bobbing ||= bob[name] > 0;
     }
     cues.update(ct);
+    if (details) {
+      const on = STILL || (!!director?.idle && !director.ended);
+      if (on !== markersOn) { markersOn = on; details.markers(on); needsRender = true; }
+    }
     if (!FROZEN) {
       t = now / 1000;
       snow.update(t);

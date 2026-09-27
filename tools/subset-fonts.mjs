@@ -5,12 +5,14 @@
 // (src/content/**/*.ts), the chrome in index.html, and the whole chapter-1 script in
 // docs/design.md §4.4, so the rest of chapter 1 needs no re-subset. They are split by role:
 //   serif (Noto Serif SC 400)   every character: dialogue, objects, places, chrome
-//   serif (Noto Serif SC 600)   narration (first lines are set bold)
+//   serif (Noto Serif SC 600)   narration (first lines are set bold), and the labels (the sans
+//                               role below): ?style=1 sets speaker names in bold serif, as the original
 //   sans  (Noto Sans SC 600)    labels: speaker names, skills, result and check tags, chrome labels,
 //                               the play's interface strings (src/content/ui.ts), evidence labels,
 //                               the names in the hover tips (src/content/hotspots.ts)
 //   mono  (LXGW WenKai Mono TC) the player's words: options and 你 / YOU lines
 //   EB Garamond 400/600, Inter 600, JetBrains Mono 400: every non-CJK character, plus printable ASCII
+//   Barlow Condensed 500: the same, for the original's condensed caps (?style=1, 3: bars, plaques)
 // The app's font stacks end in the serif subset, so a character missing from a role's
 // subset still draws (in the serif) rather than as tofu. Each file's cmap is checked
 // against what was asked for.
@@ -108,13 +110,14 @@ const all = new Set([...role.serif, ...role.bold, ...role.sans, ...role.mono]);
 const latin = [...all].filter((c) => !isCJK(c)).join('') + ASCII;
 const FACES = [
   { file: 'serif-sc-400.woff2', family: 'Noto Serif SC', weight: 400, text: [...all].join('') + ASCII },
-  { file: 'serif-sc-600.woff2', family: 'Noto Serif SC', weight: 600, text: [...role.bold].join('') + ASCII },
+  { file: 'serif-sc-600.woff2', family: 'Noto Serif SC', weight: 600, text: [...role.bold, ...role.sans].join('') + ASCII },
   { file: 'sans-sc-600.woff2', family: 'Noto Sans SC', weight: 600, text: [...role.sans].join('') + ASCII },
   { file: 'mono-sc-400.woff2', family: 'LXGW WenKai Mono TC', weight: 400, text: [...role.mono].filter(isCJK).join('') },
   { file: 'eb-garamond-400.woff2', family: 'EB Garamond', weight: 400, text: latin },
   { file: 'eb-garamond-600.woff2', family: 'EB Garamond', weight: 600, text: latin },
   { file: 'inter-600.woff2', family: 'Inter', weight: 600, text: latin },
   { file: 'jetbrains-mono-400.woff2', family: 'JetBrains Mono', weight: 400, text: latin },
+  { file: 'barlow-condensed-500.woff2', family: 'Barlow Condensed', weight: 500, text: latin },
 ];
 
 const curl = (url) => execFileSync('curl', ['-sS', '-f', '-A', UA, url], { maxBuffer: 1 << 26 });
