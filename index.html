@@ -125,8 +125,7 @@
      portraits in round frames; over Harry's, morale as the original's numbered blue cross over
      a row of pips (it takes the hover tip). Bottom right, on a dark strip, the clock, its digits
      condensed and thin. The time marker gives way to the clock (it stays for screen readers).
-     An inner voice's cue on the log panel's top edge; the check and morale banners as brushed
-     colour strips. */
+     The check and morale banners as brushed colour strips. */
   :root[data-ui="de"] .when{opacity:0;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
   .hud{position:absolute;inset:0;pointer-events:none;z-index:1}
   .hud [hidden]{display:none !important}
@@ -155,14 +154,6 @@
   .hud .clock .d{font:500 calc(14px * var(--s))/1 "Barlow Condensed","Elysium Sans SC","Inter",sans-serif;letter-spacing:.06em;color:#B7B0A2}
   .hud .clock.night{color:#A8CBE0}
   .hud .clock.night .d{color:#86A5B8}
-  .hud .voice{--attr:#5CB9D6;--flash:0;position:absolute}
-  .hud .voice .in{display:flex;align-items:baseline;gap:calc(9px * var(--s));padding:calc(5px * var(--s)) calc(18px * var(--s)) calc(5px * var(--s)) calc(14px * var(--s));
-    background:color-mix(in srgb,var(--attr) calc(var(--flash) * 100%),rgba(10,9,8,.92));border-left:calc(4px * var(--s)) solid var(--attr);
-    clip-path:polygon(0 0,calc(100% - 6px) 0,100% 45%,calc(100% - 3px) 100%,0 100%)}
-  .hud .voice .skill{font:500 calc(17px * var(--s))/1 "Barlow Condensed","Elysium Sans SC","Inter",sans-serif;letter-spacing:.07em;color:color-mix(in srgb,#fff calc(var(--flash) * 100%),var(--attr))}
-  :lang(en) .hud .voice .skill{text-transform:uppercase}
-  .hud .voice .attr{font:500 calc(11px * var(--s))/1 "Barlow Condensed","Elysium Sans SC","Inter",sans-serif;letter-spacing:.14em;color:rgba(226,220,208,.62)}
-  :lang(en) .hud .voice .attr{text-transform:uppercase}
   .hud .banner{position:absolute;transform:translateX(-50%);white-space:nowrap}
   .hud .banner span{display:block;padding:calc(6px * var(--s)) calc(28px * var(--s)) calc(7px * var(--s));background:#1E9C5E;
     font:500 calc(24px * var(--s))/1 "Barlow Condensed","Elysium Sans SC","Inter",sans-serif;letter-spacing:.06em;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.25);
@@ -170,7 +161,6 @@
   .hud .banner.fail span{background:#C0392A}
   .hud .banner.morale{transform:none;left:calc(212px * var(--s));bottom:calc(30px * var(--s))}
   .hud .banner.morale span{font-size:calc(20px * var(--s));background:#1C7FA0}
-  @supports not (background:color-mix(in srgb,red,blue)){ .hud .voice .in{background:rgba(10,9,8,.92)} .hud .voice .skill{color:var(--attr)} }
 
   /* the log mirrored for screen readers */
   .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}

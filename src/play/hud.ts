@@ -7,16 +7,16 @@
 //   - bottom right, on a dark strip, the clock: the present runs from the morning on, a minute a
 //     line, as the original's clock moves only with the dialogue; during the reconstruction it
 //     shows the time marker's minutes, 「昨晚」 after them.
-//   - over the top of the log's panel, an inner voice's cue: when a skill speaks, its name
-//     flashes in its attribute's colour.
 //   - the original's banners: CHECK SUCCESS / CHECK FAILURE under the dice when they settle,
 //     DAMAGED MORALE beside the portraits when a point is lost.
 // The original's health, tool icons (character sheet, inventory, journal, thought cabinet) and
-// film codes are left out: nothing in the chapter uses them (docs/ui.md 3.3).
+// film codes are left out: nothing in the chapter uses them (docs/ui.md 3.3). Nothing is laid
+// over the book either: the inner voices' cue that flashed a skill's name over the top of the
+// log's panel looked pasted on (a flat strip on the slanted page), and the log already prints
+// the name in the skill's colour.
 // Its animations run on the virtual clock (tweens named 'hud'), so ?speed and reduced motion hold.
 import type { Sound } from '../audio/sfx';
 import type { Lang, Line } from '../content/schema';
-import { ATTRIBUTES, SKILLS, skillName } from '../content/skills';
 import { ui } from '../content/ui';
 import { ease, type Clock } from './clock';
 import { HARRY_SVG, KIM_SVG } from './portraits';
@@ -67,7 +67,6 @@ export function createHud(frame: HTMLElement, o: HudOptions) {
       </svg>
       <div class="clock"><span class="t"></span><span class="d"></span></div>
     </div>
-    <div class="voice" hidden><div class="in"><span class="skill"></span><span class="attr"></span></div></div>
     <div class="banner check" hidden><span></span></div>
     <div class="banner morale" hidden><span></span></div>`;
   frame.append(el);
@@ -76,7 +75,6 @@ export function createHud(frame: HTMLElement, o: HudOptions) {
   const vitals = $('.vitals'), moraleStat = $('.stat.morale'), moraleNum = $('.stat.morale b');
   const moralePips = [...el.querySelectorAll<HTMLElement>('.pips .mp')];
   const clockT = $('.clock .t'), clockD = $('.clock .d'), clockEl = $('.clock');
-  const voice = $('.voice'), voiceSkill = $('.voice .skill'), voiceAttr = $('.voice .attr');
   const banners = { check: $('.banner.check'), morale: $('.banner.morale') };
 
   // morale's hover tip (the paper hearts' on the table, HOTSPOTS.morale), beside Kim's portrait,
@@ -90,7 +88,6 @@ export function createHud(frame: HTMLElement, o: HudOptions) {
 
   // ---- state
   let morale = o.morale.value, present = MORNING, night: number | null = null;
-  let voiced: Line | null = null;
   /** What each banner says (it is re-set when the language changes). */
   const said = new Map<HTMLElement, { key: 'checkSuccess' | 'checkFailure' | 'moraleSlip'; tail: string }>();
   const say = (b: HTMLElement) => { const t = said.get(b); b.firstElementChild!.textContent = t ? ui[t.key][lang] + t.tail : ''; };
@@ -103,14 +100,6 @@ export function createHud(frame: HTMLElement, o: HudOptions) {
     clockT.innerHTML = `${t.slice(0, 2)}<span class="colon">:</span>${t.slice(3)}`;
     clockD.textContent = night === null ? ui.day[lang] : ui.lastNight[lang].replace('{t}', '').replace(/[,，\s]+$/, '');
     clockEl.classList.toggle('night', night !== null);
-  };
-  const showVoice = () => {
-    const s = voiced?.speaker;
-    if (typeof s !== 'string' || !(s in SKILLS)) return;
-    const skill = SKILLS[s as keyof typeof SKILLS];
-    voiceSkill.textContent = skillName(s as keyof typeof SKILLS, voiced!.sense, lang);
-    voiceAttr.textContent = ATTRIBUTES[skill.attribute].name[lang];
-    voice.style.setProperty('--attr', ATTRIBUTES[skill.attribute].panel);
   };
   showMorale();
   showClock();
@@ -134,15 +123,12 @@ export function createHud(frame: HTMLElement, o: HudOptions) {
     await clock.tween(420, (p) => { if (mine()) frame(1 - p, true); }, ease.inOut, 'hud');
     if (mine()) node.hidden = true;
   }
-  /** Lets a cue shown until further notice go. */
-  const release = (node: HTMLElement) => lives.get(node)?.leave();
 
   return {
     el,
     setLang(l: Lang) {
       lang = l;
       showClock();
-      showVoice();
       for (const b of Object.values(banners)) say(b);
     },
     /** Morale as shown. */
@@ -184,25 +170,10 @@ export function createHud(frame: HTMLElement, o: HudOptions) {
       }
       showMorale();
     },
-    /**
-     * A line starts: the present moves on a minute. A skill's line flashes its cue, which stays
-     * while the line is the newest; any other line lets it go.
-     */
-    line(line: Line) {
+    /** A line starts: the present moves on a minute (the original's clock moves only with the dialogue). */
+    line(_line: Line) {
       if (night === null) { present++; showClock(); }
-      const s = line.speaker;
-      if (typeof s !== 'string' || !(s in SKILLS)) { release(voice); return; }
-      voiced = line;
-      showVoice();
-      // the flash: the strip lights in the skill's colour and settles to black, the name to that colour
-      void live(voice, Infinity, (p, out) => {
-        voice.style.opacity = String(out ? p : Math.min(1, p * 2.5));
-        voice.style.setProperty('--flash', out ? '0' : String(1 - p));
-        if (!out) voice.style.clipPath = `inset(0 ${(1 - Math.min(1, p * 1.6)) * 100}% 0 0)`;
-      });
     },
-    /** The options are up (or the chapter is over): the last voice's cue goes. */
-    quiet() { release(voice); },
     /** Who is speaking (their line is typing): their frame lights. */
     speaking(who: 'harry' | 'kim' | null) {
       faces.harry.classList.toggle('speaking', who === 'harry');
@@ -221,11 +192,6 @@ export function createHud(frame: HTMLElement, o: HudOptions) {
       b.style.left = `calc(${at.x}px * var(--s))`;
       b.style.top = `calc(${at.y}px * var(--s))`;
       void live(b, HOLD.banner, (p) => { b.style.opacity = String(p); b.style.clipPath = `inset(0 ${(1 - p) * 100}% 0 0)`; });
-    },
-    /** Where the voice cue sits: frame px of the panel's top left. */
-    place(at: { x: number; y: number }) {
-      voice.style.left = `calc(${at.x}px * var(--s))`;
-      voice.style.top = `calc(${at.y}px * var(--s))`;
     },
   };
 }

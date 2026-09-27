@@ -24,12 +24,13 @@ export interface Column { x0: number; x1: number; y0: number; y1: number }
 /**
  * The text window on the left top sheet: from just under its tear down to the near edge,
  * its right margin (596, 11% of the page from the gutter) kept off the steep part of the
- * pages' curve into the gutter. The original look ends it higher, for the CONTINUE bar under it;
- * the dark panel (de) a little higher still, for its taller bar, and starts it a little further
- * in, clear of the film strip down the panel's outer edge.
+ * pages' curve into the gutter. The original look ends it higher, for the CONTINUE bar under it.
+ * The dark panel (de) keeps wider margins all round (the user asked for visible margins): in
+ * 60 from the outer edge, well clear of the film strip; 96 short of the gutter, clear of the
+ * scroll track; its CONTINUE bar ending 38 above the near edge.
  */
 export const textColumn = (y0: number, look: LogLook = BOARD): Column =>
-  (look.kind === 'de' ? { x0: 36, x1: 596, y0, y1: PAGE.h - 54 } : { x0: 30, x1: 596, y0, y1: PAGE.h - (look.marker === 'bar' ? 50 : 30) });
+  (look.kind === 'de' ? { x0: 60, x1: 574, y0, y1: PAGE.h - 70 } : { x0: 30, x1: 596, y0, y1: PAGE.h - (look.marker === 'bar' ? 50 : 30) });
 /** Old lines fade out over this many page px as they rise into the tear. */
 export const FADE = 44;
 
@@ -187,7 +188,11 @@ const STACKS: Record<Lang, Record<Family, string>> = {
   },
 };
 
-interface Metrics { narr: number; mono: number; label: number; tag: number; roll: number; res: number; lineHeight: number }
+interface Metrics {
+  narr: number; mono: number; label: number; tag: number; roll: number; res: number; lineHeight: number;
+  /** Space after an entry (a paragraph), and after an option. */
+  gap: number; optionGap: number;
+}
 /**
  * Sized for the screen, not the canvas. Under the camera the text window shows at about
  * 0.74 (top) .. 0.82 (bottom) screen px per page px vertically and 0.86-0.9 horizontally;
@@ -196,8 +201,18 @@ interface Metrics { narr: number; mono: number; label: number; tag: number; roll
  * measured values). The M0 board's proportions between the styles are kept.
  */
 const SIZES: Record<Lang, Metrics> = {
-  zh: { narr: 24.5, mono: 22.3, label: 17.8, tag: 17.8, roll: 21.2, res: 19, lineHeight: 34.4 },
-  en: { narr: 25, mono: 19.3, label: 14.4, tag: 14.4, roll: 18.2, res: 15.1, lineHeight: 32.8 },
+  zh: { narr: 24.5, mono: 22.3, label: 17.8, tag: 17.8, roll: 21.2, res: 19, lineHeight: 34.4, gap: 2, optionGap: 2 },
+  en: { narr: 25, mono: 19.3, label: 14.4, tag: 14.4, roll: 18.2, res: 15.1, lineHeight: 32.8, gap: 2, optionGap: 2 },
+};
+/**
+ * The dark panel's type (de, the default): about a tenth smaller than the page's, on an open
+ * leading (1.66 in Chinese, 1.56 in English), with a paragraph space of about 0.4 line between
+ * entries and a little space between the options: the user asked for smaller text with visible
+ * line spacing, paragraph spacing and margins.
+ */
+const SIZES_DE: Record<Lang, Metrics> = {
+  zh: { narr: 22, mono: 20, label: 16, tag: 16, roll: 19, res: 17, lineHeight: 36.5, gap: 15, optionGap: 7 },
+  en: { narr: 22.5, mono: 17.4, label: 13, tag: 13, roll: 16.4, res: 13.6, lineHeight: 35, gap: 14, optionGap: 6 },
 };
 
 const font = (lang: Lang, s: Style) => `${s.weight} ${s.size}px ${STACKS[lang][s.family]}`;
@@ -334,7 +349,7 @@ function keepLastSentence(lang: Lang, m: Measurer, atoms: Atom[], lines: Placed[
 const lastIndex = <T>(xs: T[], f: (x: T) => boolean) => { for (let i = xs.length - 1; i >= 0; i--) if (f(xs[i])) return i; return -1; };
 
 export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Column, look: LogLook = BOARD): PageLayout {
-  const S = SIZES[lang];
+  const S = (look.kind === 'de' ? SIZES_DE : SIZES)[lang];
   const maxW = col.x1 - col.x0;
   // the dark panel (de) is set like the original look, in the original's own light inks
   const dark = look.kind === 'de', orig = look.kind !== 'board', O = dark ? INK_DE : INK_ORIGINAL;
@@ -369,6 +384,8 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
   const plain: string[] = [];
   let cursor: Rect | null = null;
   let y = 0; // laid out from the top, anchored to the bottom of the window afterwards
+  /** The space left after the last entry (not counted when the log is anchored to the window's bottom). */
+  let trail = 2;
 
   entries.forEach((e, idx) => {
     // older entries fade: the player's past words to 0.75, everything before the last of them to 0.84
@@ -413,7 +430,8 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
         const critStyle: Style = { ...narr, color: e.success ? bodyInk : dark ? INK_DE.crit : INK.red };
         pushText(items, lang, x + m.width(lang, roll, rollText) + sep, m.baseline(lang, critStyle, rowMid - lh / 2, lh), crit, critStyle, alpha);
       }
-      y = rowMid + lh / 2 + 4;
+      trail = 2 + S.gap;
+      y = rowMid + lh / 2 + trail;
       plain.push(`${tag.open}${tag.skill}${tag.rest} ${rollText}${crit ? ' ' + crit : ''}`);
       tagItems();
       return;
@@ -428,7 +446,8 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
       y += S.lineHeight * 0.5;
       pushText(items, lang, cx - w / 2, m.baseline(lang, st, y, lh), text, st, 0.9);
       items.push({ t: 'rule', color: dark ? INK_DE.option : INK.cursor, alpha: 0.75, box: { x: cx - 22, y: y + lh - 2, w: 44, h: 1.4 } });
-      y += lh + 8;
+      trail = 8;
+      y += lh + trail;
       plain.push(text);
       tagItems();
       return;
@@ -448,7 +467,8 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
         for (const p of line) if (!p.atom.space) pushText(items, lang, col.x0 + p.x, bl, p.atom.text, p.atom.style, alpha);
         y += lh;
       }
-      y += 5;
+      trail = 3 + S.gap;
+      y += trail;
       plain.push(`${text}${countText}`);
       tagItems();
       return;
@@ -611,13 +631,15 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
       const check = e.option.check?.kind === 'red' ? 'red' : e.option.check ? 'white' : null;
       options.push({ index: optionIndex, number: e.number, greyed, check, rect: { x: col.x0 - 10, y: top, w: maxW + 20, h: lines.length * lh } });
     }
-    y += 2;
+    trail = e.kind === 'option' ? S.optionGap : S.gap;
+    y += trail;
     tagItems();
   });
 
   // bottom-anchored: the newest line sits at the bottom of the window; older lines rise
-  // toward the tear, fade, and are clipped there (scroll back with the wheel to read them)
-  const content = y - 2;
+  // toward the tear, fade, and are clipped there (scroll back with the wheel to read them).
+  // (The page's looks always took 2 off, whatever came last; the panel takes off what did.)
+  const content = y - (look.kind === 'de' ? trail : 2);
   const shift = col.y1 - content;
   for (const it of items) {
     it.box.y += shift; // the cursor rect is its item's box, so it moves too
