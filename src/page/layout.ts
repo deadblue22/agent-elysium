@@ -628,9 +628,9 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
   let marker: PageLayout['marker'];
   if (look.marker === 'bar') {
     // the original's CONTINUE bar: across the column, right under the newest line (on the dark
-    // panel as tall as the original's, its caps about half its height)
+    // panel as tall as the original's, its thin caps about half its height)
     const h = dark ? 28 : 26, top = col.y1 + 4, size = dark ? (lang === 'zh' ? 17.5 : 20) : lang === 'zh' ? 18.5 : 22;
-    const st: Style = { family: 'cond', size, weight: 500, color: O.barText, ls: size * (lang === 'zh' ? 0.14 : 0.1), stroke: 0 };
+    const st: Style = { family: 'cond', size, weight: dark ? 300 : 500, color: O.barText, ls: size * (lang === 'zh' ? 0.14 : 0.1), stroke: 0 };
     marker = { x: col.x0 + (dark ? 22 : 12), y: m.baseline(lang, st, top, h) + 0.5, text: ui.continueBar[lang], font: font(lang, st), color: st.color, ls: st.ls, bar: { x: col.x0 - 4, y: top, w: maxW + 8, h, fill: O.bar } };
   } else {
     const ms = lang === 'zh' ? 18 : 15.5;
