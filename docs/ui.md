@@ -8,7 +8,7 @@
 
 ## 1. 查看方式
 
-- 第六轮起为默认，不需要参数（`?ui=de` 仍然有效）。可与 `?still`、`?lang=en`、`?view=`、`?cast=`、`?style=`、`?look=` 同用。
+- 第六轮起为默认，不需要参数（`?ui=de` 仍然有效）。可与 `?still`、`?lang=en`、`?view=`、`?style=`、`?look=` 同用。
 - `?ui=book`：此前的书页排法（日志印在纸上、桌上的纸心、没有 HUD）。`?ui=book&look=warm` 是第五轮之前的默认画面，`?still&ui=book&look=warm` 的静帧与第六轮之前 `main` 的 `?still` 逐像素一致。
 - 第四轮的 `?style=1`、`?style=3` 是按书页排法设计的：在深色面板下，日志按面板排；`?style=3` 不再印页边滚动条与编码（深色面板自带）。要看它们原来的样子，加 `ui=book&look=warm`。
 

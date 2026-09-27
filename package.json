@@ -12,6 +12,7 @@
     "shot": "node tools/shot.mjs",
     "play": "node tools/play.mjs",
     "fonts": "node tools/subset-fonts.mjs",
+    "papercraft": "node tools/papercraft/harry.mjs && node tools/papercraft/kim.mjs && node tools/bake.mjs harry kim",
     "extract-art": "node tools/extract-art.mjs",
     "test": "vitest run"
   },
