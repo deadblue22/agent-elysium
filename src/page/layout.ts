@@ -5,10 +5,12 @@
 // The `original` look (?style=1) sets it closer to the original's panel instead: names in bold
 // serif, an en dash, continuation lines hung in, options in the body face after 「1. -」, the
 // dice tag unboxed, a new lead as a green system line, and a CONTINUE bar under the text.
+// The `de` look (?ui=de) sets the same conventions light on the original's dark panel, which
+// the painter lays over the page (src/page/de.ts).
 // Line breaking: CJK per character with kinsoku, Latin per word.
 // Everything is in page px (the legacy board's CSS px; the page is 670 x 720).
 // The painter scales it to the canvas.
-import type { Lang, LogEntry } from '../content/schema';
+import type { Lang, LogEntry, Speaker } from '../content/schema';
 import { checkTag, resultTag, speakerInk, speakerName } from '../content/skills';
 import { EVIDENCE_LABELS } from '../content/study';
 import { CRIT, ui } from '../content/ui';
@@ -22,9 +24,12 @@ export interface Column { x0: number; x1: number; y0: number; y1: number }
 /**
  * The text window on the left top sheet: from just under its tear down to the near edge,
  * its right margin (596, 11% of the page from the gutter) kept off the steep part of the
- * pages' curve into the gutter. The original look ends it higher, for the CONTINUE bar under it.
+ * pages' curve into the gutter. The original look ends it higher, for the CONTINUE bar under it;
+ * the dark panel (de) a little higher still, for its taller bar, and starts it a little further
+ * in, clear of the film strip down the panel's outer edge.
  */
-export const textColumn = (y0: number, look: LogLook = BOARD): Column => ({ x0: 30, x1: 596, y0, y1: PAGE.h - (look.marker === 'bar' ? 50 : 30) });
+export const textColumn = (y0: number, look: LogLook = BOARD): Column =>
+  (look.kind === 'de' ? { x0: 36, x1: 596, y0, y1: PAGE.h - 54 } : { x0: 30, x1: 596, y0, y1: PAGE.h - (look.marker === 'bar' ? 50 : 30) });
 /** Old lines fade out over this many page px as they rise into the tear. */
 export const FADE = 44;
 
@@ -86,10 +91,11 @@ export const INK = {
 /**
  * How the log is set. `board` is the M0 board's (the default). `original` (?style=1) follows
  * the original's dialogue panel, printed on the cream page: its light-on-dark colours turned
- * into inks of the same hues.
+ * into inks of the same hues. `de` (?ui=de) follows it in its own colours, light on the dark
+ * panel the painter lays over the page.
  */
 export interface LogLook {
-  kind: 'board' | 'original';
+  kind: 'board' | 'original' | 'de';
   /** Speaker names: letterspaced sans labels, or bold serif at the body size (the original's). */
   names: 'label' | 'bold';
   /** Continuation lines of a speaker's line hang in by this many em (the original: about one). */
@@ -114,6 +120,7 @@ export interface LogLook {
 
 export const BOARD: LogLook = { kind: 'board', names: 'label', hang: 0, options: 'mono', diceTag: 'box', notice: 'box', marker: 'text', checks: 'mark', cursor: true };
 export const ORIGINAL: LogLook = { kind: 'original', names: 'bold', hang: 1.05, options: 'serif', diceTag: 'plain', notice: 'line', marker: 'bar', checks: 'bars', cursor: false };
+export const DE: LogLook = { ...ORIGINAL, kind: 'de' };
 
 /**
  * Inks of the original look. The original prints light text on a dark panel: bold white names,
@@ -133,6 +140,27 @@ export const INK_ORIGINAL = {
   white: '#FBF8F0', whiteText: '#231E1A', locked: '#958D80', // a white check's slip, its words, a failed one's words
   red: '#D24A21', redText: '#44110A', redHover: '#FFF5EB',     // a red check's slip, its words, hovered
   bar: '#A5351D', barText: '#F4EADB',                          // the CONTINUE bar
+};
+
+/**
+ * Inks of the dark panel (?ui=de): the original's own, sampled from its screenshots (docs/ui.md):
+ * a light grey body under white names, grey tags, orange-red options (#FC5424) after white
+ * numbers, white when hovered; a white check on a pale slip, a red check on an orange-red one;
+ * the green of its 「New task:」 lines; the cyan CONTINUE bar (#5CC4D6) and its red smear
+ * (#8C2414). Skill names take their attribute's panel colour (ATTRIBUTES[].panel).
+ */
+export const INK_DE = {
+  text: '#E4DFD4',     // the body
+  name: '#F8F5EF',     // people, objects, places, 你 / YOU, the option numbers
+  muted: '#948F85',    // result tags, the dice tag
+  option: '#F4592B',   // the options
+  seen: '#A9644C',     // an option chosen before
+  hover: '#FFFFFF',    // a hovered option
+  lead: '#9DBE8C',     // a new lead
+  crit: '#EC6A4A',     // snake eyes on a failed roll
+  white: '#D5D0C3', whiteHover: '#F6F2EA', whiteText: '#17140F', locked: '#7D776C', // a white check's slip, hovered, its words, a failed one's words
+  red: '#D6431D', redText: '#2A0A03', redHover: '#FFF4EA',                         // a red check's slip, its words, hovered
+  bar: '#5CC4D6', barText: '#FFFFFF', splash: '#8C2414',                           // the CONTINUE bar and its smear
 };
 
 type Family = 'serif' | 'sans' | 'mono' | 'cond';
@@ -308,8 +336,12 @@ const lastIndex = <T>(xs: T[], f: (x: T) => boolean) => { for (let i = xs.length
 export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Column, look: LogLook = BOARD): PageLayout {
   const S = SIZES[lang];
   const maxW = col.x1 - col.x0;
-  const orig = look.kind === 'original', O = INK_ORIGINAL;
-  const narr: Style = { family: 'serif', size: S.narr, weight: 400, color: INK.log, ls: 0, stroke: 0 };
+  // the dark panel (de) is set like the original look, in the original's own light inks
+  const dark = look.kind === 'de', orig = look.kind !== 'board', O = dark ? INK_DE : INK_ORIGINAL;
+  /** The body's ink, and a speaker's: skills in their attribute's ink on the page, in its panel colour on the panel. */
+  const bodyInk = dark ? INK_DE.text : INK.log;
+  const inkOf = (s: Speaker, neutral: string) => speakerInk(s, neutral, dark ? 'panel' : 'ink');
+  const narr: Style = { family: 'serif', size: S.narr, weight: 400, color: bodyInk, ls: 0, stroke: 0 };
   const mono = (color: string, stroke: number): Style => ({ family: 'mono', size: S.mono, weight: 400, color, ls: S.mono * 0.02, stroke });
   /** The face of the options and the player's words: the typewriter's, or the body's (the original look). */
   const said = (color: string, stroke: number): Style => (look.options === 'serif' ? { ...narr, color } : mono(color, stroke));
@@ -319,7 +351,7 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
   const result: Style = orig
     ? { ...narr, color: O.muted }
     : { family: 'sans', size: S.label * 0.94, weight: 600, color: INK.muted, ls: S.label * 0.04, stroke: 0 };
-  const dash: Style = { family: 'sans', size: S.label, weight: 600, color: INK.log, ls: 0, stroke: 0 };
+  const dash: Style = { family: 'sans', size: S.label, weight: 600, color: bodyInk, ls: 0, stroke: 0 };
   /** The dash after the speaker (drawn as a rule): the board's long one, or the original's en dash. */
   const rule = orig ? { len: S.narr * 0.5, pad: [S.narr * 0.3, S.narr * 0.32] as [number, number] } : { len: S.label * 0.8, pad: [S.label * 0.3, S.label * 0.45] as [number, number] };
   const nameInk = orig ? O.name : INK.name;
@@ -356,7 +388,7 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
       const tagMuted: Style = boxed ? { family: 'sans', size: S.tag, weight: 600, color: INK.muted, ls: S.tag * 0.05, stroke: 0 } : result;
       const tagSkill: Style = boxed
         ? { ...tagMuted, color: speakerInk(e.check.skill, INK.name), ls: S.tag * 0.1, stroke: 0.2 }
-        : { ...label(speakerInk(e.check.skill, O.name)), weight: 400, ls: 0 };
+        : { ...label(inkOf(e.check.skill, O.name)), weight: 400, ls: 0 };
       const roll: Style = boxed ? { family: 'mono', size: S.roll, weight: 400, color: INK.log, ls: S.roll * 0.05, stroke: 0.25 } : { ...narr, ls: S.narr * 0.03 };
       const rollText = `${e.dice[0]} + ${e.dice[1]} + ${e.total - e.dice[0] - e.dice[1]} = ${e.total}`;
       const wOpen = m.width(lang, tagMuted, tag.open), wSkill = m.width(lang, tagSkill, tag.skill), wRest = m.width(lang, tagMuted, tag.rest);
@@ -378,7 +410,7 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
       // snake eyes, boxcars: the fixed phrase after the roll (§5.3)
       const crit = e.dice[0] + e.dice[1] === 2 ? CRIT.snake[lang] : e.dice[0] + e.dice[1] === 12 ? CRIT.boxcars[lang] : '';
       if (crit) {
-        const critStyle: Style = { ...narr, color: e.success ? INK.log : INK.red };
+        const critStyle: Style = { ...narr, color: e.success ? bodyInk : dark ? INK_DE.crit : INK.red };
         pushText(items, lang, x + m.width(lang, roll, rollText) + sep, m.baseline(lang, critStyle, rowMid - lh / 2, lh), crit, critStyle, alpha);
       }
       y = rowMid + lh / 2 + 4;
@@ -390,12 +422,12 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
     if (e.kind === 'end') {
       // 「第一章 完」: centred on the column, a little larger than the narration, over a short rust rule
       const size = S.narr * 1.1, lh = S.lineHeight * 1.6;
-      const st: Style = { family: 'serif', size, weight: 400, color: INK.log, ls: size * (lang === 'zh' ? 0.32 : 0.08), stroke: 0.3 };
+      const st: Style = { family: 'serif', size, weight: 400, color: bodyInk, ls: size * (lang === 'zh' ? 0.32 : 0.08), stroke: 0.3 };
       const text = ui.chapterEnd[lang];
       const w = m.width(lang, st, text) - st.ls, cx = (col.x0 + col.x1) / 2;
       y += S.lineHeight * 0.5;
       pushText(items, lang, cx - w / 2, m.baseline(lang, st, y, lh), text, st, 0.9);
-      items.push({ t: 'rule', color: INK.cursor, alpha: 0.75, box: { x: cx - 22, y: y + lh - 2, w: 44, h: 1.4 } });
+      items.push({ t: 'rule', color: dark ? INK_DE.option : INK.cursor, alpha: 0.75, box: { x: cx - 22, y: y + lh - 2, w: 44, h: 1.4 } });
       y += lh + 8;
       plain.push(text);
       tagItems();
@@ -513,7 +545,7 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
         // speaker, [result tag], em dash (drawn as a rule so its length does not depend on the font), words
         const name = speakerName(line, lang);
         // (the original names the Horrific Necktie like a person, in the neutral ink)
-        const ink = orig && line.speaker === 'necktie' ? nameInk : speakerInk(line.speaker, nameInk);
+        const ink = orig && line.speaker === 'necktie' ? nameInk : inkOf(line.speaker, nameInk);
         runs = [{ text: nbsp(caps(name)), style: label(ink), keep: true }];
         const tag = line.result ? resultTag(line.result, lang) : '';
         if (tag) runs.push({ text: nbsp(tag), style: result, glue: true, keep: true, pad: [orig ? S.narr * 0.28 : S.label * 0.4, 0] });
@@ -595,10 +627,11 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
   const room = col.y1 - col.y0 - FADE * 0.6;
   let marker: PageLayout['marker'];
   if (look.marker === 'bar') {
-    // the original's CONTINUE bar: across the column, right under the newest line
-    const h = 26, top = col.y1 + 4, size = lang === 'zh' ? 18.5 : 22;
-    const st: Style = { family: 'cond', size, weight: 500, color: O.barText, ls: size * (lang === 'zh' ? 0.14 : 0.1), stroke: 0 };
-    marker = { x: col.x0 + 12, y: m.baseline(lang, st, top, h) + 0.5, text: ui.continueBar[lang], font: font(lang, st), color: st.color, ls: st.ls, bar: { x: col.x0 - 4, y: top, w: maxW + 8, h, fill: O.bar } };
+    // the original's CONTINUE bar: across the column, right under the newest line (on the dark
+    // panel as tall as the original's, its thin caps about half its height)
+    const h = dark ? 28 : 26, top = col.y1 + 4, size = dark ? (lang === 'zh' ? 17.5 : 20) : lang === 'zh' ? 18.5 : 22;
+    const st: Style = { family: 'cond', size, weight: dark ? 300 : 500, color: O.barText, ls: size * (lang === 'zh' ? 0.14 : 0.1), stroke: 0 };
+    marker = { x: col.x0 + (dark ? 22 : 12), y: m.baseline(lang, st, top, h) + 0.5, text: ui.continueBar[lang], font: font(lang, st), color: st.color, ls: st.ls, bar: { x: col.x0 - 4, y: top, w: maxW + 8, h, fill: O.bar } };
   } else {
     const ms = lang === 'zh' ? 18 : 15.5;
     const mk: Style = { family: 'sans', size: ms, weight: 600, color: INK.cursor, ls: ms * 0.18, stroke: 0.3 };

@@ -12,8 +12,12 @@
 // camera sees the page at a slant, which squashes the glyphs; drawn a little taller, they
 // read with their true proportions. The layout stays unstretched (its own page px); the
 // painter maps it, and hands out option boxes in the page's real px.
+//
+// The dark look (?ui=de) is printed on the original's dark panel (src/page/de.ts), painted once
+// per canvas size and drawn under the ink after it, so the ink's fades never touch it.
 import { CanvasTexture, LinearFilter, LinearMipmapLinearFilter, SRGBColorSpace } from 'three';
-import { INK, INK_ORIGINAL, PAGE, type DrawItem, type PageLayout, type Rect } from './layout';
+import { continueBar as panelBar, paintPanel, paintTrack } from './de';
+import { INK, INK_DE, INK_ORIGINAL, PAGE, type DrawItem, type PageLayout, type Rect } from './layout';
 
 /** When scrolled back, the newest lines leave through the bottom of the window over this many page px. */
 const BOTTOM_FADE = 16;
@@ -40,6 +44,8 @@ export class PagePainter {
   private anchor = 0;
   /** The original panel's furniture in the margins (?style=3): the scroll track, the edge codes. */
   private decor = false;
+  /** The dark panel (?ui=de), painted at the canvas's size for the window's top (`key`). */
+  private panel: { key: string; canvas: HTMLCanvasElement } | null = null;
 
   constructor(anisotropy: number, scale: number) {
     this.ctx = this.canvas.getContext('2d', { alpha: true })!;
@@ -170,10 +176,10 @@ export class PagePainter {
    * The checks' bars (the original look), in layout px at scroll 0: every check sits on one,
    * a white check on a white slip of paper, a red check on an orange-red one.
    */
-  private bars(): { rect: Rect; check: 'white' | 'red' }[] {
+  private bars(): { rect: Rect; check: 'white' | 'red'; hovered: boolean }[] {
     const l = this.layout;
     if (!l || l.look.checks !== 'bars') return [];
-    return l.options.flatMap((o) => (o.check ? [{ rect: { x: o.rect.x + 5, y: o.rect.y + 2, w: o.rect.w - 10, h: o.rect.h - 3 }, check: o.check }] : []));
+    return l.options.flatMap((o) => (o.check ? [{ rect: { x: o.rect.x + 5, y: o.rect.y + 2, w: o.rect.w - 10, h: o.rect.h - 3 }, check: o.check, hovered: o.index === this.hover && !o.greyed }] : []));
   }
 
   /** Repaints the whole page (rect = null) or only what lies inside rect (page px, as drawn). */
@@ -198,16 +204,19 @@ export class PagePainter {
     ctx.lineJoin = 'round';
     const shifted = { x: r.x, y: r.y - dy, w: r.w, h: r.h };
     ctx.translate(0, dy);
+    const dark = this.layout?.look.kind === 'de';
     for (const b of this.bars()) {
       // the original's check bars as slips of paper, their right ends torn: a hairline of
-      // shadow under the white one, which is only a little lighter than the page
+      // shadow under the white one, which is only a little lighter than the page. On the dark
+      // panel the slips are the original's own colours, the white one brighter when hovered
       const { x, y, w, h } = b.rect;
       ctx.globalAlpha = 1;
-      if (b.check === 'white') {
+      if (b.check === 'white' && !dark) {
         ctx.fillStyle = 'rgba(70,56,40,.2)';
         roughRect(ctx, { x: x + 0.8, y: y + 1.2, w, h }, 3);
       }
-      ctx.fillStyle = b.check === 'white' ? INK_ORIGINAL.white : INK_ORIGINAL.red;
+      const inks = dark ? INK_DE : INK_ORIGINAL;
+      ctx.fillStyle = b.check === 'red' ? inks.red : dark && b.hovered ? INK_DE.whiteHover : inks.white;
       roughRect(ctx, { x, y, w, h }, 3);
     }
     for (const it of this.layout?.items ?? []) {
@@ -218,7 +227,8 @@ export class PagePainter {
     }
     ctx.restore();
     if (win) this.fades(r, win);
-    if (win && this.decor) this.margins(r, win);
+    if (win && this.decor && !dark) this.margins(r, win);
+    if (win && dark) this.under(r, win);
     const mk = this.layout?.marker;
     if (mk && this.marker) {
       // it pulses with the cursor between full and dim, so it never disappears (the bar holds
@@ -228,7 +238,7 @@ export class PagePainter {
       ctx.beginPath();
       ctx.rect(r.x, r.y, r.w, r.h);
       ctx.clip();
-      if (mk.bar) continueBar(ctx, mk.bar);
+      if (mk.bar) (dark ? panelBar : continueBar)(ctx, mk.bar);
       ctx.font = mk.font;
       ctx.fillStyle = mk.color;
       ctx.globalAlpha = this.cursorOn || mk.bar ? 1 : 0.6;
@@ -331,6 +341,42 @@ export class PagePainter {
     ctx.restore();
   }
 
+  /**
+   * The dark panel (?ui=de) inside r (layout px): the scroll track over it, then the panel,
+   * drawn under what is already there (the ink, faded into the tear, and the track).
+   */
+  private under(r: Rect, win: NonNullable<PageLayout['window']>) {
+    const { ctx, scale } = this;
+    ctx.save();
+    this.transform();
+    ctx.beginPath();
+    ctx.rect(r.x, r.y, r.w, r.h);
+    ctx.clip();
+    paintTrack(ctx, win, this.scroll, this.layout?.scrollMax ?? 0);
+    ctx.restore();
+    // the panel reaches from the window's top into the tear, and is the same for every repaint:
+    // painted once for this canvas and window
+    const top = Math.round(this.toPage(win.y0)), key = `${this.canvas.width}x${this.canvas.height}:${top}`;
+    if (this.panel?.key !== key) {
+      const canvas = this.panel?.canvas ?? document.createElement('canvas');
+      canvas.width = this.canvas.width;
+      canvas.height = this.canvas.height;
+      const pc = canvas.getContext('2d')!;
+      pc.setTransform(scale, 0, 0, scale, 0, 0);
+      paintPanel(pc, top);
+      this.panel = { key, canvas };
+    }
+    ctx.save();
+    const y0 = this.toPage(r.y) * scale, y1 = this.toPage(r.y + r.h) * scale;
+    ctx.beginPath();
+    ctx.rect(r.x * scale, y0, r.w * scale, y1 - y0);
+    ctx.clip();
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'destination-over';
+    ctx.drawImage(this.panel.canvas, 0, 0);
+    ctx.restore();
+  }
+
   private draw(it: DrawItem, shown: number) {
     const { ctx } = this;
     ctx.globalAlpha = 1;
@@ -371,9 +417,12 @@ export class PagePainter {
     const opt = it.option !== undefined ? this.layout?.options.find((o) => o.index === it.option) : undefined;
     const hovered = !!opt && it.option === this.hover && !opt.greyed;
     // hovered words: the board's brighter rust; in the original they turn white, its brightest
-    // ink: on the page, black, and on a red check's bar, light
-    const original = this.layout?.look.checks === 'bars';
-    const color = !hovered ? it.color : !original ? INK.hover : opt.check === 'red' ? INK_ORIGINAL.redHover : INK_ORIGINAL.hover;
+    // ink: on the page, black, and on a red check's bar, light. On the dark panel they turn
+    // white as in the original, but on a white check's slip (which brightens instead)
+    const kind = this.layout?.look.kind, original = this.layout?.look.checks === 'bars';
+    const color = !hovered ? it.color
+      : kind === 'de' ? (opt.check === 'red' ? INK_DE.redHover : opt.check === 'white' ? it.color : INK_DE.hover)
+      : !original ? INK.hover : opt.check === 'red' ? INK_ORIGINAL.redHover : INK_ORIGINAL.hover;
     const text = shown === Infinity ? it.text : [...it.text].slice(0, shown).join('');
     ctx.font = it.font;
     ctx.globalAlpha = it.alpha;

@@ -39,6 +39,11 @@
   - 音效：用 Web Audio 实时合成（`src/audio/sfx.ts`），覆盖写字、骰子、检定、内心声音、线索、士气、纸片、窗扇、钟、脚步、蜡烛等；右上角独立开关。
   - 背景音乐：换成用户提供的录音 `public/audio/elysium.mp3`，音量比原文件低约 9 dB；合成曲（`score.ts`、`engine.ts`）已删除。
   - 按用户试听反馈改了两个音效：打字声改为铅笔写字（每字两笔、有抬笔），骰子改为清脆的塑料磕碰与弹跳。
+- 第五轮（用户反馈原作风格体现不够、场景太温馨，需要更大胆的尝试；附五张原作参考图）：三个子任务并行。
+  - `?ui=de`：左页日志印成原作的深色对话面板（白色衬线字、粗体大写名称、按属性着色的技能名、检定纸条、青色继续条与红色颜料），画面四周加原作的 HUD（哈里与金的圆形头像、生命与士气格、工具图标与线索角标、按台词走的时钟、技能标签与检定横幅）。见 `docs/ui.md`。
+  - `?look=winter`：低角度冬阳从窗洞射入，长而硬的蓝灰影，带灰尘的光束，台灯关闭，蜡烛成为唯一的暖色，降饱和调色；`?look=noir`：暗房、月光光束、蜡烛的暖光池与金色光点、深暗角。两者都叠加运行时绘制的脏旧。见 `docs/look.md`。
+  - `?paint=`：油画后期（进行中）。
+  - 默认参数下画面与此前逐像素一致。
 - 本文件第 3–8 节描述合并后的 `main`。
 
 ## 3. 环境与命令
@@ -56,7 +61,7 @@
 | `npm run bake [名称…]` | 把 `assets/art/*.svg` 烘焙成 `public/textures/*.webp` 与 `manifest.json` | 地板约 18 秒，其余数秒 | 地板约 2 秒 |
 | `npm run fonts` | 按全部台词重新裁剪字体子集（需要访问 Google Fonts） | — | — |
 
-页面参数：`?still` 风格板静帧；`?lang=en` 英文；`?seed=N` 骰子种子；`?dice=4-5,3-3` 强制掷骰点数；`?speed=N` 倍速；`?debug` 在 `window.__debug` 暴露场景对象；`?view=N` 取景候选；`?cast=N` 纸偶版本；`?style=1|2|3` 风格预设（可组合）。`tools/play.mjs` 通过 `window.__play` 驱动游戏。
+页面参数：`?still` 风格板静帧；`?lang=en` 英文；`?seed=N` 骰子种子；`?dice=4-5,3-3` 强制掷骰点数；`?speed=N` 倍速；`?debug` 在 `window.__debug` 暴露场景对象；`?view=N` 取景候选；`?cast=N` 纸偶版本；`?style=1|2|3` 风格预设（可组合）；`?ui=de` 原作对话面板与 HUD；`?look=winter|noir` 氛围预设。`tools/play.mjs` 通过 `window.__play` 驱动游戏。
 
 浏览器：`tools/chromium.mjs` 决定 `bake`、`shot`、`play`、`extract-art` 使用的浏览器，可用 `CHROMIUM_PATH` 覆盖。
 
@@ -96,6 +101,8 @@
 | 背景音乐 | 录音 `public/audio/elysium.mp3`；音量 `VOLUME`、回忆时的低通与音量 `COLD`、淡入淡出 `FADE` 在 `src/audio/music.ts`；剧情钩子经 `createCues` 的 `onCue` 回调接入。说明见 `docs/music.md` |
 | 音效 | 配方、音量与混响在 `src/audio/sfx.ts` 的 `createBank`（每个音效一段，按名称 `SoundName` 调用）；触发点：`src/play/log.ts` 的 `onType`（写字）、`src/play/director.ts`（继续、选择、内心声音、检定结果）、`src/scene/dice.ts` 的 `CONTACTS`（骰子落桌）、`hearts.ts`、`lead.ts`、`cues.ts`（纸片、脚步、窗扇、钟、风、蜡烛、钟摆） |
 | 纸偶版本 | `assets/art/harry-vN.svg`、`kim-vN.svg`（与原来的纸偶同样的 `data-*` 属性）；`?cast=N` 在 `src/main.ts` 加载后把 `art.harry`、`art.kim` 换成选中的版本，其余模块不需要改 |
+| 原作界面（`?ui=de`） | 开关 `src/ui.ts`；日志的深色面板排版 `src/page/layout.ts` 的 `DE` 与 `painter.ts`；HUD `src/play/hud.ts`、头像 `src/play/portraits.ts`；样式在 `index.html` 的 `[data-ui]` 下。说明见 `docs/ui.md` |
+| 氛围预设（`?look=`） | 预设参数 `src/scene/mood.ts`；光束与浮尘 `shaft.ts`；脏旧 `grime.ts`（各纸片按自身坐标生成污渍）；在剧本指令读取灯光基准值之前生效。说明见 `docs/look.md` |
 | 原作风格预设 | 开关 `src/style.ts`；预设 1 在 `src/page/layout.ts`、`painter.ts`、`src/play/log.ts` 与 `index.html` 的 `data-style` 样式；预设 2 在 `src/scene/palette.ts` 与 `post.ts`；预设 3 在 `src/scene/details.ts`。参考与取舍见 `docs/style-refs.md` |
 
 ## 5. 约定

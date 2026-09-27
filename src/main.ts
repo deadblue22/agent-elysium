@@ -10,6 +10,8 @@
 //   ?cast=N       Harry and Kim as drawn after reference N (assets/art/harry-vN.svg,
 //                 kim-vN.svg; docs/cast.md); without it, the current pair (harry.svg, kim.svg)
 //   ?style=1|2|3  a style preset after the original (src/style.ts, docs/style-refs.md); digits combine
+//   ?ui=de        the log on the original's dark dialogue panel, and its HUD (src/ui.ts, docs/ui.md)
+//   ?look=winter|noir  a bold light, mood and grime preset (src/scene/mood.ts, docs/look.md)
 // prefers-reduced-motion: every tween jumps to its end, the snow and grain hold still.
 import { Box3, NoToneMapping, PCFShadowMap, PMREMGenerator, SRGBColorSpace, Scene, Vector2, Vector3, WebGLRenderer, type Mesh, type PerspectiveCamera } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -22,11 +24,13 @@ import { chrome, clockMoment } from './content/study-clock';
 import { ui } from './content/ui';
 import { Runner, optionId } from './engine';
 import { PageHit } from './page/hit';
-import { BOARD, FADE, Measurer, ORIGINAL, PAGE, layoutRightPage, textColumn, type PageLayout, type Rect } from './page/layout';
+import { BOARD, DE, FADE, Measurer, ORIGINAL, PAGE, layoutRightPage, textColumn, type PageLayout, type Rect } from './page/layout';
 import { parseStyle } from './style';
+import { parseUi } from './ui';
 import { PagePainter } from './page/painter';
 import { Clock } from './play/clock';
 import { Director } from './play/director';
+import { createHud, MORNING } from './play/hud';
 import { LogView, renderTooltip } from './play/log';
 import { createBook } from './scene/book';
 import { FRAME, createCameraRig, pickView } from './scene/camera';
@@ -35,6 +39,7 @@ import { createDetails, type Details } from './scene/details';
 import { createDice } from './scene/dice';
 import { createHearts } from './scene/hearts';
 import { createLights } from './scene/lights';
+import { applyMood, moodShadows, parseMood } from './scene/mood';
 import { applyPainting } from './scene/palette';
 import { createPopup, layers, roomLights } from './scene/popup';
 import { createPost } from './scene/post';
@@ -108,8 +113,15 @@ const castOf = (name: string) => { const m = /^(?:harry|kim)-v(\d+)$/.exec(name)
 /** The style presets asked for (none: the current look). The chrome's CSS keys off data-style. */
 const STYLE = parseStyle(location.search);
 document.documentElement.dataset.style = [...STYLE].join(' ');
-/** How the log is set: the M0 board's, or (?style=1) the original's conventions. */
-const LOOK = STYLE.has(1) ? ORIGINAL : BOARD;
+/** The presentation after the original's interface (?ui=de), or null. Its CSS keys off data-ui. */
+const UI = parseUi(location.search);
+if (UI) document.documentElement.dataset.ui = UI;
+/** How the log is set: the M0 board's, (?style=1) the original's conventions, or (?ui=de) on its dark panel. */
+const LOOK = UI === 'de' ? DE : STYLE.has(1) ? ORIGINAL : BOARD;
+/** The option tooltip as the original's check card, and the hover tips as its captions. */
+const CAPTIONS = STYLE.has(1) || UI === 'de';
+/** The light, mood and grime preset (?look=winter|noir), or null for the default. */
+const MOOD = parseMood(location.search);
 
 const frameEl = document.getElementById('frame') as HTMLDivElement;
 const canvas = document.getElementById('gl') as HTMLCanvasElement;
@@ -221,7 +233,7 @@ async function main() {
   const lead = createLeadCard(art, clock, book.rightSheet, sfx.play);
   const dice = createDice(art, clock, sfx.play);
   const buildMs = performance.now() - t0; // geometry, procedural textures and the baked occlusion
-  const lights = createLights(roomLights(art.floor.meta));
+  const lights = createLights(roomLights(art.floor.meta), { soft: moodShadows(MOOD) });
   const cam = createCameraRig(VIEW);
   scene.add(createTable(VIEW.boards), book.group, popup.group, stage.group, hearts.group, lead.group, dice.group, lights.group, cam.rig);
   // a soft, low environment light, so curved paper, page edges and board edges read through
@@ -238,8 +250,9 @@ async function main() {
   // the ink is drawn INK_STRETCH times taller about the window's bottom, so the slanted page
   // shows the glyphs in their true proportions; the log is laid out in a window that much shorter
   leftInk.setStretch(INK_STRETCH, col.y1);
-  // ?style=3: the original panel's scroll track and edge codes in the page's margins
-  if (STYLE.has(3)) leftInk.setDecor(true);
+  // ?style=3: the original panel's scroll track and edge codes in the page's margins (the dark
+  // panel has its own)
+  if (STYLE.has(3) && LOOK !== DE) leftInk.setDecor(true);
   const logCol = { ...col, y0: col.y1 - (col.y1 - col.y0) / INK_STRETCH };
   const pageRect = projectRect(cam.camera, 0, tear.tearMin - 14, PAGE.w, PAGE.h);
   // snow outside the window: flakes behind the wall's window hole (wall.svg's window region)
@@ -248,10 +261,22 @@ async function main() {
   post.uniforms.uExposure.value = 1.08;
   // ?style=2: the original's painted light and colour (before the cues read their base values)
   if (STYLE.has(2)) applyPainting(lights, post);
+  // ?look=: the look's light, grade, shaft and grime (also before the cues)
+  const mood = MOOD ? applyMood(MOOD, { art, scene, lights, post, popup, focal: cam.lens.focal }) : null;
   post.uniforms.uQuiet.value.set(column.x / FRAME.w, 1 - (column.y + column.h) / FRAME.h, (column.x + column.w) / FRAME.w, 1 - column.y / FRAME.h);
 
   // ---- the music (the toggle left of the language switch; it starts on the first click or key)
   const music = createMusic({ button: document.getElementById('music') as HTMLButtonElement, still: STILL });
+
+  // ---- the original's HUD (?ui=de): portraits, health and morale, tools, clock, cues, banners
+  /** A HUD item's hover tip (the journal lists the leads); set once the hover tips exist. */
+  let hudHover: (key: string | null, at: { clientX: number; clientY: number }) => void = () => {};
+  const hud = UI === 'de'
+    ? createHud(frameEl, { clock, lang, morale: { value: study.morale.start, max: study.morale.max }, hover: (key, at) => hudHover(key, at) })
+    : null;
+  // an inner voice's cue sits on the top edge of the log's panel, over the text column's left
+  const cueAt = onFrame(cam.camera, col.x0, col.y0);
+  hud?.place({ x: cueAt.x - 4, y: cueAt.y - 30 });
 
   // ---- the stage cues
   /** The time the flashback's marker shows (minutes), or null when it is hidden. */
@@ -270,7 +295,7 @@ async function main() {
   };
   const cues = createCues({
     art, clock, popup, stage, lights, post, snow,
-    marker: (minutes) => { when = minutes; showWhen(); },
+    marker: (minutes) => { when = minutes; showWhen(); hud?.when(minutes); },
     onCue: (cue) => music.cue(cue), // the flashback goes cold, the present warms, the exit fades out
     sound: sfx.play,
   });
@@ -304,20 +329,30 @@ async function main() {
     hearts.set(3);
     leads = { count: 1, total: study.evidence.length }; // 指针被拨过
     lead.fileAt((l) => ({ heading: ui.leadTag[l], lead: EVIDENCE_LABELS.clock_tampered[l], count: 1, total: study.evidence.length }));
+    // (the HUD's clock as it stands there in play: eleven lines, a minute each)
+    hud?.setMorale(3);
+    hud?.leads(1);
+    hud?.setTime(MORNING + 11);
   } else {
     hearts.set(study.morale.start);
+    /** Where the check banner goes: under the dice on the table (frame px). */
+    const underDice = () => {
+      const r = frameRect(cam.camera, dice.meshes.map((m) => new Box3().setFromObject(m)));
+      return { x: r.x + r.w / 2, y: r.y + r.h + 12 };
+    };
     director = new Director(runner, clock, log, {
       dice, cues,
       lead,
-      // a lost point also drops the morale slip (?style=3)
-      hearts: { to: async (v) => { const d = v - hearts.value; await hearts.to(v); if (d) void details?.morale(d); } },
-      leads: (count, total) => { leads = { count, total }; invalidate(); },
-      speaking: (who) => { speaker = who; },
-      checked: (success) => { void details?.check(success); },
+      // a lost point also drops the morale slip (?style=3) and the HUD's banner (?ui=de)
+      hearts: { to: async (v) => { const d = v - hearts.value; hud?.morale(v); await hearts.to(v); if (d) void details?.morale(d); } },
+      leads: (count, total) => { leads = { count, total }; hud?.leads(count); invalidate(); },
+      speaking: (who) => { speaker = who; hud?.speaking(who); },
+      line: (l) => hud?.line(l),
+      checked: (success) => { void details?.check(success); hud?.checked(success, underDice()); },
       chosen: () => details?.clear(),
       sound: sfx.play,
     });
-    director.onIdle = () => { hit.refresh(); invalidate(); };
+    director.onIdle = () => { hit.refresh(); hud?.quiet(); invalidate(); };
   }
 
   function layoutRight() {
@@ -330,6 +365,7 @@ async function main() {
     layoutRight();
     lead.setLang(lang);
     details?.setLang(lang);
+    hud?.setLang(lang);
     // ?style=3 sets the title on the original's white plaque, without the title marks
     document.getElementById('title')!.textContent = STYLE.has(3) ? chrome.title[lang].replace(/[《》]/g, '') : chrome.title[lang];
     document.getElementById('chapter')!.textContent = chrome.chapter[lang];
@@ -366,7 +402,7 @@ async function main() {
       hovered = lit;
       leftInk.setHover(lit);
       const view = index !== null && !STILL ? log.optionAt(index) : undefined;
-      renderTooltip(tipEl, view, lang, STYLE.has(1));
+      renderTooltip(tipEl, view, lang, CAPTIONS);
       if (view && at && !tipEl.hidden) {
         const r = frameEl.getBoundingClientRect();
         const x = Math.min(at.clientX - r.left + 18, r.width - tipEl.offsetWidth - 8);
@@ -432,8 +468,8 @@ async function main() {
     // the morale and the leads name their count; the leads list what was found
     const count = hotShown === 'morale' ? ` ${state.morale} / ${study.morale.max}` : hotShown === 'leads' ? ` ${leads.count} / ${leads.total}` : '';
     const found = hotShown === 'leads' ? study.evidence.filter((f) => state.flags.has(f)).map((f) => EVIDENCE_LABELS[f][lang]) : [];
-    // (?style=1: the original's caption is the sentence alone; a count keeps its name)
-    hotEl.querySelector('.name')!.textContent = STYLE.has(1) && !count ? '' : spot.name[lang] + count;
+    // (?style=1, ?ui=de: the original's caption is the sentence alone; a count keeps its name)
+    hotEl.querySelector('.name')!.textContent = CAPTIONS && !count ? '' : spot.name[lang] + count;
     hotEl.querySelector('.line')!.textContent = found.length ? found.join(lang === 'zh' ? '；' : '; ') + (lang === 'zh' ? '。' : '.') : tip[lang];
     hotEl.hidden = false;
     // near the pointer, inside the frame, and never over the log's column
@@ -471,6 +507,7 @@ async function main() {
   });
   canvas.addEventListener('pointerleave', () => setHot(null));
   refreshHot = () => { if (hotShown) renderHot(); };
+  hudHover = (key, at) => { hotAt = { clientX: at.clientX, clientY: at.clientY }; setHot(key); };
 
   if (STYLE.has(3)) {
     // (the targets' world matrices may not be current before the first render)
@@ -492,6 +529,7 @@ async function main() {
     renderer.setSize(w, h, false);
     post.setSize(w, h, pr);
     snow.setScale((w * pr) / FRAME.w);
+    mood?.setScale((w * pr) / FRAME.w);
     leftInk.setScale(inkScale(w, pr));
     rightInk.setScale(labelScale(w, pr));
     invalidate();
@@ -520,7 +558,7 @@ async function main() {
     for (let i = 0; i < n; i++) { post.render(t); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); }
     return (performance.now() - tb) / n;
   };
-  if (params.has('debug')) Object.assign(window, { __debug: { leftInk, rightInk, scene, renderer, cam, post, lights, clock, cues, book, lead, hot, music, sfx, layout: () => log.layout } });
+  if (params.has('debug')) Object.assign(window, { __debug: { leftInk, rightInk, scene, renderer, cam, post, lights, clock, cues, book, lead, hot, music, sfx, mood, layout: () => log.layout } });
 
   let frames = 0;
   if (director) {
@@ -592,6 +630,7 @@ async function main() {
       lights.update(t);
       needsRender = true;
     }
+    if (mood?.update(t)) needsRender = true;
     // shadows follow what moves, and a few frames more: a tween's last step, and what its
     // continuation changes (a card hidden once it has folded), land after it stops
     if (clock.moving || bobbing || clock.changes !== changes) shadowFrames = 3;

@@ -13,6 +13,7 @@
 //   mono  (LXGW WenKai Mono TC) the player's words: options and 你 / YOU lines
 //   EB Garamond 400/600, Inter 600, JetBrains Mono 400: every non-CJK character, plus printable ASCII
 //   Barlow Condensed 500: the same, for the original's condensed caps (?style=1, 3: bars, plaques)
+//   Barlow Condensed 300: the same, for the original's thin HUD clock and CONTINUE caps (?ui=de)
 // The app's font stacks end in the serif subset, so a character missing from a role's
 // subset still draws (in the serif) rather than as tofu. Each file's cmap is checked
 // against what was asked for.
@@ -118,6 +119,7 @@ const FACES = [
   { file: 'inter-600.woff2', family: 'Inter', weight: 600, text: latin },
   { file: 'jetbrains-mono-400.woff2', family: 'JetBrains Mono', weight: 400, text: latin },
   { file: 'barlow-condensed-500.woff2', family: 'Barlow Condensed', weight: 500, text: latin },
+  { file: 'barlow-condensed-300.woff2', family: 'Barlow Condensed', weight: 300, text: latin },
 ];
 
 const curl = (url) => execFileSync('curl', ['-sS', '-f', '-A', UA, url], { maxBuffer: 1 << 26 });

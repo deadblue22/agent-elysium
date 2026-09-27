@@ -42,13 +42,14 @@ export class Clock {
 
   /**
    * True while a tween that moves something in the scene runs (the render loop refreshes the
-   * shadow maps). Tweens named in `still` (the typewriter, the log's scroll) move nothing.
+   * shadow maps). Tweens named in `still` (the typewriter, the log's scroll, the HUD over the
+   * frame) move nothing.
    */
   get moving(): boolean {
     for (const tw of this.tweens) if (!tw.name || !Clock.still.has(tw.name)) return true;
     return false;
   }
-  static still = new Set(['type', 'scroll']);
+  static still = new Set(['type', 'scroll', 'hud']);
 
   /**
    * Counts the tweens started that move something in the scene, instant ones included (under

@@ -34,10 +34,12 @@ export const ui = {
   /** The check card's two fixed rolls (?style=1): snake eyes always fail, boxcars always pass (§5.2). */
   alwaysLoses: t('必定失败', 'ALWAYS LOSES'),
   alwaysWins: t('必定成功', 'ALWAYS WINS'),
-  /** The slips on the table (?style=3), as the original's banners. */
+  /** The slips on the table (?style=3), as the original's banners; also the HUD's banners (?ui=de). */
   checkSuccess: t('检定成功', 'CHECK SUCCESS'),
   checkFailure: t('检定失败', 'CHECK FAILURE'),
   moraleSlip: t('士气受损', 'DAMAGED MORALE'),
+  /** The HUD clock's day, after the time (?ui=de): the chapter is the investigation's first day. */
+  day: t('第一天', 'Day 1'),
 };
 
 /** Snake eyes and boxcars (§5.3), printed after the roll. */
