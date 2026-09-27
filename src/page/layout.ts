@@ -152,7 +152,11 @@ export const INK_ORIGINAL = {
  */
 export const INK_DE = {
   text: '#E4DFD4',     // the body
-  name: '#F8F5EF',     // people, objects, places, 你 / YOU, the option numbers
+  name: '#F8F5EF',     // people, objects, places, the option numbers
+  // 你 / YOU: the player's own lines in a pale tint of the options' orange-red (a chosen option
+  // becomes one of them), so they part from Kim's white at a glance (the original prints both
+  // names white; the user could not tell the two apart)
+  you: '#F48D66', youText: '#E6AA8E',
   muted: '#948F85',    // result tags, the dice tag
   option: '#F4592B',   // the options
   seen: '#A9644C',     // an option chosen before
@@ -389,7 +393,8 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
 
   entries.forEach((e, idx) => {
     // older entries fade: the player's past words to 0.75, everything before the last of them to 0.84
-    const alpha = isYou(e) ? 0.75 : idx < lastYou ? 0.84 : 1;
+    // (on the dark panel the player's words keep more of their tint: their colour is what tells them apart)
+    const alpha = isYou(e) ? (dark ? 0.92 : 0.75) : idx < lastYou ? 0.84 : 1;
     const first = items.length;
     chars[idx] = 0;
     const tagItems = () => { for (let k = first; k < items.length; k++) items[k].entry = idx; };
@@ -565,7 +570,7 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
         // speaker, [result tag], em dash (drawn as a rule so its length does not depend on the font), words
         const name = speakerName(line, lang);
         // (the original names the Horrific Necktie like a person, in the neutral ink)
-        const ink = orig && line.speaker === 'necktie' ? nameInk : inkOf(line.speaker, nameInk);
+        const ink = orig && line.speaker === 'necktie' ? nameInk : dark && line.speaker === 'you' ? INK_DE.you : inkOf(line.speaker, nameInk);
         runs = [{ text: nbsp(caps(name)), style: label(ink), keep: true }];
         const tag = line.result ? resultTag(line.result, lang) : '';
         if (tag) runs.push({ text: nbsp(tag), style: result, glue: true, keep: true, pad: [orig ? S.narr * 0.28 : S.label * 0.4, 0] });
@@ -573,6 +578,7 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
         // the player's own past words stay in the options' face and rust, dimmed (the original
         // prints them like any other line)
         if (line.speaker === 'you' && !orig) base = mono(INK.rust, 0.3);
+        if (line.speaker === 'you' && dark) base = { ...narr, color: INK_DE.youText };
         runs.push({ text: q(line.text[lang]), style: base, body: true });
         // the original hangs the lines after the first in, under the words
         hang = S.narr * look.hang;
