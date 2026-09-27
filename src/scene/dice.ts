@@ -15,8 +15,8 @@ import { TABLE } from './tabletop';
 /** Faces per die in box order: +x (right), -x (left), +y (top), -y (bottom), +z (near), -z (far). */
 const FACES = [[1, 6, 4, 3, 2, 5], [6, 1, 5, 2, 3, 4]];
 const DIE = 0.44;
-/** When a die touches the table in its roll (0..1): it lands after the hop, tumbles once, and settles after the bounce. */
-const CONTACTS: [at: number, name: SoundName, gain: number][] = [[0.72, 'die-land', 1], [0.84, 'die-tick', 0.8], [1, 'die-tick', 0.6]];
+/** When a die touches the table in its roll (0..1): it lands after the hop (and bounces to rest), and settles. */
+const CONTACTS: [at: number, name: SoundName, gain: number][] = [[0.72, 'die-land', 1], [1, 'die-tick', 0.5]];
 
 const AXES: [Vector3, number][] = [
   [new Vector3(0, 0, 1), 1], [new Vector3(0, 0, 1), -1],  // faces +x, -x: a quarter turn about z brings them up
