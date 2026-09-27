@@ -121,6 +121,69 @@
   :root[data-style~="3"] .when::after{display:none}
   :root[data-style~="3"] .when .day{margin-left:.5em;font:600 calc(13px * var(--s)) var(--sans);letter-spacing:.12em;color:rgba(238,234,226,.66)}
 
+  /* ?ui=de: the original's HUD over the frame (src/play/hud.ts). Bottom left, Harry's and Kim's
+     portraits in round frames; over Harry's, health (orange) and morale (blue) as numbered
+     crosses over a row of pips. Bottom right, a dark tray with film codes, the four tool icons
+     (the journal's orange badge counts the leads) and the clock, its digits condensed and thin.
+     The time marker gives way to the clock (it stays for screen readers). An inner voice's cue
+     on the log panel's top edge; the check and morale banners as brushed colour strips. */
+  :root[data-ui="de"] .when{opacity:0;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .hud{position:absolute;inset:0;pointer-events:none;z-index:1}
+  .hud [hidden]{display:none !important}
+  .hud .party{position:absolute;left:calc(16px * var(--s));bottom:calc(14px * var(--s));display:flex;align-items:flex-end;gap:calc(9px * var(--s))}
+  .hud .lead{display:flex;flex-direction:column;align-items:center;gap:calc(5px * var(--s))}
+  .hud .face{border-radius:50%;overflow:hidden;background:#0d0b09;
+    box-shadow:0 0 0 calc(3px * var(--s)) #0d0b09,0 0 0 calc(4px * var(--s)) rgba(226,219,205,.3),calc(2px * var(--s)) calc(5px * var(--s)) calc(12px * var(--s)) rgba(0,0,0,.65)}
+  .hud .face svg{display:block;width:100%;height:100%}
+  .hud .face.harry{width:calc(100px * var(--s));height:calc(100px * var(--s))}
+  .hud .face.kim{width:calc(76px * var(--s));height:calc(76px * var(--s))}
+  .hud .face.speaking{box-shadow:0 0 0 calc(3px * var(--s)) #0d0b09,0 0 0 calc(5px * var(--s)) rgba(246,241,231,.86),calc(2px * var(--s)) calc(5px * var(--s)) calc(12px * var(--s)) rgba(0,0,0,.65)}
+  .hud .vitals{display:flex;gap:calc(10px * var(--s))}
+  .hud .stat{--c:#EC6404;position:relative;display:grid;place-items:center;width:calc(42px * var(--s));height:calc(26px * var(--s));
+    border:calc(1.5px * var(--s)) solid var(--c);border-radius:calc(3px * var(--s));background:rgba(8,7,6,.72)}
+  .hud .stat.morale{--c:#1C8DAE}
+  .hud .stat::before{content:"";position:absolute;inset:calc(2.5px * var(--s)) calc(10px * var(--s));background:var(--c);
+    clip-path:polygon(32% 0,68% 0,68% 32%,100% 32%,100% 68%,68% 68%,68% 100%,32% 100%,32% 68%,0 68%,0 32%,32% 32%)}
+  .hud .stat b{position:relative;font:500 calc(17px * var(--s))/1 "Barlow Condensed","Inter",sans-serif;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.5)}
+  .hud .pips{display:flex;gap:calc(2px * var(--s));padding:calc(2px * var(--s));background:rgba(8,7,6,.72)}
+  .hud .pips i{display:block;width:calc(10px * var(--s));height:calc(5px * var(--s));background:#EC6404}
+  .hud .pips i.mp{background:#1C8DAE}
+  .hud .pips i.hp + i.mp{margin-left:calc(3px * var(--s))}
+  .hud .pips i.off{background:rgba(226,219,205,.14)}
+  .hud .tray{position:absolute;right:0;bottom:0;width:calc(480px * var(--s));height:calc(86px * var(--s))}
+  .hud .tray .strip{position:absolute;inset:0;width:100%;height:100%}
+  .hud .tray .code{position:absolute;font:500 calc(9.5px * var(--s))/1 "Barlow Condensed","Inter",sans-serif;letter-spacing:.12em;color:rgba(226,220,208,.34);transform:rotate(-1.6deg)}
+  .hud .tray .c1{left:calc(92px * var(--s));top:calc(22px * var(--s))}
+  .hud .tray .c2{left:calc(300px * var(--s));top:calc(16px * var(--s))}
+  .hud .icons{position:absolute;left:calc(52px * var(--s));bottom:calc(15px * var(--s));display:flex;gap:calc(24px * var(--s))}
+  .hud .ico{position:relative;display:block;width:calc(33px * var(--s));height:calc(33px * var(--s));color:rgba(214,206,190,.72)}
+  .hud .ico svg{display:block;width:100%;height:100%}
+  .hud .ico.journal{pointer-events:auto;color:rgba(232,225,211,.92)}
+  .hud .badge{position:absolute;right:calc(-7px * var(--s));top:calc(-6px * var(--s));min-width:calc(15px * var(--s));height:calc(15px * var(--s));border-radius:50%;
+    display:grid;place-items:center;background:#EC6404;color:#fff;font:500 calc(11px * var(--s))/1 "Barlow Condensed","Inter",sans-serif;font-style:normal}
+  .hud .clock{position:absolute;right:calc(20px * var(--s));bottom:calc(14px * var(--s));display:flex;align-items:baseline;gap:calc(8px * var(--s));color:#E8E2D6}
+  .hud .clock .t{font:500 calc(40px * var(--s))/1 "Barlow Condensed","Inter",sans-serif;letter-spacing:.02em}
+  .hud .clock .colon{margin:0 .12em;position:relative;top:-.06em}
+  .hud .clock .d{font:500 calc(14px * var(--s))/1 "Barlow Condensed","Elysium Sans SC","Inter",sans-serif;letter-spacing:.06em;color:#B7B0A2}
+  .hud .clock.night{color:#A8CBE0}
+  .hud .clock.night .d{color:#86A5B8}
+  .hud .voice{--attr:#5CB9D6;--flash:0;position:absolute}
+  .hud .voice .in{display:flex;align-items:baseline;gap:calc(9px * var(--s));padding:calc(5px * var(--s)) calc(18px * var(--s)) calc(5px * var(--s)) calc(14px * var(--s));
+    background:color-mix(in srgb,var(--attr) calc(var(--flash) * 100%),rgba(10,9,8,.92));border-left:calc(4px * var(--s)) solid var(--attr);
+    clip-path:polygon(0 0,calc(100% - 6px) 0,100% 45%,calc(100% - 3px) 100%,0 100%)}
+  .hud .voice .skill{font:500 calc(17px * var(--s))/1 "Barlow Condensed","Elysium Sans SC","Inter",sans-serif;letter-spacing:.07em;color:color-mix(in srgb,#fff calc(var(--flash) * 100%),var(--attr))}
+  :lang(en) .hud .voice .skill{text-transform:uppercase}
+  .hud .voice .attr{font:500 calc(11px * var(--s))/1 "Barlow Condensed","Elysium Sans SC","Inter",sans-serif;letter-spacing:.14em;color:rgba(226,220,208,.62)}
+  :lang(en) .hud .voice .attr{text-transform:uppercase}
+  .hud .banner{position:absolute;transform:translateX(-50%);white-space:nowrap}
+  .hud .banner span{display:block;padding:calc(6px * var(--s)) calc(28px * var(--s)) calc(7px * var(--s));background:#1E9C5E;
+    font:500 calc(24px * var(--s))/1 "Barlow Condensed","Elysium Sans SC","Inter",sans-serif;letter-spacing:.06em;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.25);
+    clip-path:polygon(calc(6px * var(--s)) 0,calc(100% - 3px) calc(2px * var(--s)),100% 38%,calc(100% - 5px) 70%,calc(100% - 1px) 100%,calc(3px * var(--s)) calc(100% - 1px),0 58%,calc(4px * var(--s)) 30%)}
+  .hud .banner.fail span{background:#C0392A}
+  .hud .banner.morale{transform:none;left:calc(212px * var(--s));bottom:calc(30px * var(--s))}
+  .hud .banner.morale span{font-size:calc(20px * var(--s));background:#1C7FA0}
+  @supports not (background:color-mix(in srgb,red,blue)){ .hud .voice .in{background:rgba(10,9,8,.92)} .hud .voice .skill{color:var(--attr)} }
+
   /* the log mirrored for screen readers */
   .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   .sr-only:focus-within{position:absolute;left:8px;bottom:8px;width:auto;height:auto;clip-path:none;white-space:normal;background:#0b0806;color:#e8dcc4;padding:8px;font:14px/1.5 var(--serif);max-width:480px}

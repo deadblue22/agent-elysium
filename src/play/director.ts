@@ -32,7 +32,9 @@ export interface Stagehands {
   cues: { play(cue: string): Promise<void>; enter(): Promise<void> };
   /** Which puppet bobs while its line types. */
   speaking(who: 'harry' | 'kim' | null): void;
-  /** The dice have settled on a check's result (?style=3 drops a slip beside them). */
+  /** A line is about to be typed (?ui=de: the HUD's clock moves on, an inner voice flashes its name). */
+  line?(line: Line): void;
+  /** The dice have settled on a check's result (?style=3 drops a slip beside them, ?ui=de raises a banner). */
   checked?(success: boolean): void;
   /** An option was chosen (?style=3 takes the slips away). */
   chosen?(): void;
@@ -199,6 +201,7 @@ export class Director {
     const s = line.speaker;
     const who = s === 'you' ? 'harry' : s === 'kim' ? 'kim' : null;
     const voice = (typeof s === 'string' && s in SKILLS) || s === 'necktie';
+    this.hands.line?.(line);
     await this.log.append({ kind: 'line', line }, {
       pause: voice ? 300 : 0,
       speaking: (on) => this.hands.speaking(on ? who : null),

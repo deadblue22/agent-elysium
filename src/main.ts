@@ -28,6 +28,7 @@ import { parseUi } from './ui';
 import { PagePainter } from './page/painter';
 import { Clock } from './play/clock';
 import { Director } from './play/director';
+import { createHud, MORNING } from './play/hud';
 import { LogView, renderTooltip } from './play/log';
 import { createBook } from './scene/book';
 import { FRAME, createCameraRig, pickView } from './scene/camera';
@@ -258,6 +259,16 @@ async function main() {
   // ---- the music (the toggle left of the language switch; it starts on the first click or key)
   const music = createMusic({ button: document.getElementById('music') as HTMLButtonElement, still: STILL });
 
+  // ---- the original's HUD (?ui=de): portraits, health and morale, tools, clock, cues, banners
+  /** A HUD item's hover tip (the journal lists the leads); set once the hover tips exist. */
+  let hudHover: (key: string | null, at: { clientX: number; clientY: number }) => void = () => {};
+  const hud = UI === 'de'
+    ? createHud(frameEl, { clock, lang, morale: { value: study.morale.start, max: study.morale.max }, hover: (key, at) => hudHover(key, at) })
+    : null;
+  // an inner voice's cue sits on the top edge of the log's panel, over the text column's left
+  const cueAt = onFrame(cam.camera, col.x0, col.y0);
+  hud?.place({ x: cueAt.x - 4, y: cueAt.y - 30 });
+
   // ---- the stage cues
   /** The time the flashback's marker shows (minutes), or null when it is hidden. */
   let when: number | null = null;
@@ -275,7 +286,7 @@ async function main() {
   };
   const cues = createCues({
     art, clock, popup, stage, lights, post, snow,
-    marker: (minutes) => { when = minutes; showWhen(); },
+    marker: (minutes) => { when = minutes; showWhen(); hud?.when(minutes); },
     onCue: (cue) => music.cue(cue), // the flashback goes cold, the present warms, the exit fades out
   });
 
@@ -306,19 +317,29 @@ async function main() {
     hearts.set(3);
     leads = { count: 1, total: study.evidence.length }; // 指针被拨过
     lead.fileAt((l) => ({ heading: ui.leadTag[l], lead: EVIDENCE_LABELS.clock_tampered[l], count: 1, total: study.evidence.length }));
+    // (the HUD's clock as it stands there in play: the lines up to it have each taken a minute)
+    hud?.setMorale(3);
+    hud?.leads(1);
+    hud?.setTime(MORNING + 12);
   } else {
     hearts.set(study.morale.start);
+    /** Where the check banner goes: under the dice on the table (frame px). */
+    const underDice = () => {
+      const r = frameRect(cam.camera, dice.meshes.map((m) => new Box3().setFromObject(m)));
+      return { x: r.x + r.w / 2, y: r.y + r.h + 12 };
+    };
     director = new Director(runner, clock, log, {
       dice, cues,
       lead,
-      // a lost point also drops the morale slip (?style=3)
-      hearts: { to: async (v) => { const d = v - hearts.value; await hearts.to(v); if (d) void details?.morale(d); } },
-      leads: (count, total) => { leads = { count, total }; invalidate(); },
-      speaking: (who) => { speaker = who; },
-      checked: (success) => { void details?.check(success); },
+      // a lost point also drops the morale slip (?style=3) and the HUD's banner (?ui=de)
+      hearts: { to: async (v) => { const d = v - hearts.value; hud?.morale(v); await hearts.to(v); if (d) void details?.morale(d); } },
+      leads: (count, total) => { leads = { count, total }; hud?.leads(count); invalidate(); },
+      speaking: (who) => { speaker = who; hud?.speaking(who); },
+      line: (l) => hud?.line(l),
+      checked: (success) => { void details?.check(success); hud?.checked(success, underDice()); },
       chosen: () => details?.clear(),
     });
-    director.onIdle = () => { hit.refresh(); invalidate(); };
+    director.onIdle = () => { hit.refresh(); hud?.quiet(); invalidate(); };
   }
 
   function layoutRight() {
@@ -331,6 +352,7 @@ async function main() {
     layoutRight();
     lead.setLang(lang);
     details?.setLang(lang);
+    hud?.setLang(lang);
     // ?style=3 sets the title on the original's white plaque, without the title marks
     document.getElementById('title')!.textContent = STYLE.has(3) ? chrome.title[lang].replace(/[《》]/g, '') : chrome.title[lang];
     document.getElementById('chapter')!.textContent = chrome.chapter[lang];
@@ -467,6 +489,7 @@ async function main() {
   });
   canvas.addEventListener('pointerleave', () => setHot(null));
   refreshHot = () => { if (hotShown) renderHot(); };
+  hudHover = (key, at) => { hotAt = { clientX: at.clientX, clientY: at.clientY }; setHot(key); };
 
   if (STYLE.has(3)) {
     // (the targets' world matrices may not be current before the first render)
