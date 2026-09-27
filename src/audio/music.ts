@@ -1,69 +1,82 @@
-// The chapter's background music (the piece: ./score.ts; its instruments: ./engine.ts): the
-// toggle beside the language switch, the start on the first click or key press (browsers keep
-// audio off until then, and warn about a page that tries earlier), the lookahead timer that
-// feeds the engine, and the story's hooks (src/scene/cues.ts): the flashback turns the music
-// cold, the present warms it again, the chapter's end fades it out. The toggle's choice is
-// kept in localStorage; the music pauses while the tab is hidden. ?still makes no sound at all.
-import { createBand, type Band } from './engine';
+// The chapter's background music: a recorded track (public/audio/elysium.mp3, chosen by the
+// user), streamed by an <audio> element into Web Audio for its level and the story's colour:
+// the flashback muffles it (a low-pass filter, a little quieter), the present clears it again,
+// the chapter's end fades it out. It starts on the first click or key
+// press (browsers keep audio off until then, and warn about a page that tries earlier), loops,
+// pauses while the tab is hidden, and the toggle's choice is kept in localStorage. ?still makes
+// no sound at all.
 
 const KEY = 'agent-elysium:music';
-/** Notes are scheduled this far ahead (s), every TICK ms: the main thread may stall for a frame or two. */
-const AHEAD = 0.5, TICK = 60;
-/** Fades (time constants, s): in at the start, out at the toggle or a hidden tab, back in, out at the end. */
-const FADE = { start: 1, off: 0.12, back: 0.35, end: 2.2 };
+const SRC = `${import.meta.env.BASE_URL}audio/elysium.mp3`;
+/**
+ * Playback level. The track is mastered loud (about -16.5 dBFS RMS); this sits it near -25.6,
+ * under the reading and the sound effects.
+ */
+const VOLUME = 0.35;
+/** Fades (time constants, s): in at the start, out at the toggle or a hidden tab, back in, out at the end, into and out of the flashback. */
+const FADE = { start: 1.2, off: 0.15, back: 0.4, end: 2.2, mood: 0.5 };
+/** The flashback: the low-pass cut-off (Hz) and the level (times VOLUME). */
+const COLD = { cutoff: 1400, level: 0.7 };
 /** Events that can carry the gesture a browser asks for before it plays audio. */
 const GESTURES = ['pointerdown', 'pointerup', 'keydown', 'touchend'];
 
 export function createMusic({ button, still }: { button: HTMLButtonElement; still: boolean }) {
   let on = true;
   try { on = localStorage.getItem(KEY) !== 'off'; } catch { /* storage blocked: the default */ }
-  let ctx: AudioContext | null = null, band: Band | null = null;
-  let playing = false, cold = false, over = false, unlocked = false;
-  let timer = 0, sleep = 0;
+  let ctx: AudioContext | null = null, audio: HTMLAudioElement | null = null;
+  let gain: GainNode | null = null, filter: BiquadFilterNode | null = null;
+  let playing = false, cold = false, over = false, unlocked = false, started = false;
+  let sleep = 0;
 
   const render = () => button.setAttribute('aria-pressed', String(on));
   render();
 
-  const feed = () => { if (ctx && band) band.schedule(ctx.currentTime + AHEAD); };
+  const level = () => VOLUME * (cold ? COLD.level : 1);
+
+  /** The element and its graph, made inside a gesture the first time. */
+  function setup(): boolean {
+    if (ctx) return true;
+    try {
+      ctx = new AudioContext({ latencyHint: 'playback' });
+      audio = new Audio(SRC);
+      audio.loop = true;
+      audio.preload = 'auto';
+      filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 20000;
+      filter.Q.value = 0.6;
+      gain = ctx.createGain();
+      gain.gain.value = 0;
+      ctx.createMediaElementSource(audio).connect(filter).connect(gain).connect(ctx.destination);
+      return true;
+    } catch (err) {
+      console.info('[music] no Web Audio:', err);
+      ctx = null;
+      return false;
+    }
+  }
 
   /** Plays (inside a gesture, the first time: the AudioContext is only made then). */
   function play() {
-    if (!ctx) {
-      try {
-        ctx = new AudioContext({ latencyHint: 'playback' });
-        band = createBand(ctx);
-      } catch (err) {
-        console.info('[music] no Web Audio:', err);
-        ctx = null;
-        return;
-      }
-    }
-    const b = band!;
+    if (!setup()) return;
+    const c = ctx!, a = audio!;
     clearTimeout(sleep);
-    if (ctx.state !== 'running') ctx.resume().catch(() => {});
-    const now = ctx.currentTime;
-    if (!b.running) {
-      // from the top, fading in
-      b.mood(cold, now, 0);
-      b.fade(0, now, 0);
-      b.start(now + 0.05);
-      b.fade(1, now + 0.05, FADE.start);
-    } else if (!playing) b.fade(1, now, FADE.back);
+    if (c.state !== 'running') c.resume().catch(() => {});
+    a.play().catch(() => {}); // a file the browser cannot play leaves the page silent, nothing more
+    gain!.gain.setTargetAtTime(level(), c.currentTime, started ? FADE.back : FADE.start);
+    started = true;
     playing = true;
-    feed();
-    clearInterval(timer);
-    timer = window.setInterval(feed, TICK);
   }
 
-  /** Fades out, keeps feeding the notes while it does, then sleeps (and `then`). */
+  /** Fades out, then pauses the element (and `then`). */
   function pause(tc: number, then?: () => void) {
-    if (!ctx || !band || !playing) return;
-    const c = ctx, b = band;
+    if (!ctx || !audio || !gain || !playing) return;
+    const c = ctx, a = audio;
     playing = false;
-    b.fade(0, c.currentTime, tc);
+    gain.gain.setTargetAtTime(0, c.currentTime, tc);
     clearTimeout(sleep);
     sleep = window.setTimeout(() => {
-      clearInterval(timer);
+      a.pause();
       then?.();
       c.suspend().catch(() => {});
     }, tc * 6000 + 50);
@@ -105,16 +118,17 @@ export function createMusic({ button, still }: { button: HTMLButtonElement; stil
     cue(name: string) {
       if (name === 'flashback' || name === 'present') {
         cold = name === 'flashback';
-        if (ctx && band) band.mood(cold, ctx.currentTime);
+        if (!ctx || !filter || !gain) return;
+        const now = ctx.currentTime;
+        filter.frequency.setTargetAtTime(cold ? COLD.cutoff : 20000, now, FADE.mood);
+        if (playing) gain.gain.setTargetAtTime(level(), now, FADE.mood);
       } else if (name === 'exit') {
         over = true;
-        // the transport stops once faded, so music asked for again starts from the top
-        const halt = () => { if (ctx && band) band.halt(ctx.currentTime); };
-        if (playing) pause(FADE.end, halt);
-        else halt();
+        // back to the top once faded, so music asked for again starts from the beginning
+        pause(FADE.end, () => { if (audio) audio.currentTime = 0; });
       }
     },
-    /** For tests (?debug): whether it plays, and the context's state. */
-    get state() { return { on, playing, cold, over, context: ctx?.state ?? null }; },
+    /** For tests (?debug): whether it plays, and the context's and the element's state. */
+    get state() { return { on, playing, cold, over, context: ctx?.state ?? null, paused: audio?.paused ?? null, time: audio?.currentTime ?? null }; },
   };
 }

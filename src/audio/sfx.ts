@@ -134,21 +134,64 @@ export function createBank(ctx: BaseAudioContext, out: AudioNode, seed = 7): Ban
     tone(t, { freq: freq * 2.76, gain: gain * 0.28, dur: dur * 0.45, attack, pan });
     tone(t, { freq: freq * 5.4, gain: gain * 0.08, dur: dur * 0.2, attack, pan });
   };
-  /** A knock on wood: a short falling body under a click. */
-  const knock = (t: number, gain: number, pan: number, pitch = 1) => {
-    tone(t, { freq: vary(210, 0.08) * pitch, freqTo: 140 * pitch, dur: 0.07, gain: gain * 0.9, pan });
-    burst(t, { freq: vary(1700, 0.12) * pitch, q: 2.5, dur: 0.03, gain: gain * 0.8, pan });
-    burst(t, { freq: vary(3300, 0.1), q: 3, dur: 0.015, gain: gain * 0.3, pan });
+  /**
+   * A plastic die striking the wooden table: a hard click, the die's own short, bright,
+   * inharmonic ring (a few modes dying within a few hundredths of a second, pitched afresh at
+   * each strike, as it lands on another face), and a light knock of the table under it.
+   */
+  const clack = (t: number, gain: number, pan: number) => {
+    const f0 = 3800 + rand() * 1600;
+    [[1, 1, 0.022], [1.47, 0.75, 0.016], [2.09, 0.5, 0.011], [2.76, 0.3, 0.007]].forEach(([k, g, d]) =>
+      tone(t, { freq: f0 * k * vary(1, 0.03), dur: d, gain: gain * g * 0.5, attack: 0.0004, pan }));
+    burst(t, { type: 'highpass', freq: 7000, dur: 0.0015, attack: 0.0003, gain: gain * 0.8, pan });
+    burst(t, { freq: 3000, q: 1, dur: 0.003, attack: 0.0003, gain: gain * 0.4, pan });
+    tone(t, { freq: vary(300, 0.1), freqTo: 200, dur: 0.018, gain: gain * 0.18, pan });
+  };
+  /** A die landing and bouncing to rest: strikes closer together and softer each time. */
+  const bounces = (t: number, gain: number, pan: number) => {
+    let at = t, g = gain, gap = 0.075;
+    for (let i = 0; i < 7; i++) {
+      clack(at, g * vary(1, 0.15), pan);
+      at += vary(gap, 0.15);
+      gap *= 0.78;
+      g *= 0.7;
+    }
   };
   /** Paper settling on a surface: a soft slap. */
   const pap = (t: number, gain: number, pan: number) => {
     burst(t, { type: 'lowpass', freq: vary(1100, 0.1), q: 0.7, dur: 0.06, gain, pan });
     tone(t, { freq: vary(140, 0.06), freqTo: 110, dur: 0.05, gain: gain * 0.45, pan });
   };
-  /** One pencil stroke on the page. */
-  const stroke = (t: number, gain: number, pan: number) => {
-    burst(t, { freq: 2600 + rand() * 2000, q: 1.1 + rand() * 0.5, attack: 0.006, dur: 0.045 + rand() * 0.03, gain: vary(gain, 0.3), pan });
-    if (rand() < 0.35) burst(t + 0.01, { freq: vary(900, 0.15), q: 0.8, dur: 0.05, gain: gain * 0.35, pan });
+  /**
+   * A pencil stroke on paper: graphite hissing through a resonance that glides as the stroke
+   * turns, swelling in and out (no click), with a few grains of graphite catching the tooth and
+   * a little of the paper's body under it.
+   */
+  const stroke = (t: number, dur: number, gain: number, pan: number) => {
+    const src = ctx.createBufferSource();
+    src.buffer = noise; src.loop = true;
+    const f = ctx.createBiquadFilter();
+    f.type = 'bandpass'; f.Q.value = 1.3 + rand() * 0.6;
+    const f0 = 2200 + rand() * 2000;
+    f.frequency.setValueAtTime(f0, t);
+    f.frequency.linearRampToValueAtTime(f0 * (0.78 + rand() * 0.5), t + dur);
+    const g = ctx.createGain(), a = Math.min(0.008, dur / 3);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(gain, t + a);
+    g.gain.setValueAtTime(gain * (0.7 + rand() * 0.3), t + dur - a);
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    const body = ctx.createBiquadFilter();
+    body.type = 'lowpass'; body.frequency.value = 700;
+    const bg = ctx.createGain();
+    bg.gain.value = 0.25;
+    const out = panner(t, pan);
+    src.connect(f).connect(g).connect(out);
+    src.connect(body).connect(bg).connect(g);
+    src.start(t, rand() * 1.8);
+    src.stop(t + dur + 0.05);
+    for (let k = 0, n = 1 + Math.floor(rand() * 3); k < n; k++) {
+      burst(t + rand() * dur, { type: 'highpass', freq: 3500, dur: 0.004, gain: gain * 0.6, pan });
+    }
   };
   /** A clock's escapement, ticking. */
   const tick = (t: number, gain: number, freq: number, pan: number) => {
@@ -186,7 +229,16 @@ export function createBank(ctx: BaseAudioContext, out: AudioNode, seed = 7): Ban
 
   const sounds: Record<SoundName, (t: number, o: Required<Pick<SoundOptions, 'pan' | 'gain' | 'size'>> & SoundOptions) => void> = {
     // the log: a pencil writing it, a tick for moving on, for hovering and for choosing an option
-    write: (t, o) => { for (let i = 0; i < Math.min(o.count ?? 1, 3); i++) stroke(t + i * 0.028, 0.032 * o.gain, o.pan); },
+    // two or three strokes a character, joined by short lifts of the pencil
+    write: (t, o) => {
+      // two strokes a character within the typewriter's 55 ms, so the pencil lifts between them
+      let at = t;
+      for (let i = 0, n = Math.min(o.count ?? 1, 3) * 2; i < n; i++) {
+        const d = 0.012 + rand() * 0.014;
+        stroke(at, d, 0.018 * o.gain * (0.75 + rand() * 0.5), o.pan);
+        at += d + 0.003 + rand() * 0.005;
+      }
+    },
     continue: (t, o) => {
       burst(t, { type: 'highpass', freq: 2500, dur: 0.025, gain: 0.035 * o.gain, pan: o.pan });
       tone(t, { freq: 1400, dur: 0.03, gain: 0.012 * o.gain, pan: o.pan });
@@ -197,9 +249,13 @@ export function createBank(ctx: BaseAudioContext, out: AudioNode, seed = 7): Ban
       tone(t, { freq: 988, dur: 0.08, gain: 0.018 * o.gain, pan: o.pan });
     },
     // the dice: thrown in from the right, a knock at each landing, smaller ones as they tumble
-    'dice-throw': (t, o) => burst(t, { freq: 700, freqTo: 1800, q: 0.8, attack: 0.05, dur: 0.28, gain: 0.035 * o.gain, pan: o.pan }),
-    'die-land': (t, o) => knock(t, 0.13 * o.gain, o.pan),
-    'die-tick': (t, o) => knock(t, 0.05 * o.gain, o.pan, 1.25),
+    'dice-throw': (t, o) => {
+      clack(t, 0.03 * o.gain, o.pan); // the two dice knock together as they leave the hand
+      clack(t + 0.035, 0.02 * o.gain, o.pan);
+      burst(t, { freq: 700, freqTo: 1800, q: 0.8, attack: 0.05, dur: 0.28, gain: 0.025 * o.gain, pan: o.pan });
+    },
+    'die-land': (t, o) => bounces(t, 0.09 * o.gain, o.pan),
+    'die-tick': (t, o) => clack(t, 0.035 * o.gain, o.pan),
     // a check's result: two rising bell notes, or a low, falling knell
     'check-success': (t, o) => {
       bell(t, 1046.5, 0.05 * o.gain, 1.1, o.pan);
