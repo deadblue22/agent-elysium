@@ -1,12 +1,13 @@
 // The wooden table under the book: varnished walnut boards, drawn by the shader from world
-// position (no texture, so it stays sharp at any size). The boards run left to right, each
-// with its own grain: the growth rings of a log cut by the board's flat face, lines along the
+// position (no texture, so it stays sharp at any size). The boards run left to right, or away
+// from the reader so that their seams recede with the book (per camera view). Each board has
+// its own grain: the growth rings of a log cut by the board's flat face, lines along the
 // board that open into arches where the cut runs close to the rings (flat-sawn), fine pores
 // along the grain, a dark seam between boards and a butt joint now and then; the varnish is a
 // little glossier on the wood than in the seams.
 import { Mesh, MeshStandardMaterial, PlaneGeometry } from 'three';
 
-/** Board width across the table and board length (world units; 1 unit is about 3 cm). */
+/** Board width and length (world units; 1 unit is about 3 cm). */
 const BOARD = { width: 3.4, length: 46, offset: 1.1 };
 
 const WOOD = /* glsl */ `
@@ -26,7 +27,7 @@ float wFbm( vec2 p ) {
 	return s / 0.9375;
 }
 vec3 wLinear( vec3 c ) { return pow( c, vec3( 2.2 ) ); }
-/** Albedo (linear) and roughness of the table at world (x, z). */
+/** Albedo (linear) and roughness of the table at p: along the boards, across them (world units). */
 vec4 wood( vec2 p ) {
 	float W = ${BOARD.width.toFixed(2)}, L = ${BOARD.length.toFixed(2)};
 	float z = p.y + ${BOARD.offset.toFixed(2)};
@@ -67,22 +68,26 @@ vec4 wood( vec2 p ) {
 }
 `;
 
-export function createTable() {
-  const W = 64, D = 40;
+/** boards: 'x' the boards run left to right, 'z' away from the reader. */
+export function createTable(boards: 'x' | 'z' = 'x') {
+  // wide and deep enough to fill the frame behind the book when the camera looks down low
+  const W = 80, D = 72;
   const material = new MeshStandardMaterial({ color: '#ffffff', roughness: 0.5, metalness: 0 });
+  // wood() draws boards along its first coordinate: world x, or world z for boards running away
+  const axes = boards === 'x' ? 'xz' : 'zx';
   material.onBeforeCompile = (s) => {
     s.vertexShader = s.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec2 vWood;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\n\tvWood = ( modelMatrix * vec4( transformed, 1.0 ) ).xz;');
+      .replace('#include <begin_vertex>', `#include <begin_vertex>\n\tvWood = ( modelMatrix * vec4( transformed, 1.0 ) ).${axes};`);
     s.fragmentShader = s.fragmentShader
       .replace('#include <common>', `#include <common>\n${WOOD}\nvec4 wTable;`)
       .replace('#include <map_fragment>', '#include <map_fragment>\n\twTable = wood( vWood );\n\tdiffuseColor.rgb *= wTable.rgb;')
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n\troughnessFactor = wTable.a;');
   };
-  material.customProgramCacheKey = () => 'table-wood';
+  material.customProgramCacheKey = () => `table-wood-${axes}`;
   const mesh = new Mesh(new PlaneGeometry(W, D), material);
   mesh.rotation.x = -Math.PI / 2;
-  mesh.position.set(0, 0, 3);
+  mesh.position.set(0, 0, -14);
   mesh.receiveShadow = true;
   mesh.name = 'table';
   return mesh;

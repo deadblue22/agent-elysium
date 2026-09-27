@@ -135,8 +135,11 @@ export type LogEntry =
   | { kind: 'line'; line: Line }
   /** The dice line of an active check: [见微知著 - 中等 10]  4 + 5 + 3 = 12 (the result tag follows on the voice's line). */
   | { kind: 'check'; check: Check; dice: [number, number]; total: number; success: boolean }
-  /** A currently shown option, numbered as shown; index is its place in the node's options. */
-  | { kind: 'option'; number: number; index: number; option: Option; state?: 'enabled' | 'greyed' }
+  /**
+   * A currently shown option, numbered as shown; index is its place in the node's options.
+   * `seen`: chosen before (the original prints those dimmer).
+   */
+  | { kind: 'option'; number: number; index: number; option: Option; state?: 'enabled' | 'greyed'; seen?: boolean }
   /** A new piece of evidence: 「新线索：指针被拨过（1/3）」. `count` of `total` found so far. */
   | { kind: 'notice'; flag: string; count: number; total: number }
   /** The chapter's end mark, 「第一章 完」 (the view appends it after the end beat). */
