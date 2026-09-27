@@ -10,9 +10,10 @@
 //   ?cast=N       Harry and Kim as drawn after reference N (assets/art/harry-vN.svg,
 //                 kim-vN.svg; docs/cast.md); without it, the current pair (harry.svg, kim.svg)
 //   ?style=1|2|3  a style preset after the original (src/style.ts, docs/style-refs.md); digits combine
-//   ?ui=de        the log on the original's dark dialogue panel, and its HUD (src/ui.ts, docs/ui.md)
-//   ?look=winter|noir  a bold light, mood and grime preset (src/scene/mood.ts, docs/look.md)
-//   ?paint=1|2    the frame repainted as an oil painting (src/scene/paint.ts, docs/paint.md); 2 bolder
+//   ?ui=book      the log printed on the page, paper hearts, no HUD; by default the log is on the
+//                 original's dark dialogue panel, with its HUD (src/ui.ts, docs/ui.md)
+//   ?look=noir|warm  night, or the earlier rounds' warm picture book; by default the winter look
+//                 (src/scene/mood.ts, docs/look.md)
 // prefers-reduced-motion: every tween jumps to its end, the snow and grain hold still.
 import { Box3, NoToneMapping, PCFShadowMap, PMREMGenerator, SRGBColorSpace, Scene, Vector2, Vector3, WebGLRenderer, type Mesh, type PerspectiveCamera } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -44,8 +45,6 @@ import { applyMood, moodShadows, parseMood } from './scene/mood';
 import { applyPainting } from './scene/palette';
 import { createPopup, layers, roomLights } from './scene/popup';
 import { createPost } from './scene/post';
-import { addPaint, parsePaint } from './scene/paint';
-import { paintWindowView } from './scene/paint-view';
 import { createStage } from './scene/puppets';
 import { createLeadCard } from './scene/lead';
 import { createHotspots } from './scene/hotspots';
@@ -116,17 +115,15 @@ const castOf = (name: string) => { const m = /^(?:harry|kim)-v(\d+)$/.exec(name)
 /** The style presets asked for (none: the current look). The chrome's CSS keys off data-style. */
 const STYLE = parseStyle(location.search);
 document.documentElement.dataset.style = [...STYLE].join(' ');
-/** The presentation after the original's interface (?ui=de), or null. Its CSS keys off data-ui. */
+/** The presentation after the original's interface ('de'), or null for the book's (?ui=book). Its CSS keys off data-ui. */
 const UI = parseUi(location.search);
 if (UI) document.documentElement.dataset.ui = UI;
-/** How the log is set: the M0 board's, (?style=1) the original's conventions, or (?ui=de) on its dark panel. */
+/** How the log is set: on the original's dark panel, or (?ui=book) the M0 board's or (?ui=book&style=1) the original's conventions on the page. */
 const LOOK = UI === 'de' ? DE : STYLE.has(1) ? ORIGINAL : BOARD;
 /** The option tooltip as the original's check card, and the hover tips as its captions. */
 const CAPTIONS = STYLE.has(1) || UI === 'de';
-/** The light, mood and grime preset (?look=winter|noir), or null for the default. */
+/** The light, mood and grime preset (winter; ?look=noir), or null for the warm picture book (?look=warm). */
 const MOOD = parseMood(location.search);
-/** The painted look (0: off). */
-const PAINT = parsePaint(location.search);
 
 const frameEl = document.getElementById('frame') as HTMLDivElement;
 const canvas = document.getElementById('gl') as HTMLCanvasElement;
@@ -210,8 +207,6 @@ async function main() {
   // only the chosen version of the puppets is loaded; it stands in for harry and kim everywhere
   // (the stage, the stand tabs and card edges, the hover tips, the ember, the opening and the end)
   const [art] = await Promise.all([loadArt(anisotropy, (name) => (castOf(name) ?? CAST) === CAST), loadFonts()]);
-  // ?paint: the view out of the window painted after Rostov (before anything takes its texture)
-  if (PAINT) paintWindowView(art, anisotropy);
   if (CAST) {
     for (const who of ['harry', 'kim']) {
       const piece = art[`${who}-v${CAST}`];
@@ -235,14 +230,16 @@ async function main() {
   const t0 = performance.now();
   const book = createBook(art, leftInk.texture, rightInk.texture);
   const popup = createPopup(art), stage = createStage(art);
-  // on the table beside the book: the leads found, the morale hearts, the dice
-  const hearts = createHearts(art, clock, study.morale.max, { blue: STYLE.has(1), sound: sfx.play });
+  // on the table beside the book: the leads found, the morale hearts (?ui=de: morale is on the
+  // HUD instead, and the table has none), the dice
+  const hearts = UI === 'de' ? null : createHearts(art, clock, study.morale.max, { blue: STYLE.has(1), sound: sfx.play });
   const lead = createLeadCard(art, clock, book.rightSheet, sfx.play);
   const dice = createDice(art, clock, sfx.play);
   const buildMs = performance.now() - t0; // geometry, procedural textures and the baked occlusion
   const lights = createLights(roomLights(art.floor.meta), { soft: moodShadows(MOOD) });
   const cam = createCameraRig(VIEW);
-  scene.add(createTable(VIEW.boards), book.group, popup.group, stage.group, hearts.group, lead.group, dice.group, lights.group, cam.rig);
+  scene.add(createTable(VIEW.boards), book.group, popup.group, stage.group, lead.group, dice.group, lights.group, cam.rig);
+  if (hearts) scene.add(hearts.group);
   // a soft, low environment light, so curved paper, page edges and board edges read through
   // gentle shading gradients and not only through the direct lights
   const pmrem = new PMREMGenerator(renderer);
@@ -271,30 +268,18 @@ async function main() {
   // ?look=: the look's light, grade, shaft and grime (also before the cues)
   const mood = MOOD ? applyMood(MOOD, { art, scene, lights, post, popup, focal: cam.lens.focal }) : null;
   post.uniforms.uQuiet.value.set(column.x / FRAME.w, 1 - (column.y + column.h) / FRAME.h, (column.x + column.w) / FRAME.w, 1 - column.y / FRAME.h);
-  // ?paint: the graded frame repainted in oils. The log's column stays crisp, and its mask
-  // follows the page when the camera moves (the parallax would slide the glyphs into the
-  // paint); so does a new lead's card while it shows
-  const paint = PAINT ? addPaint(renderer, post, PAINT) : null;
-  const uvRect = (r: Rect) => [r.x / FRAME.w, 1 - (r.y + r.h) / FRAME.h, (r.x + r.w) / FRAME.w, 1 - r.y / FRAME.h] as const;
-  const followColumn = () => {
-    cam.rig.updateMatrixWorld(true);
-    post.uniforms.uQuiet.value.set(...uvRect(projectRect(cam.camera, col.x0, col.y0, col.x1, col.y1)));
-  };
-  const followLead = () => {
-    const card = lead.showing;
-    if (card) paint!.keep.set(...uvRect(frameRect(cam.camera, [new Box3().setFromObject(card)])));
-    else paint!.keep.set(0, 0, 0, 0);
-  };
 
   // ---- the music (the toggle left of the language switch; it starts on the first click or key)
   const music = createMusic({ button: document.getElementById('music') as HTMLButtonElement, still: STILL });
 
-  // ---- the original's HUD (?ui=de): portraits, health and morale, tools, clock, cues, banners
-  /** A HUD item's hover tip (the journal lists the leads); set once the hover tips exist. */
+  // ---- the original's HUD (?ui=de): portraits, morale, clock, cues, banners
+  /** A HUD item's hover tip (morale's); set once the hover tips exist. */
   let hudHover: (key: string | null, at: { clientX: number; clientY: number }) => void = () => {};
   const hud = UI === 'de'
-    ? createHud(frameEl, { clock, lang, morale: { value: study.morale.start, max: study.morale.max }, hover: (key, at) => hudHover(key, at) })
+    ? createHud(frameEl, { clock, lang, morale: { value: study.morale.start, max: study.morale.max }, hover: (key, at) => hudHover(key, at), sound: sfx.play })
     : null;
+  /** Where morale shows: the paper hearts on the table, or (?ui=de) the HUD over Harry's portrait. */
+  const morale = hud ?? hearts!;
   // an inner voice's cue sits on the top edge of the log's panel, over the text column's left
   const cueAt = onFrame(cam.camera, col.x0, col.y0);
   hud?.place({ x: cueAt.x - 4, y: cueAt.y - 30 });
@@ -347,15 +332,13 @@ async function main() {
   if (STILL) {
     // the style board: study.clock right after Visual Calculus passes; morale 3 of 4
     log.showFixed(clockMoment);
-    hearts.set(3);
+    morale.set(3);
     leads = { count: 1, total: study.evidence.length }; // 指针被拨过
     lead.fileAt((l) => ({ heading: ui.leadTag[l], lead: EVIDENCE_LABELS.clock_tampered[l], count: 1, total: study.evidence.length }));
     // (the HUD's clock as it stands there in play: eleven lines, a minute each)
-    hud?.setMorale(3);
-    hud?.leads(1);
     hud?.setTime(MORNING + 11);
   } else {
-    hearts.set(study.morale.start);
+    morale.set(study.morale.start);
     /** Where the check banner goes: under the dice on the table (frame px). */
     const underDice = () => {
       const r = frameRect(cam.camera, dice.meshes.map((m) => new Box3().setFromObject(m)));
@@ -364,9 +347,9 @@ async function main() {
     director = new Director(runner, clock, log, {
       dice, cues,
       lead,
-      // a lost point also drops the morale slip (?style=3) and the HUD's banner (?ui=de)
-      hearts: { to: async (v) => { const d = v - hearts.value; hud?.morale(v); await hearts.to(v); if (d) void details?.morale(d); } },
-      leads: (count, total) => { leads = { count, total }; hud?.leads(count); invalidate(); },
+      // a lost point also drops the morale slip (?style=3)
+      hearts: { to: async (v) => { const d = v - morale.value; await morale.to(v); if (d) void details?.morale(d); } },
+      leads: (count, total) => { leads = { count, total }; invalidate(); },
       speaking: (who) => { speaker = who; hud?.speaking(who); },
       line: (l) => hud?.line(l),
       checked: (success) => { void details?.check(success); hud?.checked(success, underDice()); },
@@ -471,13 +454,15 @@ async function main() {
   const hot = createHotspots({
     art, pieces: popup.pieces, floor: book.group.getObjectByName('floor') as Mesh,
     puppets: { harry: stage.puppets.harry.mesh, kim: stage.puppets.kim.mesh },
-    table: { dice: dice.meshes, morale: hearts.meshes, leads: () => lead.filed },
+    table: { dice: dice.meshes, morale: hearts?.meshes ?? [], leads: () => lead.filed },
     cues: cues.parts,
     blockers: [{ mesh: book.leftPage, piece: art['page-left'] }, { mesh: book.rightPage, piece: art['page-right'] }],
   });
   scene.add(hot.group);
   let hotKey: string | null = null, hotShown: string | null = null, hotTimer = 0;
   let hotAt = { clientX: 0, clientY: 0 };
+  /** The tip goes where a HUD item puts it (hotAt), not near the pointer. */
+  let hotAnchored = false;
   const hotState = () => STILL
     ? { flags: new Set(['clock_tampered']), morale: 3, sheet: study.sheet }
     : { flags: runner.state.flags, morale: runner.state.morale, sheet: study.sheet };
@@ -498,10 +483,15 @@ async function main() {
     const w = hotEl.offsetWidth, h = hotEl.offsetHeight;
     const px = hotAt.clientX - r.left, py = hotAt.clientY - r.top;
     let x = Math.min(Math.max(8, px + 16), r.width - w - 8), y = py + 20;
-    const col = { x0: column.x * s, y0: column.y * s, x1: (column.x + column.w) * s };
-    const overCol = (yy: number) => x < col.x1 && x + w > col.x0 && yy + h > col.y0 - 6;
-    if (y + h > r.height - 8 || overCol(y)) y = py - h - 14;
-    if (overCol(y)) y = col.y0 - h - 10;
+    if (hotAnchored) {
+      x = Math.min(Math.max(8, px), r.width - w - 8);
+      y = Math.min(py - h / 2, r.height - h - 8);
+    } else {
+      const col = { x0: column.x * s, y0: column.y * s, x1: (column.x + column.w) * s };
+      const overCol = (yy: number) => x < col.x1 && x + w > col.x0 && yy + h > col.y0 - 6;
+      if (y + h > r.height - 8 || overCol(y)) y = py - h - 14;
+      if (overCol(y)) y = col.y0 - h - 10;
+    }
     y = Math.max(8, y);
     hotEl.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
   };
@@ -519,6 +509,7 @@ async function main() {
   const ndc = new Vector2();
   canvas.addEventListener('pointermove', (e) => {
     hotAt = { clientX: e.clientX, clientY: e.clientY };
+    hotAnchored = false;
     // the options keep their own tooltip
     if (!tipEl.hidden || hit.pick(e) !== null) { setHot(null); return; }
     const r = canvas.getBoundingClientRect();
@@ -528,7 +519,7 @@ async function main() {
   });
   canvas.addEventListener('pointerleave', () => setHot(null));
   refreshHot = () => { if (hotShown) renderHot(); };
-  hudHover = (key, at) => { hotAt = { clientX: at.clientX, clientY: at.clientY }; setHot(key); };
+  hudHover = (key, at) => { hotAt = { clientX: at.clientX, clientY: at.clientY }; hotAnchored = true; setHot(key); };
 
   if (STYLE.has(3)) {
     // (the targets' world matrices may not be current before the first render)
@@ -606,7 +597,7 @@ async function main() {
         return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height };
       },
       get hover() { return hotShown; },
-      snapCamera: () => { cam.snap(); if (PAINT) followColumn(); invalidate(); },
+      snapCamera: () => { cam.snap(); invalidate(); },
       resume: () => d.continue(),
       hold: (name, at) => clock.hold(name, at),
       get held() { return clock.held; },
@@ -628,7 +619,6 @@ async function main() {
     if (cam.update(dt)) {
       needsRender = true;
       hit.refresh();
-      if (PAINT) followColumn();
     }
     const ct = clock.now() / 1000;
     // the speaking puppet bobs about 2 px while its line types
@@ -642,7 +632,6 @@ async function main() {
       bobbing ||= bob[name] > 0;
     }
     cues.update(ct);
-    if (paint) followLead();
     if (details) {
       const on = STILL || (!!director?.idle && !director.ended);
       if (on !== markersOn) { markersOn = on; details.markers(on); needsRender = true; }

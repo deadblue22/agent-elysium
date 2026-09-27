@@ -5,13 +5,14 @@ describe('parseMood', () => {
   it('reads the look, among the other parameters', () => {
     expect(parseMood('?look=winter')).toBe('winter');
     expect(parseMood('?still&style=13&look=noir&view=0')).toBe('noir');
+    expect(parseMood('?still&look=warm&ui=book')).toBeNull();
   });
 
-  it('ignores anything else: no parameter is the default look', () => {
-    expect(parseMood('')).toBeNull();
-    expect(parseMood('?look=')).toBeNull();
-    expect(parseMood('?look=summer')).toBeNull();
-    expect(parseMood('?style=2')).toBeNull();
+  it('is winter without a parameter, or with one it does not know', () => {
+    expect(parseMood('')).toBe('winter');
+    expect(parseMood('?look=')).toBe('winter');
+    expect(parseMood('?look=summer')).toBe('winter');
+    expect(parseMood('?style=2')).toBe('winter');
   });
 });
 

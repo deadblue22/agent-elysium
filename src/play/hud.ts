@@ -1,17 +1,20 @@
-// The original's HUD over the frame (?ui=de; styles in index.html under data-ui):
-//   - bottom left, Harry's and Kim's portraits in round frames (src/play/portraits.ts); over
-//     Harry's, health (orange) and morale (blue) as numbered crosses over a row of pips. Morale
-//     follows the story; health stays full (the chapter has no health). The speaker's frame lights.
-//   - bottom right, on a dark tray with film codes, the original's four tool icons (character
-//     sheet, inventory, journal, thought cabinet); the journal carries the leads found as its
-//     orange badge, and its hover tip lists them. Then the clock: the present runs from the
-//     morning on, a minute a line, as the original's clock moves only with the dialogue; during
-//     the reconstruction it shows the time marker's minutes, 「昨晚」 after them.
+// The original's HUD over the frame (?ui=de; styles in index.html under data-ui). Only what
+// this chapter plays has a place on it:
+//   - bottom left, Harry's and Kim's portraits in round frames (src/play/portraits.ts); the
+//     speaker's frame lights. Over Harry's, morale (the chapter's one resource) as the original's
+//     numbered blue cross over a row of pips; it is the only morale on screen (the table has no
+//     paper hearts under ?ui=de), and its hover tip is theirs.
+//   - bottom right, on a dark strip, the clock: the present runs from the morning on, a minute a
+//     line, as the original's clock moves only with the dialogue; during the reconstruction it
+//     shows the time marker's minutes, 「昨晚」 after them.
 //   - over the top of the log's panel, an inner voice's cue: when a skill speaks, its name
 //     flashes in its attribute's colour.
 //   - the original's banners: CHECK SUCCESS / CHECK FAILURE under the dice when they settle,
 //     DAMAGED MORALE beside the portraits when a point is lost.
+// The original's health, tool icons (character sheet, inventory, journal, thought cabinet) and
+// film codes are left out: nothing in the chapter uses them (docs/ui.md 3.3).
 // Its animations run on the virtual clock (tweens named 'hud'), so ?speed and reduced motion hold.
+import type { Sound } from '../audio/sfx';
 import type { Lang, Line } from '../content/schema';
 import { ATTRIBUTES, SKILLS, skillName } from '../content/skills';
 import { ui } from '../content/ui';
@@ -20,19 +23,10 @@ import { HARRY_SVG, KIM_SVG } from './portraits';
 
 /** The present's time when the chapter opens (minutes): the morning after, the RCM on the scene. */
 export const MORNING = 8 * 60 + 40;
-/** Health is not played in this chapter: Harry's four points stay full. */
-const HEALTH = 4;
-/** How long a banner stays (virtual ms) before it goes. */
-const HOLD = { banner: 1700 };
-
-/** The original's tool icons, drawn as thin outlines (32 x 32). */
-const ICONS = {
-  sheet: '<rect x="4" y="7" width="6.4" height="7.6" rx="1.4"/><rect x="12.8" y="7" width="6.4" height="7.6" rx="1.4"/><rect x="21.6" y="7" width="6.4" height="7.6" rx="1.4"/><rect x="4" y="17.4" width="6.4" height="7.6" rx="1.4"/><rect x="12.8" y="17.4" width="6.4" height="7.6" rx="1.4"/><rect x="21.6" y="17.4" width="6.4" height="7.6" rx="1.4"/>',
-  case: '<rect x="4" y="10.5" width="24" height="15.5" rx="2.4"/><path d="M12.2 10.5V8.1q0-1.6 1.6-1.6h4.4q1.6 0 1.6 1.6v2.4M4 16.4h24M10.2 14.6v3.6M21.8 14.6v3.6"/>',
-  journal: '<g transform="rotate(9 16 16)"><rect x="8.6" y="4.6" width="16.4" height="23" rx="1.4"/><path d="M12.8 10h8.4M12.8 13.6h8.4M6.6 8.4h3.6M6.6 12.2h3.6M6.6 16h3.6M6.6 19.8h3.6M6.6 23.6h3.6"/></g>',
-  cabinet: '<path d="M16 2.4 29.6 16 16 29.6 2.4 16z"/><path d="M13.4 22.6v-2.8q-3.2-1.2-3.2-5.2 0-5.2 5.6-5.2 5.4 0 5.4 4.8l1.6 2.6-1.6.5v1.9q0 1.7-2.8 1.7v1.7"/>',
-};
-const icon = (name: keyof typeof ICONS) => `<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round">${ICONS[name]}</svg>`;
+/** How long a banner stays (virtual ms) before it goes; how long each morale pip takes to turn. */
+const HOLD = { banner: 1700, pip: 700 };
+/** Morale's sounds come from the bottom left, where it is shown. */
+const MORALE_PAN = -0.85;
 
 /** 530 → 「08:50」 */
 const hhmm = (min: number) => `${String(Math.floor(min / 60) % 24).padStart(2, '0')}:${String(Math.round(min % 60)).padStart(2, '0')}`;
@@ -41,12 +35,18 @@ export interface HudOptions {
   clock: Clock;
   lang: Lang;
   morale: { value: number; max: number };
-  /** The pointer is over a HUD item with a hover tip (a HOTSPOTS key), or has left it. */
+  /**
+   * The pointer is over a HUD item with a hover tip (a HOTSPOTS key), or has left it. `at`
+   * (client px) is where the tip goes: its left edge, at its vertical middle.
+   */
   hover?: (key: string | null, at: { clientX: number; clientY: number }) => void;
+  /** Sound effects (src/audio/sfx.ts). */
+  sound?: Sound;
 }
 
 export function createHud(frame: HTMLElement, o: HudOptions) {
   const { clock } = o;
+  const sound = o.sound ?? (() => {});
   let lang = o.lang;
   const el = document.createElement('div');
   el.className = 'hud';
@@ -55,23 +55,16 @@ export function createHud(frame: HTMLElement, o: HudOptions) {
   el.innerHTML = `
     <div class="party">
       <div class="lead">
-        <div class="vitals"><span class="stat health"><b>${HEALTH}</b></span><span class="stat morale"><b></b></span></div>
-        <div class="pips">${pips('hp', HEALTH)}${pips('mp', o.morale.max)}</div>
+        <div class="vitals"><span class="stat morale"><b></b></span><div class="pips">${pips('mp', o.morale.max)}</div></div>
         <div class="face harry">${HARRY_SVG}</div>
       </div>
       <div class="face kim">${KIM_SVG}</div>
     </div>
     <div class="tray">
-      <svg class="strip" viewBox="0 0 480 86" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-        <path d="M0 86 L34 32 L130 20 L480 8 L480 86Z" fill="rgba(9,8,7,.8)"/>
-        <path d="M0 86 L34 32 L130 20 L480 8" fill="none" stroke="rgba(226,220,208,.26)" stroke-width="1"/>
-        <path d="M30 38 L130 26 L480 14" fill="none" stroke="rgba(226,220,208,.1)" stroke-width="1" stroke-dasharray="3 9"/>
+      <svg class="strip" viewBox="0 0 260 72" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+        <path d="M0 72 L30 24 L260 12 L260 72Z" fill="rgba(9,8,7,.8)"/>
+        <path d="M0 72 L30 24 L260 12" fill="none" stroke="rgba(226,220,208,.26)" stroke-width="1"/>
       </svg>
-      <span class="code c1">01A19</span><span class="code c2">01A20</span>
-      <div class="icons">
-        <span class="ico">${icon('sheet')}</span><span class="ico">${icon('case')}</span>
-        <span class="ico journal">${icon('journal')}<em class="badge" hidden></em></span><span class="ico">${icon('cabinet')}</span>
-      </div>
       <div class="clock"><span class="t"></span><span class="d"></span></div>
     </div>
     <div class="voice" hidden><div class="in"><span class="skill"></span><span class="attr"></span></div></div>
@@ -80,20 +73,23 @@ export function createHud(frame: HTMLElement, o: HudOptions) {
   frame.append(el);
   const $ = <T extends HTMLElement>(sel: string) => el.querySelector(sel) as T;
   const faces = { harry: $('.face.harry'), kim: $('.face.kim') };
-  const moraleNum = $('.stat.morale b');
+  const vitals = $('.vitals'), moraleStat = $('.stat.morale'), moraleNum = $('.stat.morale b');
   const moralePips = [...el.querySelectorAll<HTMLElement>('.pips .mp')];
   const clockT = $('.clock .t'), clockD = $('.clock .d'), clockEl = $('.clock');
-  const badge = $('.journal .badge'), journal = $('.journal');
   const voice = $('.voice'), voiceSkill = $('.voice .skill'), voiceAttr = $('.voice .attr');
   const banners = { check: $('.banner.check'), morale: $('.banner.morale') };
 
-  // the journal's tip lists the leads found (the stack's tip on the table, HOTSPOTS.leads)
-  journal.addEventListener('pointerenter', (e) => o.hover?.('leads', e));
-  journal.addEventListener('pointermove', (e) => o.hover?.('leads', e));
-  journal.addEventListener('pointerleave', (e) => o.hover?.(null, e));
+  // morale's hover tip (the paper hearts' on the table, HOTSPOTS.morale), beside Kim's portrait,
+  // where the table is clear and the tip covers neither the log nor its continue bar
+  const tipAt = () => {
+    const r = faces.kim.getBoundingClientRect();
+    return { clientX: r.right + r.width * 0.2, clientY: r.top + r.height / 2 };
+  };
+  vitals.addEventListener('pointerenter', () => o.hover?.('morale', tipAt()));
+  vitals.addEventListener('pointerleave', () => o.hover?.(null, tipAt()));
 
   // ---- state
-  let morale = o.morale.value, leads = 0, present = MORNING, night: number | null = null;
+  let morale = o.morale.value, present = MORNING, night: number | null = null;
   let voiced: Line | null = null;
   /** What each banner says (it is re-set when the language changes). */
   const said = new Map<HTMLElement, { key: 'checkSuccess' | 'checkFailure' | 'moraleSlip'; tail: string }>();
@@ -149,26 +145,44 @@ export function createHud(frame: HTMLElement, o: HudOptions) {
       showVoice();
       for (const b of Object.values(banners)) say(b);
     },
-    /** Sets morale without a banner (the style board, the start). */
-    setMorale(v: number) { morale = v; showMorale(); },
-    /** Morale changes in the story: the pips follow; a lost point raises DAMAGED MORALE. */
-    morale(v: number) {
-      const lost = morale - v;
+    /** Morale as shown. */
+    get value() { return morale; },
+    /** Sets morale without animating (the style board, the start). */
+    set(v: number) { morale = v; showMorale(); },
+    /**
+     * Morale changes in the story (resolves once it is shown): a lost point raises DAMAGED
+     * MORALE; the pips that change turn one after another, each flaring as it goes, and the
+     * cross swells as its number changes (the paper hearts' pace, so the story's rests hold).
+     */
+    async to(v: number) {
+      const from = morale;
+      if (v === from) return;
+      const lost = v < from;
       morale = v;
+      sound(lost ? 'morale-down' : 'morale-up', { pan: MORALE_PAN });
+      if (lost) {
+        const b = banners.morale;
+        said.set(b, { key: 'moraleSlip', tail: `  -${from - v}` }); // (ASCII: the font subsets carry no U+2212)
+        say(b);
+        void live(b, HOLD.banner, (p) => { b.style.opacity = String(p); b.style.clipPath = `inset(0 ${(1 - p) * 100}% 0 0)`; });
+      }
+      const turning = lost ? moralePips.slice(v, from).reverse() : moralePips.slice(from, v);
+      for (const [n, pip] of turning.entries()) {
+        let turned = false;
+        await clock.tween(HOLD.pip, (p) => {
+          const k = Math.sin(Math.PI * p);
+          pip.style.transform = `scale(${1 + 0.5 * k}, ${1 + 0.9 * k})`;
+          pip.style.filter = `brightness(${1 + 1.6 * k})`;
+          moraleStat.style.transform = `scale(${1 + 0.16 * k})`;
+          if (p >= 0.5 && !turned) {
+            turned = true;
+            pip.classList.toggle('off', lost);
+            moraleNum.textContent = String(lost ? from - n - 1 : from + n + 1);
+          }
+        }, ease.inOut, 'hud');
+        pip.style.transform = pip.style.filter = moraleStat.style.transform = '';
+      }
       showMorale();
-      if (lost <= 0) return;
-      const b = banners.morale;
-      said.set(b, { key: 'moraleSlip', tail: `  -${lost}` }); // (ASCII: the font subsets carry no U+2212)
-      say(b);
-      void live(b, HOLD.banner, (p) => { b.style.opacity = String(p); b.style.clipPath = `inset(0 ${(1 - p) * 100}% 0 0)`; });
-    },
-    /** Leads found: the journal's badge (it pulses when one is added). */
-    leads(count: number) {
-      const added = count > leads;
-      leads = count;
-      badge.hidden = count === 0;
-      badge.textContent = String(count);
-      if (added) void clock.tween(700, (p) => { badge.style.transform = `scale(${1 + 0.6 * Math.sin(Math.PI * p)})`; }, ease.out, 'hud');
     },
     /**
      * A line starts: the present moves on a minute. A skill's line flashes its cue, which stays

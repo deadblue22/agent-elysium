@@ -14,10 +14,10 @@
 // Fails on console errors or page errors, if an option on the path is missing or not in the
 // expected state, if a hover tip does not show, or if the end beat is never reached.
 //
-// --view N plays in camera framing N (src/scene/camera.ts VIEWS); --out DIR writes the
-// captures there instead of docs/.
+// --view N plays in camera framing N (src/scene/camera.ts VIEWS); --query Q adds URL flags
+// (e.g. `ui=book`); --out DIR writes the captures there instead of docs/.
 //
-// Usage: node tools/play.mjs [--no-build] [--speed N] [--only zh|en] [--view N] [--out DIR]
+// Usage: node tools/play.mjs [--no-build] [--speed N] [--only zh|en] [--view N] [--query Q] [--out DIR]
 import { chromium } from 'playwright-core';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
@@ -32,6 +32,7 @@ const arg = (k, d) => (args.includes(k) ? args[args.indexOf(k) + 1] : d);
 const speed = Number(arg('--speed', 3));
 const only = arg('--only', null);
 const view = arg('--view', null);
+const query = arg('--query', null);
 const out = arg('--out', join(root, 'docs'));
 
 /**
@@ -121,7 +122,7 @@ async function playthrough(lang) {
     });
   };
 
-  await page.goto(`${url}?dice=${DICE}&speed=${speed}${lang === 'en' ? '&lang=en' : ''}${view === null ? '' : `&view=${view}`}`, { waitUntil: 'load' });
+  await page.goto(`${url}?dice=${DICE}&speed=${speed}${lang === 'en' ? '&lang=en' : ''}${view === null ? '' : `&view=${view}`}${query === null ? '' : `&${query}`}`, { waitUntil: 'load' });
   await until(() => window.__ready === true && !!window.__play);
   await advance(() => window.__play.idle);
   console.log(`[${lang}] opening settled (${since()})`);
