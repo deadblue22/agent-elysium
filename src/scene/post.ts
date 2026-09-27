@@ -4,7 +4,9 @@
 // Grading and grain work in display space so they match the legacy board's CSS layers.
 // A painterly grade (?style=2, src/scene/palette.ts) turns blues toward teal, adds a split tone,
 // a saturation trim, paint mottling, a reshaped vignette and a glow round the brightest lights;
-// at their defaults these leave the frame exactly as it was.
+// a look (?look=, src/scene/mood.ts) keeps one accent hue in a drained frame, sets the black
+// level, deepens or softens the flashback's night and spares the log its black level and vignette.
+// At their defaults these leave the frame exactly as it was.
 import { HalfFloatType, Vector2, Vector3, Vector4, WebGLRenderTarget, type Camera, type Scene, type WebGLRenderer } from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -43,6 +45,15 @@ const FilmShader = {
     /** Vignette: its colour, and its shape (x: radius where it starts, y: the knee, z: strength there, w: strength at the rim). */
     uVignetteColor: { value: new Vector3(4 / 255, 2 / 255, 1 / 255) },
     uVignetteShape: { value: new Vector4(0.5, 0.76, 0.38, 0.86) },
+    // A look's grade (?look=, src/scene/mood.ts); at these defaults the frame is unchanged.
+    /** Accent hues kept while the rest is drained: x the hue (0..1), y how far it reaches, z the saturation there, w 1: on. */
+    uAccent: { value: new Vector4(0, 0, 1, 0) },
+    /** The black level after the contrast, per channel: above 0 lifts and tints the darks, below 0 crushes them. */
+    uLift: { value: new Vector3(0, 0, 0) },
+    /** How far the flashback's night goes (1: all the way). */
+    uNightDepth: { value: 1 },
+    /** How much of a look's black level and vignette reaches the text column (1: all of it; a dark or faded look keeps the log clear). */
+    uQuietLook: { value: 1 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -57,6 +68,9 @@ const FilmShader = {
     uniform vec4 uToneLow, uToneHigh, uVignetteShape;
     uniform float uSaturation, uMottle;
     uniform vec2 uBlueShift;
+    uniform vec4 uAccent;
+    uniform vec3 uLift;
+    uniform float uNightDepth, uQuietLook;
     varying vec2 vUv;
 
     vec3 rgb2hsv(vec3 c) {
@@ -120,7 +134,7 @@ const FilmShader = {
       // last night: drained of warmth, shifted to blue, a little darker; highlights keep some warmth
       float ln = dot(s, vec3(0.2126, 0.7152, 0.0722));
       vec3 cold = mix(vec3(ln), s, 0.5) * uNightTint * 0.9;
-      s = mix(s, mix(cold, s, smoothstep(0.55, 0.95, ln) * 0.5), uNight);
+      s = mix(s, mix(cold, s, smoothstep(0.55, 0.95, ln) * 0.5), uNight * uNightDepth);
 
       // the text column, where grain and mottling are gentler
       vec2 q = smoothstep(uQuiet.xy - 0.015, uQuiet.xy + 0.01, vUv) * (1.0 - smoothstep(uQuiet.zw - 0.01, uQuiet.zw + 0.015, vUv));
@@ -136,16 +150,31 @@ const FilmShader = {
       float lt = dot(s, vec3(0.2126, 0.7152, 0.0722));
       s = mix(s, softLight(s, uToneLow.rgb), (1.0 - smoothstep(0.0, 0.55, lt)) * uToneLow.a);
       s = mix(s, softLight(s, uToneHigh.rgb), smoothstep(0.45, 1.0, lt) * uToneHigh.a);
-      s = mix(vec3(dot(s, vec3(0.2126, 0.7152, 0.0722))), s, uSaturation);
+      float sat = uSaturation;
+      if (uAccent.w > 0.0) {
+        // a drained frame that keeps its rust (or any one hue): full saturation within y/2 of
+        // the hue, falling to uSaturation by y; only strong colour counts (the rust of the
+        // options and the rug, not the brown of the walnut, which has the same hue)
+        vec3 h = rgb2hsv(s);
+        float dh = abs(fract(h.x - uAccent.x + 0.5) - 0.5);
+        sat = mix(uAccent.z, uSaturation, max(smoothstep(uAccent.y * 0.5, uAccent.y, dh), 1.0 - smoothstep(0.42, 0.62, h.y)));
+      }
+      s = mix(vec3(dot(s, vec3(0.2126, 0.7152, 0.0722))), s, sat);
       float mo = mottle(vUv) * uMottle * mix(1.0, 0.3, quiet);
       s = s * (1.0 + mo) + vec3(0.3, 0.05, -0.3) * mo;
 
       s = clamp((s - 0.42) * uContrast + 0.42, 0.0, 1.0);
+      // a look's black level: a bleak, lifted and tinted black, or a crushed one
+      if (uLift != vec3(0.0)) {
+        vec3 lift = uLift * mix(1.0, uQuietLook, quiet);
+        s = clamp(lift + s * (1.0 - lift), 0.0, 1.0);
+      }
 
       // vignette: ellipse 80% x 78% at (50%, 56%); a painted frame's edge wanders with the mottling
       vec4 V = uVignetteShape;
       float r = length((vUv - vec2(0.5, 0.44)) / vec2(0.8, 0.78)) + mottle(vUv * 1.7 + 3.1) * uMottle * 0.8;
       float a = r < V.x ? 0.0 : r < V.y ? V.z * (r - V.x) / (V.y - V.x) : r < 1.0 ? mix(V.z, V.w, (r - V.y) / (1.0 - V.y)) : V.w;
+      if (uQuietLook != 1.0) a *= mix(1.0, uQuietLook, quiet);
       s = mix(s, uVignetteColor, a * uVignette);
 
       // film grain: overlay-blended noise, a new pattern 24 times a second; gentler on the text

@@ -7,7 +7,11 @@ import {
 import { softShadows } from './penumbra';
 import { glowTexture } from './puppets';
 
-export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; windowGlow: Vector3 }) {
+/**
+ * `soft`: the key's penumbra (penumbra.ts), compiled into the shaders, so a look that wants
+ * harder shadows (?look=winter, src/scene/mood.ts) says so before any material compiles.
+ */
+export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; windowGlow: Vector3 }, o: { soft?: { angle: number; max: number } } = {}) {
   const group = new Group();
   group.name = 'lights';
 
@@ -30,7 +34,7 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
   key.shadow.normalBias = 0.012;
   key.shadow.intensity = 1;
   key.name = 'key';
-  softShadows(key, { angle: 4, max: 0.4 });
+  softShadows(key, o.soft ?? { angle: 4, max: 0.4 });
   group.add(key, key.target);
 
   // the candle: the only warm light in the room
@@ -80,19 +84,19 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
   halo.renderOrder = 4;
   group.add(flameSprite, halo);
 
-  const base = flame.intensity;
   /**
    * Stage cues drive these: the candle brighter in the flashback, flickering hard at the blow,
-   * and going out at the end (out: 0 burning .. 1 out).
+   * and going out at the end (out: 0 burning .. 1 out). `power` is the steady intensity they
+   * scale (a look may set it; the cues leave it alone).
    */
-  const candle = { boost: 1, flicker: 0.05, out: 0 };
+  const candle = { boost: 1, flicker: 0.05, out: 0, power: flame.intensity };
   const halo0 = (halo.material as SpriteMaterial).opacity;
   const apply = (t: number) => {
     const f = Math.sin(t * 7.3) * 0.5 + Math.sin(t * 13.1 + 1.7) * 0.3 + Math.sin(t * 2.1) * 0.2;
     const hard = candle.flicker > 0.1 ? Math.sin(t * 31 + 0.7) * 0.6 + Math.sin(t * 53) * 0.4 : 0; // gusts
     const k = 1 + candle.flicker * (f + hard);
     const burning = 1 - candle.out;
-    flame.intensity = base * candle.boost * Math.max(0.15, k) * burning ** 1.5;
+    flame.intensity = candle.power * candle.boost * Math.max(0.15, k) * burning ** 1.5;
     // the flame shrinks down onto the wick, and the halo goes with it
     flameSprite.scale.set(0.2 * burning ** 0.4, 0.36 * candle.boost ** 0.5 * (1 + 0.8 * candle.flicker * (f + hard)) * burning, 1);
     flameSprite.position.y = at.candleFlame.y - 0.13 * (1 - burning);
@@ -100,7 +104,7 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
     (halo.material as SpriteMaterial).opacity = halo0 * burning;
   };
   return {
-    group, hemi, key, flame, lamp, windowGlow, candle,
+    group, hemi, key, flame, lamp, windowGlow, candle, halo,
     /** A slow, small flicker (t in seconds). */
     update(t: number) { apply(t); },
     /** Applies the candle's boost and flicker without animating it (a still frame). */
