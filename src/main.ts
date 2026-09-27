@@ -39,6 +39,7 @@ import { applyPainting } from './scene/palette';
 import { createPopup, layers, roomLights } from './scene/popup';
 import { createPost } from './scene/post';
 import { addPaint, parsePaint } from './scene/paint';
+import { paintWindowView } from './scene/paint-view';
 import { createStage } from './scene/puppets';
 import { createLeadCard } from './scene/lead';
 import { createHotspots } from './scene/hotspots';
@@ -196,6 +197,8 @@ async function main() {
   // only the chosen version of the puppets is loaded; it stands in for harry and kim everywhere
   // (the stage, the stand tabs and card edges, the hover tips, the ember, the opening and the end)
   const [art] = await Promise.all([loadArt(anisotropy, (name) => (castOf(name) ?? CAST) === CAST), loadFonts()]);
+  // ?paint: the view out of the window painted after Rostov (before anything takes its texture)
+  if (PAINT) paintWindowView(art, anisotropy);
   if (CAST) {
     for (const who of ['harry', 'kim']) {
       const piece = art[`${who}-v${CAST}`];
