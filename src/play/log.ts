@@ -3,11 +3,11 @@
 // name), the log scrolls up to make room for each, and the current options follow, numbered.
 // It also keeps the screen-reader mirror (an ordered list; options are real buttons), the
 // options' tooltip and the continue marker the director raises while it waits for a click.
-import type { Lang, LogEntry } from '../content/schema';
-import { skillName } from '../content/skills';
+import type { Lang, LogEntry, Option } from '../content/schema';
+import { ATTRIBUTES, DIFFICULTY, SKILLS, skillName } from '../content/skills';
 import { ui } from '../content/ui';
 import type { OptionView } from '../engine';
-import { layoutLog, type Column, type Measurer, type PageLayout } from '../page/layout';
+import { BOARD, layoutLog, type Column, type LogLook, type Measurer, type PageLayout } from '../page/layout';
 import type { PagePainter } from '../page/painter';
 import { ease, type Clock } from './clock';
 
@@ -55,6 +55,8 @@ export class LogView {
   private reveal: { entry: number; chars: number } | null = null;
   /** A fixed page (the style board): these entries exactly, options included. */
   private fixed: LogEntry[] | null = null;
+  /** Options chosen so far (the original look prints them dimmer when they come round again). */
+  private chosen = new WeakSet<Option>();
 
   constructor(
     private painter: PagePainter,
@@ -67,6 +69,8 @@ export class LogView {
     private onChoose: (number: number) => void,
     /** Whether options can be chosen now (the mirror's buttons are disabled otherwise). */
     private canChoose: () => boolean,
+    /** How the log is set (?style=1: the original's conventions). */
+    private look: LogLook = BOARD,
   ) {
     this.relayout();
   }
@@ -76,12 +80,15 @@ export class LogView {
     if (this.fixed) return this.fixed;
     return [
       ...this.entries,
-      ...this.options.map((o): LogEntry => ({ kind: 'option', number: o.number, index: o.index, option: o.option, state: o.state })),
+      ...this.options.map((o): LogEntry => ({ kind: 'option', number: o.number, index: o.index, option: o.option, state: o.state, seen: this.chosen.has(o.option) })),
     ];
   }
 
+  /** Remembers a chosen option. */
+  chose(option: Option) { this.chosen.add(option); }
+
   private relayout(offset?: number) {
-    this.layout = layoutLog(this.page(), this.lang, this.measurer, this.col);
+    this.layout = layoutLog(this.page(), this.lang, this.measurer, this.col, this.look);
     this.painter.setLayout(this.layout, { reveal: this.reveal, offset });
     this.mirror();
   }
@@ -104,7 +111,7 @@ export class LogView {
     const before = this.layout.height;
     this.clock.cancel('scroll');
     this.painter.scrollToEnd();
-    this.layout = layoutLog(this.page(), this.lang, this.measurer, this.col);
+    this.layout = layoutLog(this.page(), this.lang, this.measurer, this.col, this.look);
     const from = this.offset + this.layout.height - before;
     this.offset = from;
     this.painter.setLayout(this.layout, { reveal: this.reveal, offset: from });
@@ -228,11 +235,44 @@ export function tooltipText(o: OptionView, lang: Lang): string[] {
   return lines;
 }
 
-/** Fills the tooltip element for an option (the first line set large), or hides it. */
-export function renderTooltip(el: HTMLElement, o: OptionView | undefined, lang: Lang) {
+/**
+ * Fills the tooltip element for an option (the first line set large), or hides it. `card`: as
+ * the original's check card instead (?style=1): a header in the skill's attribute colour with
+ * its name and level, the check's tier (the original prints a word for the odds there), the
+ * chance set large, the modifiers, what kind of check it is, and the two rolls that always
+ * lose and always win.
+ */
+export function renderTooltip(el: HTMLElement, o: OptionView | undefined, lang: Lang, card = false) {
   const lines = o ? tooltipText(o, lang) : [];
   if (!o || !lines.length) { el.hidden = true; return; }
   const c = o.option.check;
+  el.classList.toggle('card', card && !!c);
+  if (card && c) {
+    const div = (cls: string, text = '') => { const d = document.createElement('div'); d.className = cls; d.textContent = text; return d; };
+    const skill = skillName(c.skill, c.sense, lang);
+    const head = div('c-head', `${lang === 'en' ? skill.toUpperCase() : skill}${lang === 'zh' ? '：' : ': '}${SKILLS[c.skill].value}`);
+    el.style.setProperty('--attr', ATTRIBUTES[SKILLS[c.skill].attribute].color);
+    const parts = [head];
+    if (o.state === 'greyed') parts.push(div('c-locked', o.reason?.[lang] ?? ''));
+    else {
+      parts.push(div('c-tier', `${DIFFICULTY[c.dc][lang]} ${c.dc}`), div('c-chance', `${Math.round((o.chance ?? 0) * 100)}%`));
+    }
+    for (const m of o.modifiers ?? []) parts.push(div('c-mod', `${m.value >= 0 ? '+' : ''}${m.value} ${m.label[lang]}`));
+    parts.push(div('c-rule'), div(c.kind === 'red' ? 'c-kind red' : 'c-kind', c.kind === 'red' ? ui.redCheck[lang] : ui.whiteCheck[lang]));
+    // snake eyes always lose, boxcars always win (§5.2), as the original's card shows them
+    const dice = div('c-dice');
+    for (const [pip, text] of [[1, ui.alwaysLoses[lang]], [6, ui.alwaysWins[lang]]] as const) {
+      const pair = div('c-pair');
+      for (let k = 0; k < 2; k++) pair.append(div(`die p${pip}`));
+      pair.append(div('c-cap', text));
+      dice.append(pair);
+    }
+    parts.push(dice);
+    el.replaceChildren(...parts);
+    el.classList.toggle('greyed', o.state === 'greyed');
+    el.hidden = false;
+    return;
+  }
   el.replaceChildren(...lines.map((t, i) => {
     const div = document.createElement('div');
     div.textContent = t;
