@@ -122,7 +122,7 @@ export const HOTSPOTS: Record<string, Hotspot> = {
   // the name is followed by the count (「士气 3 / 4」); the leads' line lists what was found
   morale: {
     name: t('士气', 'Morale'),
-    tip: t('失败会让它流失。一颗也不剩的时候，你会放下这个案子。', 'Failures drain it. When no heart is left, you give up the case.'),
+    tip: t('失败会让它流失。一点也不剩的时候，你会放下这个案子。', 'Failures drain it. When none is left, you give up the case.'),
   },
   leads: {
     name: t('线索', 'Leads'),

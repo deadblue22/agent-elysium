@@ -1,6 +1,6 @@
 // Looks: bold presets of light, mood and grime after the original's cold, bleak and dramatic
-// pictures (docs/look.md), against the default's warm picture book. ?look=winter, ?look=noir;
-// no parameter: the default, unchanged.
+// pictures (docs/look.md), against the earlier rounds' warm picture book. winter is the default
+// (`?look=winter` says the same); ?look=noir; ?look=warm: the warm picture book, no preset.
 //   winter  a low winter sun from behind the room on the window's side throws long, hard,
 //           blue-grey shadows across the room and the table; the wall stops it but for the
 //           window, which lets it in as a shaft with dust (src/scene/shaft.ts); the reading lamp
@@ -30,10 +30,10 @@ import { BASE_Y, DEG, wx } from './space';
 
 export type Mood = 'winter' | 'noir';
 
-/** The look a query string asks for (`?look=winter`), or null for the default. */
+/** The look a query string asks for: winter unless it says `?look=noir`, or null for `?look=warm`. */
 export function parseMood(search: string): Mood | null {
   const v = new URLSearchParams(search).get('look');
-  return v === 'winter' || v === 'noir' ? v : null;
+  return v === 'warm' ? null : v === 'noir' ? 'noir' : 'winter';
 }
 
 /**
