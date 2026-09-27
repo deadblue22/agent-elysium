@@ -291,6 +291,106 @@
         "emberY": 48.6
       }
     },
+    "harry-v1": {
+      "file": "textures/harry-v1.webp",
+      "px": [
+        208,
+        444
+      ],
+      "viewBox": [
+        30,
+        3,
+        104,
+        222
+      ],
+      "world": [
+        1.04,
+        2.22
+      ],
+      "scale": 2,
+      "meta": {
+        "soles": 219,
+        "feetX0": 46,
+        "feetX1": 125,
+        "emberX": 104.7,
+        "emberY": 48.2
+      }
+    },
+    "harry-v2": {
+      "file": "textures/harry-v2.webp",
+      "px": [
+        208,
+        440
+      ],
+      "viewBox": [
+        30,
+        5,
+        104,
+        220
+      ],
+      "world": [
+        1.04,
+        2.2
+      ],
+      "scale": 2,
+      "meta": {
+        "soles": 219,
+        "feetX0": 48,
+        "feetX1": 124,
+        "emberX": 104.6,
+        "emberY": 46.6
+      }
+    },
+    "harry-v3": {
+      "file": "textures/harry-v3.webp",
+      "px": [
+        208,
+        440
+      ],
+      "viewBox": [
+        30,
+        5,
+        104,
+        220
+      ],
+      "world": [
+        1.04,
+        2.2
+      ],
+      "scale": 2,
+      "meta": {
+        "soles": 219,
+        "feetX0": 47,
+        "feetX1": 124,
+        "emberX": 105.4,
+        "emberY": 47.4
+      }
+    },
+    "harry-v4": {
+      "file": "textures/harry-v4.webp",
+      "px": [
+        208,
+        440
+      ],
+      "viewBox": [
+        30,
+        5,
+        104,
+        220
+      ],
+      "world": [
+        1.04,
+        2.2
+      ],
+      "scale": 2,
+      "meta": {
+        "soles": 219,
+        "feetX0": 47,
+        "feetX1": 123,
+        "emberX": 104.6,
+        "emberY": 46.4
+      }
+    },
     "heart": {
       "file": "textures/heart.webp",
       "px": [
@@ -329,6 +429,98 @@
     },
     "kim": {
       "file": "textures/kim.webp",
+      "px": [
+        144,
+        386
+      ],
+      "viewBox": [
+        12,
+        10,
+        72,
+        193
+      ],
+      "world": [
+        0.72,
+        1.93
+      ],
+      "scale": 2,
+      "meta": {
+        "soles": 201,
+        "feetX0": 32,
+        "feetX1": 72
+      }
+    },
+    "kim-v1": {
+      "file": "textures/kim-v1.webp",
+      "px": [
+        144,
+        394
+      ],
+      "viewBox": [
+        12,
+        6,
+        72,
+        197
+      ],
+      "world": [
+        0.72,
+        1.97
+      ],
+      "scale": 2,
+      "meta": {
+        "soles": 201,
+        "feetX0": 32,
+        "feetX1": 72
+      }
+    },
+    "kim-v2": {
+      "file": "textures/kim-v2.webp",
+      "px": [
+        144,
+        386
+      ],
+      "viewBox": [
+        12,
+        10,
+        72,
+        193
+      ],
+      "world": [
+        0.72,
+        1.93
+      ],
+      "scale": 2,
+      "meta": {
+        "soles": 201,
+        "feetX0": 31,
+        "feetX1": 72
+      }
+    },
+    "kim-v3": {
+      "file": "textures/kim-v3.webp",
+      "px": [
+        144,
+        386
+      ],
+      "viewBox": [
+        12,
+        10,
+        72,
+        193
+      ],
+      "world": [
+        0.72,
+        1.93
+      ],
+      "scale": 2,
+      "meta": {
+        "soles": 201,
+        "feetX0": 32,
+        "feetX1": 72
+      }
+    },
+    "kim-v4": {
+      "file": "textures/kim-v4.webp",
       "px": [
         144,
         386

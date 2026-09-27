@@ -7,6 +7,8 @@
 //   ?speed=N      play animations and the typewriter N times faster (test harness)
 //   ?view=N       a candidate camera framing (src/scene/camera.ts VIEWS); 0 the earlier one
 //   ?debug        expose the painters, scene and renderer on window.__debug
+//   ?cast=N       Harry and Kim as drawn after reference N (assets/art/harry-vN.svg,
+//                 kim-vN.svg; docs/cast.md); without it, the current pair (harry.svg, kim.svg)
 // prefers-reduced-motion: every tween jumps to its end, the snow and grain hold still.
 import { Box3, NoToneMapping, PCFShadowMap, PMREMGenerator, SRGBColorSpace, Scene, Vector2, Vector3, WebGLRenderer, type Mesh, type PerspectiveCamera } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -93,6 +95,10 @@ const FROZEN = STILL || REDUCED;
 let lang: Lang = params.get('lang') === 'en' ? 'en' : 'zh';
 /** The camera's framing, and with it how tall the log's ink is drawn and how the table's boards run. */
 const VIEW = pickView(params.get('view'));
+/** The puppets' version (?cast=N); 0 is the current pair. */
+const CAST = Math.max(0, Math.floor(Number(params.get('cast'))) || 0);
+/** harry-v2 → 2 for the versioned puppets, null for every other piece. */
+const castOf = (name: string) => { const m = /^(?:harry|kim)-v(\d+)$/.exec(name); return m ? Number(m[1]) : null; };
 
 const frameEl = document.getElementById('frame') as HTMLDivElement;
 const canvas = document.getElementById('gl') as HTMLCanvasElement;
@@ -173,7 +179,16 @@ async function main() {
   renderer.setClearColor('#0b0806');
   const anisotropy = renderer.capabilities.getMaxAnisotropy();
 
-  const [art] = await Promise.all([loadArt(anisotropy), loadFonts()]);
+  // only the chosen version of the puppets is loaded; it stands in for harry and kim everywhere
+  // (the stage, the stand tabs and card edges, the hover tips, the ember, the opening and the end)
+  const [art] = await Promise.all([loadArt(anisotropy, (name) => (castOf(name) ?? CAST) === CAST), loadFonts()]);
+  if (CAST) {
+    for (const who of ['harry', 'kim']) {
+      const piece = art[`${who}-v${CAST}`];
+      if (piece) art[who] = piece;
+      else console.warn(`?cast=${CAST}: no ${who}-v${CAST} in the textures; showing ${who}`);
+    }
+  }
 
   const clock = new Clock();
   clock.speed = Math.max(0.1, Number(params.get('speed')) || 1);
@@ -429,6 +444,9 @@ async function main() {
   let resizeTimer = 0;
   addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = window.setTimeout(resize, 120); });
 
+  // the puppets' rect below needs their world matrices, which are otherwise first set by a render
+  // (without this the rect missed the lean and the crop cut off their feet)
+  scene.updateMatrixWorld();
   window.__shot = {
     page: pageRect, column,
     renderer: rendererName(renderer),

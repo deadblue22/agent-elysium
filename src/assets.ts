@@ -20,12 +20,13 @@ interface Manifest {
 
 const BASE = import.meta.env.BASE_URL;
 
-export async function loadArt(anisotropy: number): Promise<Art> {
+/** Loads the textures in the manifest (only those `keep` accepts, when given). */
+export async function loadArt(anisotropy: number, keep: (name: string) => boolean = () => true): Promise<Art> {
   const res = await fetch(`${BASE}textures/manifest.json`);
   if (!res.ok) throw new Error(`textures/manifest.json: ${res.status} (run npm run bake)`);
   const manifest = (await res.json()) as Manifest;
   const loader = new TextureLoader();
-  const entries = await Promise.all(Object.entries(manifest.textures).map(async ([name, t]) => {
+  const entries = await Promise.all(Object.entries(manifest.textures).filter(([name]) => keep(name)).map(async ([name, t]) => {
     const texture = await loader.loadAsync(BASE + t.file);
     texture.colorSpace = SRGBColorSpace;
     texture.anisotropy = anisotropy;
