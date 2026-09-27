@@ -5,6 +5,7 @@
 //   ?lang=en      start in English
 //   ?seed=N       seed the dice;  ?dice=4-5,3-3,5-6  force the next rolls (then the seed's)
 //   ?speed=N      play animations and the typewriter N times faster (test harness)
+//   ?view=N       a candidate camera framing (src/scene/camera.ts VIEWS); 0 the earlier one
 //   ?debug        expose the painters, scene and renderer on window.__debug
 // prefers-reduced-motion: every tween jumps to its end, the snow and grain hold still.
 import { Box3, NoToneMapping, PCFShadowMap, PMREMGenerator, SRGBColorSpace, Scene, Vector2, Vector3, WebGLRenderer, type Mesh, type PerspectiveCamera } from 'three';
@@ -22,7 +23,7 @@ import { Clock } from './play/clock';
 import { Director } from './play/director';
 import { LogView, renderTooltip } from './play/log';
 import { createBook } from './scene/book';
-import { FRAME, createCameraRig } from './scene/camera';
+import { FRAME, createCameraRig, pickView } from './scene/camera';
 import { createCues } from './scene/cues';
 import { createDice } from './scene/dice';
 import { createHearts } from './scene/hearts';
@@ -90,6 +91,8 @@ const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 /** No ambient motion: snow, grain, candle flicker and the cursor hold still. */
 const FROZEN = STILL || REDUCED;
 let lang: Lang = params.get('lang') === 'en' ? 'en' : 'zh';
+/** The camera's framing, and with it how tall the log's ink is drawn and how the table's boards run. */
+const VIEW = pickView(params.get('view'));
 
 const frameEl = document.getElementById('frame') as HTMLDivElement;
 const canvas = document.getElementById('gl') as HTMLCanvasElement;
@@ -109,12 +112,8 @@ function frameSize() {
  */
 const inkScale = (w: number, pr: number) => Math.min(4, Math.max(3, (3 * w * pr) / FRAME.w));
 const labelScale = (w: number, pr: number) => Math.min(3, Math.max(1.5, (1.5 * w * pr) / FRAME.w));
-/**
- * The log's glyphs are drawn this much taller than wide: the camera sees the left page at
- * about 55 degrees, which squashes them to about 0.82 of their height; drawn 1.1x, they show
- * at about 0.9, close to their true shape.
- */
-const INK_STRETCH = 1.1;
+/** The log's glyphs are drawn this much taller than wide, to undo the slanted page's squash (per view). */
+const INK_STRETCH = VIEW.ink;
 
 /** Frame position of a point on the top sheets (or at height h). */
 function onFrame(camera: PerspectiveCamera, bx: number, by: number, h = sheetY(bx, by)) {
@@ -195,8 +194,8 @@ async function main() {
   const dice = createDice(art, clock);
   const buildMs = performance.now() - t0; // geometry, procedural textures and the baked occlusion
   const lights = createLights(roomLights(art.floor.meta));
-  const cam = createCameraRig();
-  scene.add(createTable(), book.group, popup.group, stage.group, hearts.group, lead.group, dice.group, lights.group, cam.rig);
+  const cam = createCameraRig(VIEW);
+  scene.add(createTable(VIEW.boards), book.group, popup.group, stage.group, hearts.group, lead.group, dice.group, lights.group, cam.rig);
   // a soft, low environment light, so curved paper, page edges and board edges read through
   // gentle shading gradients and not only through the direct lights
   const pmrem = new PMREMGenerator(renderer);
@@ -538,9 +537,11 @@ async function main() {
 }
 
 /**
- * Frame rows of the composition's landmarks (px), and how the text lies on the left page:
- * glyph height/width at mid-window and the glyph height on the bottom line over the top
- * fully visible line.
+ * Frame rows of the composition's landmarks (px), where the eye is (world units above the
+ * table and from the book's middle, and degrees above the table seen from the book's middle),
+ * and how the text lies on the left page: glyph height/width at mid-window, the glyph height
+ * on the bottom line over the top fully visible line, and how many lines the log's window
+ * holds below its fade.
  */
 function composition(camera: PerspectiveCamera, art: Awaited<ReturnType<typeof loadArt>>, log: PageLayout, ink: PagePainter) {
   const P = (bx: number, by: number, up = 0, lean = 0, h = sheetY(bx, by)) => {
@@ -568,14 +569,17 @@ function composition(camera: PerspectiveCamera, art: Awaited<ReturnType<typeof l
   const mid = scale((top + bottom) / 2), k = INK_STRETCH;
   const glyph = 0.9 * em; // CJK glyphs carry about 0.9 em of ink
   const pitch = baselines.length > 1 ? Math.min(...baselines.slice(1).map((b, i) => b - baselines[i])) : 0;
+  const eye = camera.getWorldPosition(new Vector3()), middle = new Vector3(0, BASE_Y, 0);
   return {
+    eyeHeight: +eye.y.toFixed(1), eyeDistance: +eye.distanceTo(middle).toFixed(1),
+    eyeElevation: +(Math.asin((eye.y - BASE_Y) / eye.distanceTo(middle)) / DEG).toFixed(1),
     backdropTop: Y(335, L.wall.hinge, 418, L.wall.lean, rest('wall')), backdropBase: base('wall'),
     rowFurniture: base('furniture'), rowDesk: base('desk'), rowFront: base('front-chair'),
     leftTearTop: Y(335, tl.tearMin), leftTearBottom: Y(335, tl.tearMax), rightTear: Y(1090, tr.tearMax), nearEdge: Y(335, PAGE.h),
     glyphHW: +((k * mid.v) / mid.h).toFixed(3), glyphBottomOverTop: +(scale(bottom).v / scale(top).v).toFixed(3),
     glyphPxTop: +(glyph * k * scale(top).v).toFixed(1), glyphPxBottom: +(glyph * k * scale(bottom).v).toFixed(1),
     glyphWidthPx: +(glyph * mid.h).toFixed(1), pitchPxTop: +(pitch * k * scale(top).v).toFixed(1), bodyEm: em,
-    lines: baselines.length,
+    lines: baselines.length, windowLines: +((w.y1 - w.y0 - w.fade) / pitch).toFixed(1),
   };
 }
 
