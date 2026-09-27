@@ -42,8 +42,13 @@
 - 第五轮（用户反馈原作风格体现不够、场景太温馨，需要更大胆的尝试；附五张原作参考图）：三个子任务并行。
   - `?ui=de`：左页日志印成原作的深色对话面板（白色衬线字、粗体大写名称、按属性着色的技能名、检定纸条、青色继续条与红色颜料），画面四周加原作的 HUD（哈里与金的圆形头像、生命与士气格、工具图标与线索角标、按台词走的时钟、技能标签与检定横幅）。见 `docs/ui.md`。
   - `?look=winter`：低角度冬阳从窗洞射入，长而硬的蓝灰影，带灰尘的光束，台灯关闭，蜡烛成为唯一的暖色，降饱和调色；`?look=noir`：暗房、月光光束、蜡烛的暖光池与金色光点、深暗角。两者都叠加运行时绘制的脏旧。见 `docs/look.md`。
-  - `?paint=`：油画后期（进行中）。
+  - `?paint=1|2`：整帧重画成油画（画家调色板、各向异性 Kuwahara 滤波、笔触与刮刀痕、画布纹理），窗外换成按 Rostov 概念画绘制的远景。曾合入 `main`（PR #8），第六轮移除。
   - 默认参数下画面与此前逐像素一致。
+- 第六轮（用户反馈：「`?look=winter&ui=de` 这个组合还不错，但有几个 UI 似乎没有实际用途。油画直接用在画面上效果并不好」）：
+  - 冬日与原作界面改为默认。`?ui=book` 回到书页排法，`?look=warm` 回到暖色绘本，`?look=noir` 为夜；`?still&ui=book&look=warm` 与此前默认的静帧逐像素一致。
+  - HUD 只留本章用得上的部分：头像（说话者）、士气、时钟、技能标签与检定横幅。去掉生命（本章没有生命规则）、角色、物品、思维阁图标（不能点击）、日志图标与线索角标（与桌上线索卡堆重复）、托盘上的胶片编码。原作界面下桌上不再放纸心，士气只显示在 HUD 上：失去时横幅、下降音、格子逐个熄灭；悬停十字框显示士气提示。见 `docs/ui.md` 3.3 节。
+  - 油画后期整体移除（代码、文档与截图），不再作为候选。原因：滤镜盖在整帧上，纸片、文字与桌面一起被涂抹，失去立体书的材质与清晰度。若之后仍要油画感，应画进素材（墙纸、窗外远景等纹理），不要做成整帧后期。
+  - `tools/play.mjs` 新增 `--query`，在额外的页面参数下通关（例如 `--query "ui=book&look=warm"`）。
 - 本文件第 3–8 节描述合并后的 `main`。
 
 ## 3. 环境与命令
@@ -51,17 +56,17 @@
 | 命令 | 作用 | 云端容器内耗时 | macOS（M4 Pro）耗时 |
 |---|---|---|---|
 | `npm install` | 安装依赖（需要 Node 20+） | — | — |
-| `npm test` | 引擎、打字节奏、乐谱与风格参数的单元测试（41 项） | 约 1 秒 | 约 1 秒 |
+| `npm test` | 引擎、打字节奏、风格、界面与氛围参数的单元测试（35 项） | 约 1 秒 | 约 1 秒 |
 | `npm run build` | 类型检查并构建到 `dist/` | 约 5 秒 | 约 1 秒；产物约 3 MB |
 | `npm run dev` | 开发服务器 | — | — |
 | `npm run shot` / `npm run shot -- --lang en` | 渲染风格板静帧，写 `docs/style-board-three*.png`，并打印构图、字形尺寸与帧耗时；`-- --view 0,1,2,3` 改为写各取景的 `docs/view-N.png` | 约 1 分钟 | 约 5 秒 |
-| `npm run play` | 无头通关中英文各一遍，写 `docs/m1-*.png`；`-- --only zh` 只跑中文；`-- --view N --out 目录` 在指定取景下通关并把截图写到别处 | 约 8 分钟（只跑中文约 5 分钟） | 约 2 分钟 |
+| `npm run play` | 无头通关中英文各一遍，写 `docs/m1-*.png`；`-- --only zh` 只跑中文；`-- --view N --out 目录` 在指定取景下通关并把截图写到别处；`-- --query "ui=book&look=warm"` 加页面参数 | 约 8 分钟（只跑中文约 5 分钟） | 约 2 分钟 |
 | `node tools/cast.mjs` | 渲染各纸偶版本，写 `docs/cast-v*.png` 与 `docs/cast-sheet.png` | — | 约 10 秒 |
 | `npm run extract-art` | 从 `demo/index.html` 重新生成提取类纸片的 SVG | 数秒 | 数秒 |
 | `npm run bake [名称…]` | 把 `assets/art/*.svg` 烘焙成 `public/textures/*.webp` 与 `manifest.json` | 地板约 18 秒，其余数秒 | 地板约 2 秒 |
 | `npm run fonts` | 按全部台词重新裁剪字体子集（需要访问 Google Fonts） | — | — |
 
-页面参数：`?still` 风格板静帧；`?lang=en` 英文；`?seed=N` 骰子种子；`?dice=4-5,3-3` 强制掷骰点数；`?speed=N` 倍速；`?debug` 在 `window.__debug` 暴露场景对象；`?view=N` 取景候选；`?cast=N` 纸偶版本；`?style=1|2|3` 风格预设（可组合）；`?ui=de` 原作对话面板与 HUD；`?look=winter|noir` 氛围预设。`tools/play.mjs` 通过 `window.__play` 驱动游戏。
+页面参数：`?still` 风格板静帧；`?lang=en` 英文；`?seed=N` 骰子种子；`?dice=4-5,3-3` 强制掷骰点数；`?speed=N` 倍速；`?debug` 在 `window.__debug` 暴露场景对象；`?view=N` 取景候选；`?cast=N` 纸偶版本；`?style=1|2|3` 风格预设（可组合，按书页排法设计）；`?ui=book` 书页排法（默认为原作对话面板与 HUD）；`?look=noir|warm` 夜或暖色绘本（默认为冬日）。`tools/play.mjs` 通过 `window.__play` 驱动游戏。
 
 浏览器：`tools/chromium.mjs` 决定 `bake`、`shot`、`play`、`extract-art` 使用的浏览器，可用 `CHROMIUM_PATH` 覆盖。
 
@@ -84,7 +89,7 @@
 | 散落纸页 | `assets/art/floor-papers.json`（每张 `[x, y, 角度, 宽, 高]`，y 从折线量起；高大于宽为账页，否则为订货单）。`extract-art` 按它画进地板，悬停提示按它划分区域；改完运行 `extract-art` 与 `bake floor` |
 | 立体层的铰接行与后倾角 | `src/scene/popup.ts` 的 `PIECES` |
 | 哈里与金的位置、大小 | `src/scene/puppets.ts` 的 `PUPPETS` |
-| 桌面道具（线索卡堆、纸心、骰子） | `src/scene/tabletop.ts` 的 `TABLE`；线索卡落点与尺寸在 `src/scene/lead.ts` 的 `DROP`、`FILED` |
+| 桌面道具（线索卡堆、纸心、骰子） | `src/scene/tabletop.ts` 的 `TABLE`；线索卡落点与尺寸在 `src/scene/lead.ts` 的 `DROP`、`FILED`。纸心只在 `?ui=book` 下出现 |
 | 日志字号与行高 | `src/page/layout.ts` 的 `SIZES`；文字栏范围 `textColumn`；纵向拉伸按取景取 `VIEWS[n].ink`（`src/main.ts` 的 `INK_STRETCH`） |
 | 打字速度、标点停顿 | `src/play/log.ts` 的 `TYPE_MS`、`PAUSES`；逐段停顿规则在 `src/play/director.ts` |
 | 灯光 | `src/scene/lights.ts`（半球光、左侧主光、蜡烛、窗光、台灯） |
@@ -101,8 +106,8 @@
 | 背景音乐 | 录音 `public/audio/elysium.mp3`；音量 `VOLUME`、回忆时的低通与音量 `COLD`、淡入淡出 `FADE` 在 `src/audio/music.ts`；剧情钩子经 `createCues` 的 `onCue` 回调接入。说明见 `docs/music.md` |
 | 音效 | 配方、音量与混响在 `src/audio/sfx.ts` 的 `createBank`（每个音效一段，按名称 `SoundName` 调用）；触发点：`src/play/log.ts` 的 `onType`（写字）、`src/play/director.ts`（继续、选择、内心声音、检定结果）、`src/scene/dice.ts` 的 `CONTACTS`（骰子落桌）、`hearts.ts`、`lead.ts`、`cues.ts`（纸片、脚步、窗扇、钟、风、蜡烛、钟摆） |
 | 纸偶版本 | `assets/art/harry-vN.svg`、`kim-vN.svg`（与原来的纸偶同样的 `data-*` 属性）；`?cast=N` 在 `src/main.ts` 加载后把 `art.harry`、`art.kim` 换成选中的版本，其余模块不需要改 |
-| 原作界面（`?ui=de`） | 开关 `src/ui.ts`；日志的深色面板排版 `src/page/layout.ts` 的 `DE` 与 `painter.ts`；HUD `src/play/hud.ts`、头像 `src/play/portraits.ts`；样式在 `index.html` 的 `[data-ui]` 下。说明见 `docs/ui.md` |
-| 氛围预设（`?look=`） | 预设参数 `src/scene/mood.ts`；光束与浮尘 `shaft.ts`；脏旧 `grime.ts`（各纸片按自身坐标生成污渍）；在剧本指令读取灯光基准值之前生效。说明见 `docs/look.md` |
+| 原作界面（默认；`?ui=book` 为书页排法） | 开关 `src/ui.ts`；日志的深色面板排版 `src/page/layout.ts` 的 `DE` 与 `painter.ts`；HUD `src/play/hud.ts`（头像、士气、时钟、技能标签、横幅）、头像 `src/play/portraits.ts`；样式在 `index.html` 的 `[data-ui]` 下；士气显示在 HUD 还是纸心由 `src/main.ts` 的 `morale` 决定。说明见 `docs/ui.md` |
+| 氛围预设（默认冬日；`?look=noir|warm`） | 预设参数 `src/scene/mood.ts`；光束与浮尘 `shaft.ts`；脏旧 `grime.ts`（各纸片按自身坐标生成污渍）；在剧本指令读取灯光基准值之前生效。说明见 `docs/look.md` |
 | 原作风格预设 | 开关 `src/style.ts`；预设 1 在 `src/page/layout.ts`、`painter.ts`、`src/play/log.ts` 与 `index.html` 的 `data-style` 样式；预设 2 在 `src/scene/palette.ts` 与 `post.ts`；预设 3 在 `src/scene/details.ts`。参考与取舍见 `docs/style-refs.md` |
 
 ## 5. 约定
@@ -115,7 +120,7 @@
   - 以下为手绘纸片，不受 `extract-art` 影响：harry、kim、casement、clock-hour、clock-minute、pendulum、stairs、dog、dog-head、marek、heart、heart-empty、lead-card。
   - SVG 根元素的 `data-*` 属性进入 `manifest.json` 的 `meta`，例如脚底位置、撕口范围、地毯范围。
 - **文字**：日志用 Canvas 2D 排版，作为纹理贴在左页网格上，点击用射线取 UV。排版在未拉伸的坐标里进行，绘制时按取景纵向拉伸（默认 1.21 倍）；`optionRects()` 返回拉伸后的真实页面坐标。
-- **候选方案**：`?view`、`?cast`、`?style` 是给用户比较用的开关。选定后把选中的一项设为默认，其余删掉或保留作对照，并同步本文件、README 与 design.md。
+- **候选方案**：`?view`、`?cast`、`?style`、`?look=noir` 是给用户比较用的开关。选定后把选中的一项设为默认，其余删掉或保留作对照，并同步本文件、README 与 design.md。第六轮选定的界面与氛围保留了此前的默认作对照（`?ui=book`、`?look=warm`）。
 - **音乐与音效**：只在第一次点击、触摸或按键之后创建 AudioContext（浏览器会对更早的尝试发出警告，`play` 把控制台警告当失败）；`?still` 不出声。音效与音乐各用一个 AudioContext、各有开关。场景模块通过注入的 `sound(name, options)` 发声（`createDice`、`createHearts`、`createLeadCard`、`createCues` 的参数，`Director` 的 `Stagehands.sound`），不直接依赖音频实现。
 - **参考图**：原作图片只在文档里外链，不进仓库；纸偶与界面都是自绘。
 - **动画**：一律走 `src/play/clock.ts` 的虚拟时钟（`tween`、`wait`），因此支持倍速、减少动态效果与测试冻结。引擎只产出节拍，`Director` 逐个播放。
@@ -144,6 +149,9 @@
 | 纹理用 WebP | PNG 共 14.9 MB，其中地板与墙各 4 MB 以上；WebP 质量 0.92 时色差约 2/255，透明通道无损，总量 1.8 MB |
 | 相机改为读者视角（默认视角 2） | 用户反馈书尾边贴着画面下沿、操作别扭，桌面与书的透视不自然。长焦加 58° 俯视让桌面像一张平的背景；视角 2 相当于坐在桌前读书，书前留出桌面，木板由近及远与书的侧边一起汇聚。44° 时文字吃力的问题当时没有纵向拉伸，现在按取景拉伸补偿 |
 | 背景音乐用用户提供的录音 | 用户希望用「Whirling-In-Rags」风格的曲子，由用户自行制作或取得并提供文件。此前的原创合成曲已删除。仓库公开，音频文件随仓库与部署公开 |
+| 默认改为冬日光线与原作界面 | 用户认为此前的画面太温馨、原作风格体现不够；第五轮的候选里选定 `?look=winter&ui=de` |
+| HUD 只放本章用得上的元素 | 用户指出几个 UI 没有实际用途。生命、工具栏、胶片编码没有对应的玩法；士气原先同时显示在纸心与 HUD 上，冬日光下纸心又看不清，改为只在 HUD 上 |
+| 不做整帧油画后期 | 用户认为油画直接用在画面上效果不好：滤镜把纸片、文字与桌面一起涂抹，立体书的材质与清晰度都丢了 |
 
 ## 7. 用户偏好
 
@@ -156,6 +164,9 @@
   - 新线索要显眼。
   - 每段话停下等点击，打字不要太快。
   - 物件悬停要有提示。
+  - 画面不要太温馨，要有原作的冷峻与破败感（第五轮）。
+  - 界面上每个元素都要有实际用途，装饰性的 UI 去掉（第六轮）。
+  - 不要把油画滤镜直接盖在整帧上（第六轮）。
 - 人物形象、性格与语言风格采用原作。只是 Demo，不考虑版权。
 - 工作流：在分支上开发，开 PR；本地检查（`npm test`、`build`、`shot`、`play`）通过后直接合入 `main`，不停在 PR 等待审阅，由 Vercel 部署。
 
@@ -168,6 +179,11 @@
 - 风格：子任务推荐以预设 1 为基础，叠加预设 3 的检定纸条与交互标记，预设 2 只取青色暗部、暗角与蜡烛辉光。待定细节：普通选项悬停的变化是否够明显、检定卡片写难度档位还是原作的概率描述词、继续条的颜色、交互标记是否按节点设定。
 - 音乐：只有开关，没有音量滑块；音量只凭电平估算，需要用户试听确认。
 - 音效：只有开关，没有音量滑块；音量按离线渲染测量平衡过（骰子与重击书桌峰值约 −12 dBFS，写字约 −29 dBFS，其余在 −14 到 −41 dBFS）。写字声在音乐下面可能偏轻，需要试听后再调。
+- 冬日与原作界面（默认）的已知问题：
+  - 光束不知道相机方向上的遮挡，书桌上方有一层淡雾。
+  - 回忆里阳光方向不变，夜里仍有长影。
+  - `?look=noir` 下深色面板上的选项偏暗。
+  - 第四轮的 `?style=1`、`?style=3` 按书页排法设计，在深色面板下大部分不起作用；要看原样需加 `ui=book&look=warm`。
 
 - 纸偶没有按原作立绘校准，需要用户在对话中附参考图，或在环境设置中放行对应域名。
 - 主光软阴影的采样盘按像素旋转，宽半影里有细小的噪点，被颗粒掩盖。弱 GPU 上帧耗时会增加（M4 Pro 上 1600 × 900 约 8 毫秒）。

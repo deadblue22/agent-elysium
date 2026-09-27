@@ -1,16 +1,20 @@
-# 原作氛围预设：冬日与夜（`?look=`）
+# 原作氛围预设：冬日（默认）与夜（`?look=`）
 
 第四轮之后的用户反馈：原作的美术风格体现不够，场景太温馨，需要更大胆的尝试；`?style=1|2|3`（`docs/style-refs.md`）过于保守。此前的画面是一本干净、温暖的绘本：暖色台灯光池、奶油色纸、干净的蓝色墙纸、紫色地毯、柔和的光。
 
-本轮新增两个运行时预设 `?look=winter`（冬日）与 `?look=noir`（夜），按原作画面的共同特征改写灯光、调色与材质：冷而低饱和的底色上只留少量互补色的强调；污渍与破败；深暗部、硬光与强对比。纹理没有重新烘焙。
+第五轮新增两个运行时预设 `?look=winter`（冬日）与 `?look=noir`（夜），按原作画面的共同特征改写灯光、调色与材质：冷而低饱和的底色上只留少量互补色的强调；污渍与破败；深暗部、硬光与强对比。纹理没有重新烘焙。
+
+第六轮用户选定 `?look=winter&ui=de` 的组合，冬日改为默认（对话面板与 HUD 见 `docs/ui.md`）。
 
 ## 1. 查看方式
 
-- 页面参数 `?look=winter`、`?look=noir`，可与 `?still`、`?view=`、`?cast=`、`?style=`、`?lang=en` 组合，例如 `?still&look=noir&style=13&lang=en`。
-- 不带参数时画面与 `main` 逐像素一致：`?still`、`?still&style=2`、`?still&style=123&lang=en`、`?still&view=0&cast=2`、`?still&view=3&style=1` 逐像素比较无差异；回忆状态除钟摆的相位（随实时时钟）外无差异。
+- 冬日是默认，不需要参数（`?look=winter` 仍然有效）；`?look=noir` 为夜；`?look=warm` 为此前的暖色绘本（第五轮之前的默认）。都可与 `?still`、`?view=`、`?cast=`、`?style=`、`?ui=`、`?lang=en` 组合，例如 `?still&look=noir&lang=en`。
+- `?still&ui=book&look=warm` 的静帧与第六轮之前 `main` 的 `?still` 逐像素一致。
 - 与 `?style=2` 同用时，灯光与调色以本预设为准，预设 2 的斑驳与泛光保留。
 
-| 默认 | 冬日 `?look=winter` | 夜 `?look=noir` |
+下面的截图是第五轮的（书页排法，没有 HUD）；左列是当时的默认，现在的 `?ui=book&look=warm`。
+
+| 暖色绘本 `?look=warm` | 冬日 `?look=winter` | 夜 `?look=noir` |
 |---|---|---|
 | ![](look-0.png) | ![](look-winter.png) | ![](look-noir.png) |
 
