@@ -28,23 +28,31 @@
   - 纹理改为 WebP（色彩有损、透明通道无损），`public/textures` 从 14.9 MB 降到 1.8 MB，构建产物从约 18 MB 降到约 3 MB。
   - 工具脚本在 macOS 上改用本机 Chrome 与 GPU。
   - 验证已通过：单元测试 28 项、构建、中英文静帧、中英文无头通关（无控制台错误）、悬停提示命中检查。
-- 本文件第 3–8 节描述 PR #2 合并后的代码。PR #2 未合并时，从该分支继续开发。
+- 第四轮（分支 `claude/round4-view-bgm-cast-style`，基于 PR #2 的分支）：由四个子任务并行完成后合并。
+  - 取景：相机改为坐在桌前的读者视角，默认视角 2（眼高约 47 cm、离书中心约 64 cm），书前留出桌面，桌面木板由近及远。`?view=0|1|2|3` 切换候选，0 为此前的取景（`docs/view.md`）。
+  - 背景音乐：原创芯片音乐，只借「Whirling-In-Rags」的氛围，不改编、不转录原曲（版权）。Web Audio 实时合成，右上角开关，回忆转冷、结尾淡出（`docs/music.md`）。
+  - 纸偶：按原作四类参考图（对话肖像、游戏内 3D 模型、封面、设定图）各画一版，`?cast=1|2|3|4` 切换，默认仍是原来的一对（`docs/cast.md`）。参考图只在文档里外链。
+  - 原作风格：三组参考（对话与界面、油画与光色、标志性细节）与对应的三个运行时预设，`?style=1|2|3` 可组合，默认不启用（`docs/style-refs.md`）。
+  - 验证：单元测试 41 项、构建、中英文静帧、中英文无头通关（默认参数）均通过；各子任务在各自的候选参数下也完整通关过。
+  - 待用户选定：取景、纸偶版本、风格预设的取舍，见第 8 节。
+- 本文件第 3–8 节描述第四轮合并后的代码。
 
 ## 3. 环境与命令
 
 | 命令 | 作用 | 云端容器内耗时 | macOS（M4 Pro）耗时 |
 |---|---|---|---|
 | `npm install` | 安装依赖（需要 Node 20+） | — | — |
-| `npm test` | 引擎与打字节奏的单元测试 | 约 1 秒 | 约 1 秒 |
+| `npm test` | 引擎、打字节奏、乐谱与风格参数的单元测试（41 项） | 约 1 秒 | 约 1 秒 |
 | `npm run build` | 类型检查并构建到 `dist/` | 约 5 秒 | 约 1 秒；产物约 3 MB |
 | `npm run dev` | 开发服务器 | — | — |
-| `npm run shot` / `npm run shot -- --lang en` | 渲染风格板静帧，写 `docs/style-board-three*.png`，并打印构图、字形尺寸与帧耗时 | 约 1 分钟 | 约 5 秒 |
-| `npm run play` | 无头通关中英文各一遍，写 `docs/m1-*.png`；`-- --only zh` 只跑中文 | 约 8 分钟（只跑中文约 5 分钟） | 约 2 分钟 |
+| `npm run shot` / `npm run shot -- --lang en` | 渲染风格板静帧，写 `docs/style-board-three*.png`，并打印构图、字形尺寸与帧耗时；`-- --view 0,1,2,3` 改为写各取景的 `docs/view-N.png` | 约 1 分钟 | 约 5 秒 |
+| `npm run play` | 无头通关中英文各一遍，写 `docs/m1-*.png`；`-- --only zh` 只跑中文；`-- --view N --out 目录` 在指定取景下通关并把截图写到别处 | 约 8 分钟（只跑中文约 5 分钟） | 约 2 分钟 |
+| `node tools/cast.mjs` | 渲染各纸偶版本，写 `docs/cast-v*.png` 与 `docs/cast-sheet.png` | — | 约 10 秒 |
 | `npm run extract-art` | 从 `demo/index.html` 重新生成提取类纸片的 SVG | 数秒 | 数秒 |
 | `npm run bake [名称…]` | 把 `assets/art/*.svg` 烘焙成 `public/textures/*.webp` 与 `manifest.json` | 地板约 18 秒，其余数秒 | 地板约 2 秒 |
 | `npm run fonts` | 按全部台词重新裁剪字体子集（需要访问 Google Fonts） | — | — |
 
-页面参数：`?still` 风格板静帧；`?lang=en` 英文；`?seed=N` 骰子种子；`?dice=4-5,3-3` 强制掷骰点数；`?speed=N` 倍速；`?debug` 在 `window.__debug` 暴露场景对象。`tools/play.mjs` 通过 `window.__play` 驱动游戏。
+页面参数：`?still` 风格板静帧；`?lang=en` 英文；`?seed=N` 骰子种子；`?dice=4-5,3-3` 强制掷骰点数；`?speed=N` 倍速；`?debug` 在 `window.__debug` 暴露场景对象；`?view=N` 取景候选；`?cast=N` 纸偶版本；`?style=1|2|3` 风格预设（可组合）。`tools/play.mjs` 通过 `window.__play` 驱动游戏。
 
 浏览器：`tools/chromium.mjs` 决定 `bake`、`shot`、`play`、`extract-art` 使用的浏览器，可用 `CHROMIUM_PATH` 覆盖。
 
@@ -61,14 +69,14 @@
 
 | 要改的东西 | 位置 |
 |---|---|
-| 相机俯角、焦距、构图、视差 | `src/scene/camera.ts` 的 `VIEW`（俯角 58、焦距 2600 帧像素、书尾边在画面第 858 行、封面宽 1190 像素、书中心在第 736 列） |
+| 相机俯角、焦距、构图、视差 | `src/scene/camera.ts` 的 `VIEWS`（每个候选取景一行：光轴俯角、焦距、光轴所在行、书尾边所在行与宽度、书中心列、日志纵向拉伸 `ink`、木板走向 `boards`）与 `DEFAULT_VIEW`（2：俯角 42、焦距 1700 帧像素、书尾边在第 770 行、封面宽 1250 像素、拉伸 1.21、木板由近及远）；参数与指标见 `docs/view.md` |
 | 书页尺寸 | `src/page/layout.ts` 的 `PAGE`（670 × 720），必须与 `tools/extract-art.mjs` 的 `BOOK_H` 一致 |
 | 撕口、家具行距、地毯 | `tools/extract-art.mjs` 开头的 `LEFT_TEAR`、`RIGHT_TEAR`、`ROWS`、`RUG`、`FLOOR_H` 与地板脚本；改完运行 `extract-art`，再 `bake floor page-left page-right` |
 | 散落纸页 | `assets/art/floor-papers.json`（每张 `[x, y, 角度, 宽, 高]`，y 从折线量起；高大于宽为账页，否则为订货单）。`extract-art` 按它画进地板，悬停提示按它划分区域；改完运行 `extract-art` 与 `bake floor` |
 | 立体层的铰接行与后倾角 | `src/scene/popup.ts` 的 `PIECES` |
 | 哈里与金的位置、大小 | `src/scene/puppets.ts` 的 `PUPPETS` |
 | 桌面道具（线索卡堆、纸心、骰子） | `src/scene/tabletop.ts` 的 `TABLE`；线索卡落点与尺寸在 `src/scene/lead.ts` 的 `DROP`、`FILED` |
-| 日志字号与行高 | `src/page/layout.ts` 的 `SIZES`；文字栏范围 `textColumn`；纵向拉伸 `src/main.ts` 的 `INK_STRETCH` |
+| 日志字号与行高 | `src/page/layout.ts` 的 `SIZES`；文字栏范围 `textColumn`；纵向拉伸按取景取 `VIEWS[n].ink`（`src/main.ts` 的 `INK_STRETCH`） |
 | 打字速度、标点停顿 | `src/play/log.ts` 的 `TYPE_MS`、`PAUSES`；逐段停顿规则在 `src/play/director.ts` |
 | 灯光 | `src/scene/lights.ts`（半球光、左侧主光、蜡烛、窗光、台灯） |
 | 主光软阴影 | `src/scene/penumbra.ts`；光源角半径 `angle`（度）与最大半影 `max`（世界单位）在 `lights.ts` 调用 `softShadows` 处 |
@@ -81,6 +89,9 @@
 | 剧本、选项、检定 | `src/content/study.ts`，与 `docs/design.md` 4.4 节保持一致；技能与难度在 `skills.ts`；界面文字在 `ui.ts` |
 | 悬停提示 | 文案在 `src/content/hotspots.ts`；拾取区域在 `src/scene/hotspots.ts` 的 `REGIONS` |
 | 检定、旗标、重试规则 | `src/engine/`（`runner.ts`、`rules.ts`），测试在 `runner.test.ts` |
+| 背景音乐 | 乐谱 `src/audio/score.ts`（音符、段落、速度），音色与混响 `src/audio/engine.ts`，开关、启动、剧情钩子 `src/audio/music.ts`；剧情钩子经 `createCues` 的 `onCue` 回调接入。说明见 `docs/music.md` |
+| 纸偶版本 | `assets/art/harry-vN.svg`、`kim-vN.svg`（与原来的纸偶同样的 `data-*` 属性）；`?cast=N` 在 `src/main.ts` 加载后把 `art.harry`、`art.kim` 换成选中的版本，其余模块不需要改 |
+| 原作风格预设 | 开关 `src/style.ts`；预设 1 在 `src/page/layout.ts`、`painter.ts`、`src/play/log.ts` 与 `index.html` 的 `data-style` 样式；预设 2 在 `src/scene/palette.ts` 与 `post.ts`；预设 3 在 `src/scene/details.ts`。参考与取舍见 `docs/style-refs.md` |
 
 ## 5. 约定
 
@@ -91,7 +102,10 @@
   - 木桌不是纸片，由 `src/scene/table.ts` 的着色器绘制，没有纹理。
   - 以下为手绘纸片，不受 `extract-art` 影响：harry、kim、casement、clock-hour、clock-minute、pendulum、stairs、dog、dog-head、marek、heart、heart-empty、lead-card。
   - SVG 根元素的 `data-*` 属性进入 `manifest.json` 的 `meta`，例如脚底位置、撕口范围、地毯范围。
-- **文字**：日志用 Canvas 2D 排版，作为纹理贴在左页网格上，点击用射线取 UV。排版在未拉伸的坐标里进行，绘制时纵向拉伸 1.1 倍；`optionRects()` 返回拉伸后的真实页面坐标。
+- **文字**：日志用 Canvas 2D 排版，作为纹理贴在左页网格上，点击用射线取 UV。排版在未拉伸的坐标里进行，绘制时按取景纵向拉伸（默认 1.21 倍）；`optionRects()` 返回拉伸后的真实页面坐标。
+- **候选方案**：`?view`、`?cast`、`?style` 是给用户比较用的开关。选定后把选中的一项设为默认，其余删掉或保留作对照，并同步本文件、README 与 design.md。
+- **音乐**：只在第一次点击、触摸或按键之后创建 AudioContext（浏览器会对更早的尝试发出警告，`play` 把控制台警告当失败）；`?still` 不出声。
+- **参考图**：原作图片只在文档里外链，不进仓库；纸偶与界面都是自绘。
 - **动画**：一律走 `src/play/clock.ts` 的虚拟时钟（`tween`、`wait`），因此支持倍速、减少动态效果与测试冻结。引擎只产出节拍，`Director` 逐个播放。
 - **卡纸**：用 `standing()` 立起的纸片调用 `cardEdge()`，得到纸芯切边与纸背。平放在地板或桌面上的纸片（地板、线索卡、纸心）不加。
 - **着色器补丁**：`penumbra.ts` 在任何材质编译之前改写 three.js 的 `shadowmap_pars_fragment`、`lights_fragment_begin` 与 `shadowmask_pars_fragment`。升级 three.js 后如果锚点文本变了，启动时直接报错，不会静默失效。主光的阴影贴图是普通深度纹理，只能用 `PCFShadowMap` 类型；聚光灯与蜡烛仍用 three.js 自带的 PCF。
@@ -116,6 +130,8 @@
 | 开场改为向前折叠 | 向后倒平时，高的纸片伸出书头、悬在桌面上方。真实立体书合上时纸片向前折在书页上；朝前折叠后越靠后的纸片越在上层，由后往前翻起时不会互相穿过 |
 | 木桌用着色器绘制 | 原烘焙纹理只有 1 倍分辨率，放大后是模糊的横纹；着色器按世界坐标绘制，任何分辨率都清晰，还省去 1 MB 纹理 |
 | 纹理用 WebP | PNG 共 14.9 MB，其中地板与墙各 4 MB 以上；WebP 质量 0.92 时色差约 2/255，透明通道无损，总量 1.8 MB |
+| 相机改为读者视角（默认视角 2） | 用户反馈书尾边贴着画面下沿、操作别扭，桌面与书的透视不自然。长焦加 58° 俯视让桌面像一张平的背景；视角 2 相当于坐在桌前读书，书前留出桌面，木板由近及远与书的侧边一起汇聚。44° 时文字吃力的问题当时没有纵向拉伸，现在按取景拉伸补偿 |
+| 背景音乐原创，不改编原曲 | 「Whirling-In-Rags」是 British Sea Power 的版权作品，旋律、和声、低音线都不能转录或改编；只借氛围 |
 
 ## 7. 用户偏好
 
@@ -133,6 +149,13 @@
 
 ## 8. 已知问题与候选工作
 
+待用户选定（第四轮的候选方案）：
+
+- 取景：推荐视角 2；视角 3 更有实物感，但上下字号差 19%、日志少约 2 行。选定后删掉其余候选并更新 design.md 6.1 与本文件。
+- 纸偶：子任务推荐 v2（游戏内 3D 模型，服装、比例、鞋都可核对）。v2 的金双手背在身后，剧本里他多次翻开笔记本；可以把 v1 的脸（哈里的络腮胡、红眼圈，金的竖发、粗框眼镜）并入 v2。选定后更新 design.md 3.2、3.3、6.4。
+- 风格：子任务推荐以预设 1 为基础，叠加预设 3 的检定纸条与交互标记，预设 2 只取青色暗部、暗角与蜡烛辉光。待定细节：普通选项悬停的变化是否够明显、检定卡片写难度档位还是原作的概率描述词、继续条的颜色、交互标记是否按节点设定。
+- 音乐：只有开关，没有音量滑块；钟的嘀嗒在现在的段落里也有（钟其实停着）；马雷克按住钟摆时是否让钟声停止；离线渲染试听的脚本是否收进 `tools/`。
+
 - 纸偶没有按原作立绘校准，需要用户在对话中附参考图，或在环境设置中放行对应域名。
 - 主光软阴影的采样盘按像素旋转，宽半影里有细小的噪点，被颗粒掩盖。弱 GPU 上帧耗时会增加（M4 Pro 上 1600 × 900 约 8 毫秒）。
 - 回忆中的楼梯与狗仍从向后平躺升起，升起途中穿过家具层，大部分被墙与家具挡住。
@@ -148,7 +171,7 @@
 
 ## 9. 迭代流程
 
-1. 从 `main` 建分支。PR #2 未合并时，从 `claude/handsoff-polish-9bc7b7` 继续。
+1. 从 `main` 建分支。PR #2 与第四轮未合并时，从 `claude/round4-view-bgm-cast-style` 继续。
 2. 修改后依次运行 `npm test`、`npm run build`、`npm run shot`（中英文）。改到交互或动画时，再跑 `npm run play`。
 3. 同步更新 README、`docs/design.md`、本文件与截图。
 4. 提交并推送，开 PR 到 `main`。Vercel 生成预览部署，在浏览器中确认后合并。

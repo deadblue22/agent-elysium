@@ -6,9 +6,11 @@
 //   docs/style-board-three-edge.png    360 x 240 at the right page's near outer corner
 //   docs/style-board-three-puppets.png the two puppets, rendered at 2x
 // With --lang en only the frame and the text crop are written (-en suffix).
+// With --view 0,1,2,3 only the frames of those camera framings (src/scene/camera.ts VIEWS)
+// are written, as docs/view-N.png, each with its composition.
 // Fails on console errors or page errors.
 //
-// Usage: node tools/shot.mjs [--no-build] [--lang en] [--hover]
+// Usage: node tools/shot.mjs [--no-build] [--lang en] [--hover] [--view N[,N...]]
 import { chromium } from 'playwright-core';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
@@ -39,15 +41,43 @@ page.on('console', (m) => {
 page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
 page.on('requestfailed', (r) => problems.push(`requestfailed: ${r.url()} ${r.failure()?.errorText}`));
 
+/** Closes the browser and the server; fails on any console problem. */
+async function finish() {
+  await browser.close();
+  await new Promise((res) => server.httpServer.close(res));
+  if (problems.length) {
+    console.error(`\n${problems.length} console problem(s):\n` + problems.join('\n'));
+    process.exit(1);
+  }
+  console.log('no console errors or warnings');
+}
+
+const query = `?still${lang === 'zh' ? '' : `&lang=${lang}`}`;
+mkdirSync(join(root, 'docs'), { recursive: true });
+
+if (args.includes('--view')) {
+  // the candidate framings side by side: one frame each, and what it measures
+  for (const n of args[args.indexOf('--view') + 1].split(',')) {
+    await page.goto(`${url}${query}&view=${n}`, { waitUntil: 'load' });
+    await page.waitForFunction(() => window.__ready === true, null, { timeout: 300_000, polling: 250 });
+    const info = await page.evaluate(() => window.__shot);
+    const file = join(root, 'docs', `view-${n}${suffix}.png`);
+    await page.screenshot({ path: file, timeout: 120_000 });
+    console.log(`view ${n}:`, JSON.stringify(info.metrics));
+    console.log(`saved ${file}`);
+  }
+  await finish();
+  process.exit(0);
+}
+
 const t0 = Date.now();
-await page.goto(`${url}?still${lang === 'zh' ? '' : `&lang=${lang}`}`, { waitUntil: 'load' });
+await page.goto(`${url}${query}`, { waitUntil: 'load' });
 await page.waitForFunction(() => window.__ready === true, null, { timeout: 300_000, polling: 250 });
 const info = await page.evaluate(() => window.__shot);
 console.log(`ready in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 console.log(`renderer: ${info.renderer}  webgl2: ${info.webgl2}  anisotropy: ${info.anisotropy}  ink canvas: ${info.ink.w}x${info.ink.h}`);
 console.log('composition (frame px):', JSON.stringify(info.metrics));
 
-mkdirSync(join(root, 'docs'), { recursive: true });
 const full = join(root, 'docs', `style-board-three${suffix}.png`);
 await page.screenshot({ path: full, timeout: 120_000 });
 const r = info.page;
@@ -74,7 +104,7 @@ if (lang === 'zh') {
   const hi = await browser.newPage({ viewport: { width: 3200, height: 1800 }, deviceScaleFactor: 1 });
   hi.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') problems.push(`console.${m.type()} (2x): ${m.text()}`); });
   hi.on('pageerror', (e) => problems.push(`pageerror (2x): ${e.message}`));
-  await hi.goto(`${url}?still${lang === 'zh' ? '' : `&lang=${lang}`}`, { waitUntil: 'load' });
+  await hi.goto(`${url}${query}`, { waitUntil: 'load' });
   await hi.waitForFunction(() => window.__ready === true, null, { timeout: 300_000, polling: 250 });
   const r = info.puppets, m = 24;
   const c = clamp({ x: r.x - m, y: r.y - m, width: Math.ceil(r.w + 2 * m), height: Math.ceil(r.h + 2 * m) });
@@ -93,11 +123,4 @@ if (args.includes('--hover')) {
   console.log('saved hover crop');
 }
 
-await browser.close();
-await new Promise((res) => server.httpServer.close(res));
-
-if (problems.length) {
-  console.error(`\n${problems.length} console problem(s):\n` + problems.join('\n'));
-  process.exit(1);
-}
-console.log('no console errors or warnings');
+await finish();

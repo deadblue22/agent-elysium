@@ -62,6 +62,8 @@ interface Deps {
   snow: { setOpacity(o: number): void };
   /** Shows the chrome's time marker (「昨晚 22:30」) at these minutes, or hides it (null). */
   marker: (minutes: number | null) => void;
+  /** Told each cue as it starts, so the music can follow the story (src/audio/music.ts). */
+  onCue?: (cue: string) => void;
 }
 
 /**
@@ -494,6 +496,7 @@ export function createCues(d: Deps) {
     async play(cue: string): Promise<void> {
       const fn = cues[cue];
       if (!fn) { console.warn(`[stage] unknown cue: ${cue}`); return; }
+      d.onCue?.(cue);
       await fn();
     },
     has: (cue: string) => cue in cues,

@@ -53,8 +53,9 @@ export function createLights(at: { candleLight: Vector3; candleFlame: Vector3; w
 
   // a reading lamp outside the frame, in front of the book: the warm pool on the table and the
   // near half of the pages (the text). Aimed below the pop-up, so its fill does not wash out
-  // the key's shadows between the rows; it sits near the eye's line, so its own shadows
-  // mostly hide behind their casters (they still ground the puppets and dice)
+  // the key's shadows between the rows; it shines down more steeply than the eye looks
+  // down, so its own shadows mostly hide behind their casters (they still ground the
+  // puppets and dice)
   const lamp = new SpotLight('#ffdcb4', 330, 0, 0.5, 0.9, 2);
   lamp.position.set(0.6, 15, 8);
   lamp.target.position.set(-0.3, 0, 1.9);

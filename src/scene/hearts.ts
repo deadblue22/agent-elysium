@@ -4,7 +4,7 @@
 // one flips it back to red. The hearts are left-right symmetric, so a half turn about the depth
 // axis lands them where they were, the other side up; the fold opens flat and closes the other
 // way as it turns, so it lands a tent again.
-import { DoubleSide, Group, Mesh, MeshStandardMaterial, PlaneGeometry } from 'three';
+import { CanvasTexture, DoubleSide, Group, Mesh, MeshStandardMaterial, PlaneGeometry, SRGBColorSpace, type Texture } from 'three';
 import type { Art } from '../assets';
 import { ease, type Clock } from '../play/clock';
 import { TABLE } from './tabletop';
@@ -13,13 +13,18 @@ import { TABLE } from './tabletop';
 const SIZE = 0.36;
 /** Height of the fold's crease over the heart's width (about an 18 degree slope each side). */
 const FOLD = 0.16;
+/** The original's morale blue (its HUD: morale in blue, health in orange), as an HSL hue. */
+const MORALE_HUE = 194 / 360;
 
-export function createHearts(art: Art, clock: Clock, max = 4) {
+/** `blue`: the hearts in the original's morale blue (?style=1). */
+export function createHearts(art: Art, clock: Clock, max = 4, o: { blue?: boolean } = {}) {
   const group = new Group();
   group.name = 'hearts';
   const [, , vw, vh] = art.heart.viewBox;
   const k = SIZE / (vw / 100);
-  const full = art.heart.texture, empty = art['heart-empty'].texture;
+  // (a lost heart stays a pale ghost: nearly grey, so it reads apart from the blue ones)
+  const full = o.blue ? rehue(art.heart.texture, MORALE_HUE, 0.72, 0.85) : art.heart.texture;
+  const empty = o.blue ? rehue(art['heart-empty'].texture, MORALE_HUE, 1, 0.3) : art['heart-empty'].texture;
   const hearts = Array.from({ length: max }, (_, i) => {
     // folded down the middle: the crease raised, the two halves sloping to the table
     const w = (vw / 100) * k, geometry = new PlaneGeometry(w, (vh / 100) * k, 2, 1);
@@ -69,4 +74,32 @@ export function createHearts(art: Art, clock: Clock, max = 4) {
       }
     },
   };
+}
+
+/**
+ * A copy of a baked paper texture with its colour turned to another hue: saturation scaled by
+ * `sat`, lightness by `dark`, so the paper's fibres, cut edge and shading stay as baked.
+ * Pale, unsaturated pixels (the cut edge's light rim) barely change.
+ */
+function rehue(t: Texture, hue: number, dark: number, sat: number): Texture {
+  const img = t.image as CanvasImageSource & { width: number; height: number };
+  const c = document.createElement('canvas');
+  c.width = img.width; c.height = img.height;
+  const x = c.getContext('2d', { willReadFrequently: true })!;
+  x.drawImage(img, 0, 0);
+  const d = x.getImageData(0, 0, c.width, c.height), p = d.data;
+  for (let i = 0; i < p.length; i += 4) {
+    const r = p[i] / 255, g = p[i + 1] / 255, b = p[i + 2] / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+    const s = mx === mn ? 0 : (mx - mn) / (1 - Math.abs(2 * l - 1));
+    const L = l * (1 - (1 - dark) * Math.min(1, s * 1.5)); // darken only the coloured paper
+    const C = (1 - Math.abs(2 * L - 1)) * s * sat;
+    const f = (n: number) => { const k = (n + hue * 12) % 12; return L - C / 2 * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+    p[i] = f(0) * 255; p[i + 1] = f(8) * 255; p[i + 2] = f(4) * 255;
+  }
+  x.putImageData(d, 0, 0);
+  const out = new CanvasTexture(c);
+  out.colorSpace = SRGBColorSpace;
+  out.anisotropy = t.anisotropy;
+  return out;
 }

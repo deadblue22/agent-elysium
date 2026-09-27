@@ -2,6 +2,9 @@
 // with its speaker's name (sans, letterspaced; EN in capitals) and an em dash; inner voices
 // carry their result tag ([极易：成功]); the dice line is a boxed check tag and the roll;
 // the current options are numbered, in rust, with the cursor after the last one.
+// The `original` look (?style=1) sets it closer to the original's panel instead: names in bold
+// serif, an en dash, continuation lines hung in, options in the body face after 「1. -」, the
+// dice tag unboxed, a new lead as a green system line, and a CONTINUE bar under the text.
 // Line breaking: CJK per character with kinsoku, Latin per word.
 // Everything is in page px (the legacy board's CSS px; the page is 670 x 720).
 // The painter scales it to the canvas.
@@ -19,9 +22,9 @@ export interface Column { x0: number; x1: number; y0: number; y1: number }
 /**
  * The text window on the left top sheet: from just under its tear down to the near edge,
  * its right margin (596, 11% of the page from the gutter) kept off the steep part of the
- * pages' curve into the gutter.
+ * pages' curve into the gutter. The original look ends it higher, for the CONTINUE bar under it.
  */
-export const textColumn = (y0: number): Column => ({ x0: 30, x1: 596, y0, y1: PAGE.h - 30 });
+export const textColumn = (y0: number, look: LogLook = BOARD): Column => ({ x0: 30, x1: 596, y0, y1: PAGE.h - (look.marker === 'bar' ? 50 : 30) });
 /** Old lines fade out over this many page px as they rise into the tear. */
 export const FADE = 44;
 
@@ -41,8 +44,8 @@ export type DrawItem =
 export interface PageLayout {
   /** Positions with the log scrolled to its newest line (scroll = 0). */
   items: DrawItem[];
-  /** Hit boxes of the options shown (at scroll = 0); greyed ones are shown but not choosable. */
-  options: { index: number; number: number; greyed: boolean; rect: Rect }[];
+  /** Hit boxes of the options shown (at scroll = 0); greyed ones are shown but not choosable. `check`: the option's check, if any. */
+  options: { index: number; number: number; greyed: boolean; check: 'white' | 'red' | null; rect: Rect }[];
   /** Body characters of each entry (what the typewriter reveals). */
   chars: number[];
   cursor: Rect | null;
@@ -54,8 +57,13 @@ export interface PageLayout {
   scrollMax: number;
   /** Height of everything laid out (page px): a new entry pushes the log up by the difference. */
   height: number;
-  /** The continue marker (「▼ 继续」), right-aligned at the column's bottom right, below the window. */
-  marker?: { x: number; y: number; text: string; font: string; color: string; ls: number };
+  /**
+   * The continue marker below the window: 「▼ 继续」 right-aligned at the column's bottom right,
+   * or (the original look) a CONTINUE bar across the column, `bar` its rect.
+   */
+  marker?: { x: number; y: number; text: string; font: string; color: string; ls: number; bar?: Rect & { fill: string } };
+  /** How the log is set (the painter takes its hover style from it). */
+  look: LogLook;
 }
 
 // ---------------------------------------------------------------- style
@@ -75,24 +83,79 @@ export const INK = {
   leadFill: '#F3E9C9',
 };
 
-type Family = 'serif' | 'sans' | 'mono';
+/**
+ * How the log is set. `board` is the M0 board's (the default). `original` (?style=1) follows
+ * the original's dialogue panel, printed on the cream page: its light-on-dark colours turned
+ * into inks of the same hues.
+ */
+export interface LogLook {
+  kind: 'board' | 'original';
+  /** Speaker names: letterspaced sans labels, or bold serif at the body size (the original's). */
+  names: 'label' | 'bold';
+  /** Continuation lines of a speaker's line hang in by this many em (the original: about one). */
+  hang: number;
+  /** Options and the player's words: the typewriter face, or the body face (the original's). */
+  options: 'mono' | 'serif';
+  /** The dice line's check tag: boxed, or plain bracketed text. */
+  diceTag: 'box' | 'plain';
+  /** A new lead: a gold boxed tag, or a green system line (the original's 「New task:」). */
+  notice: 'box' | 'line';
+  /** The continue marker: 「▼ 继续」, or a CONTINUE bar (the original's). */
+  marker: 'text' | 'bar';
+  /**
+   * Checks among the options: a red diamond before a red check's tag (the board), or every
+   * check on its bar (the original's: white checks on a pale bar, red checks on an orange-red
+   * one, hovered or not).
+   */
+  checks: 'mark' | 'bars';
+  /** The block cursor after the last option (the reference demo's prompt). */
+  cursor: boolean;
+}
+
+export const BOARD: LogLook = { kind: 'board', names: 'label', hang: 0, options: 'mono', diceTag: 'box', notice: 'box', marker: 'text', checks: 'mark', cursor: true };
+export const ORIGINAL: LogLook = { kind: 'original', names: 'bold', hang: 1.05, options: 'serif', diceTag: 'plain', notice: 'line', marker: 'bar', checks: 'bars', cursor: false };
+
+/**
+ * Inks of the original look. The original prints light text on a dark panel: bold white names,
+ * grey tags, orange-red options (#D4441C) after white numbers, dimmer once chosen, white when
+ * hovered; white checks on a pale bar (#D0CCC0) in dark text, grey once locked; red checks on
+ * an orange-red bar (#D7441A) in dark red, white when hovered; green system lines; a CONTINUE
+ * bar. On the cream page the same hues are printed dark enough to read (options and names at
+ * 4.4 : 1 or more), and the original's white, its brightest ink, becomes the page's black.
+ */
+export const INK_ORIGINAL = {
+  name: '#27221E',     // people, objects, places, 你 / YOU and the option numbers
+  muted: '#7A7064',    // result tags, the dice tag
+  option: '#B03A1B',   // the options
+  seen: '#9A6A56',     // an option chosen before (the original dims them)
+  hover: '#1E1A16',    // a hovered option: the original's white, as the page's black
+  lead: '#3F6934',     // a new lead: the original's green 「New task:」 line
+  white: '#FBF8F0', whiteText: '#231E1A', locked: '#958D80', // a white check's slip, its words, a failed one's words
+  red: '#D24A21', redText: '#44110A', redHover: '#FFF5EB',     // a red check's slip, its words, hovered
+  bar: '#A5351D', barText: '#F4EADB',                          // the CONTINUE bar
+};
+
+type Family = 'serif' | 'sans' | 'mono' | 'cond';
 interface Style { family: Family; size: number; weight: number; color: string; ls: number; stroke: number }
 
 /**
  * Font stacks. The sans and mono CJK subsets hold only the characters of their roles
  * (labels, options; tools/subset-fonts.mjs), so the serif subset, which holds every
  * character of the script, is their last resort: a stray character never draws as tofu.
+ * `cond` is the condensed caps of the original's buttons and plaques (Latin only; CJK in the sans).
  */
 const STACKS: Record<Lang, Record<Family, string>> = {
   zh: {
     serif: '"Elysium Serif SC", "EB Garamond", serif',
     sans: '"Elysium Sans SC", "Inter", "Elysium Serif SC", sans-serif',
     mono: '"JetBrains Mono", "Elysium Mono SC", "Elysium Serif SC", monospace',
+    cond: '"Barlow Condensed", "Elysium Sans SC", "Inter", "Elysium Serif SC", sans-serif',
   },
   en: {
     serif: '"EB Garamond", "Elysium Serif SC", serif',
     sans: '"Inter", "Elysium Sans SC", "Elysium Serif SC", sans-serif',
     mono: '"JetBrains Mono", "Elysium Mono SC", "Elysium Serif SC", monospace',
+    cond: '"Barlow Condensed", "Inter", "Elysium Sans SC", "Elysium Serif SC", sans-serif',
   },
 };
 
@@ -113,6 +176,7 @@ const font = (lang: Lang, s: Style) => `${s.weight} ${s.size}px ${STACKS[lang][s
 
 // ---------------------------------------------------------------- tokens
 
+const CURLY: Record<string, string> = { '「': '“', '」': '”', '『': '‘', '』': '’' };
 const CLOSE = new Set('。，、：；！？」』）》〉】…’”.,;:!?)]}%·'.split(''));
 const OPEN = new Set('「『（《〈【‘“([{'.split(''));
 const isCJK = (c: string) => /[\u2E80-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF\u3000-\u303F]/.test(c);
@@ -241,16 +305,28 @@ function keepLastSentence(lang: Lang, m: Measurer, atoms: Atom[], lines: Placed[
 
 const lastIndex = <T>(xs: T[], f: (x: T) => boolean) => { for (let i = xs.length - 1; i >= 0; i--) if (f(xs[i])) return i; return -1; };
 
-export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Column): PageLayout {
+export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Column, look: LogLook = BOARD): PageLayout {
   const S = SIZES[lang];
   const maxW = col.x1 - col.x0;
+  const orig = look.kind === 'original', O = INK_ORIGINAL;
   const narr: Style = { family: 'serif', size: S.narr, weight: 400, color: INK.log, ls: 0, stroke: 0 };
   const mono = (color: string, stroke: number): Style => ({ family: 'mono', size: S.mono, weight: 400, color, ls: S.mono * 0.02, stroke });
-  const label = (color: string): Style => ({ family: 'sans', size: S.label, weight: 600, color, ls: S.label * (lang === 'zh' ? 0.1 : 0.12), stroke: 0.2 });
-  const result: Style = { family: 'sans', size: S.label * 0.94, weight: 600, color: INK.muted, ls: S.label * 0.04, stroke: 0 };
+  /** The face of the options and the player's words: the typewriter's, or the body's (the original look). */
+  const said = (color: string, stroke: number): Style => (look.options === 'serif' ? { ...narr, color } : mono(color, stroke));
+  const label = (color: string): Style => (look.names === 'bold'
+    ? { family: 'serif', size: S.narr, weight: 600, color, ls: lang === 'zh' ? 0 : S.narr * 0.025, stroke: 0 }
+    : { family: 'sans', size: S.label, weight: 600, color, ls: S.label * (lang === 'zh' ? 0.1 : 0.12), stroke: 0.2 });
+  const result: Style = orig
+    ? { ...narr, color: O.muted }
+    : { family: 'sans', size: S.label * 0.94, weight: 600, color: INK.muted, ls: S.label * 0.04, stroke: 0 };
   const dash: Style = { family: 'sans', size: S.label, weight: 600, color: INK.log, ls: 0, stroke: 0 };
+  /** The dash after the speaker (drawn as a rule): the board's long one, or the original's en dash. */
+  const rule = orig ? { len: S.narr * 0.5, pad: [S.narr * 0.3, S.narr * 0.32] as [number, number] } : { len: S.label * 0.8, pad: [S.label * 0.3, S.label * 0.45] as [number, number] };
+  const nameInk = orig ? O.name : INK.name;
   const caps = (t: string) => (lang === 'en' ? t.toUpperCase() : t);
   const nbsp = (t: string) => t.replace(/ /g, '\u00a0');
+  /** Words as printed: the original's Simplified Chinese edition uses curly quotes, not corner brackets (one for one, so the typewriter's counts hold). */
+  const q = (t: string) => (orig && lang === 'zh' ? t.replace(/[\u300c\u300d\u300e\u300f]/g, (c) => CURLY[c]) : t);
 
   const chars: number[] = [];
   const isYou = (e: LogEntry) => e.kind === 'line' && e.line.speaker === 'you';
@@ -270,25 +346,30 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
     const tagItems = () => { for (let k = first; k < items.length; k++) items[k].entry = idx; };
 
     if (e.kind === 'check') {
-      // the dice line: a boxed check tag, then the roll; the result tag rides on the voice's line
-      const lh = S.narr * 1.5;
+      // the dice line: a boxed check tag, then the roll; the result tag rides on the voice's line.
+      // The original look sets the tag as plain bracketed text in the body face.
+      const boxed = look.diceTag === 'box';
+      const lh = S.narr * (boxed ? 1.5 : 1.4);
       y += 3;
       const top = y, mid = top + lh / 2;
       const tag = checkTag(e.check, lang);
-      const tagMuted: Style = { family: 'sans', size: S.tag, weight: 600, color: INK.muted, ls: S.tag * 0.05, stroke: 0 };
-      const tagSkill: Style = { ...tagMuted, color: speakerInk(e.check.skill, INK.name), ls: S.tag * 0.1, stroke: 0.2 };
-      const roll: Style = { family: 'mono', size: S.roll, weight: 400, color: INK.log, ls: S.roll * 0.05, stroke: 0.25 };
+      const tagMuted: Style = boxed ? { family: 'sans', size: S.tag, weight: 600, color: INK.muted, ls: S.tag * 0.05, stroke: 0 } : result;
+      const tagSkill: Style = boxed
+        ? { ...tagMuted, color: speakerInk(e.check.skill, INK.name), ls: S.tag * 0.1, stroke: 0.2 }
+        : { ...label(speakerInk(e.check.skill, O.name)), weight: 400, ls: 0 };
+      const roll: Style = boxed ? { family: 'mono', size: S.roll, weight: 400, color: INK.log, ls: S.roll * 0.05, stroke: 0.25 } : { ...narr, ls: S.narr * 0.03 };
       const rollText = `${e.dice[0]} + ${e.dice[1]} + ${e.total - e.dice[0] - e.dice[1]} = ${e.total}`;
       const wOpen = m.width(lang, tagMuted, tag.open), wSkill = m.width(lang, tagSkill, tag.skill), wRest = m.width(lang, tagMuted, tag.rest);
-      const padX = S.tag * 0.55, padT = S.tag * 0.38, padB = S.tag * 0.31, sep = S.narr * 0.7;
-      const boxW = 1 + padX + wOpen + wSkill + wRest + padX + 1, boxH = 1 + padT + S.tag + padB + 1;
+      const padX = boxed ? S.tag * 0.55 : 0, padT = S.tag * 0.38, padB = S.tag * 0.31, sep = S.narr * (boxed ? 0.7 : 0.6);
+      const edge = boxed ? 1 : 0;
+      const boxW = edge + padX + wOpen + wSkill + wRest + padX + edge, boxH = 1 + padT + S.tag + padB + 1;
       let x = col.x0;
       const box = { x, y: mid - boxH / 2, w: boxW, h: boxH };
-      items.push({ t: 'tag', alpha, box });
-      const tb = m.baseline(lang, tagSkill, box.y + 1 + padT, S.tag);
-      pushText(items, lang, x + 1 + padX, tb, tag.open, tagMuted, alpha);
-      pushText(items, lang, x + 1 + padX + wOpen, tb, tag.skill, tagSkill, alpha);
-      pushText(items, lang, x + 1 + padX + wOpen + wSkill, tb, tag.rest, tagMuted, alpha);
+      if (boxed) items.push({ t: 'tag', alpha, box });
+      const tb = boxed ? m.baseline(lang, tagSkill, box.y + 1 + padT, S.tag) : m.baseline(lang, tagSkill, top, lh);
+      pushText(items, lang, x + edge + padX, tb, tag.open, tagMuted, alpha);
+      pushText(items, lang, x + edge + padX + wOpen, tb, tag.skill, tagSkill, alpha);
+      pushText(items, lang, x + edge + padX + wOpen + wSkill, tb, tag.rest, tagMuted, alpha);
       // the roll follows the tag, or drops to a second row when it does not fit
       let rowMid = mid;
       if (boxW + sep + m.width(lang, roll, rollText) > maxW) { x = col.x0 + padX; rowMid = mid + lh * 0.85; }
@@ -317,6 +398,26 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
       items.push({ t: 'rule', color: INK.cursor, alpha: 0.75, box: { x: cx - 22, y: y + lh - 2, w: 44, h: 1.4 } });
       y += lh + 8;
       plain.push(text);
+      tagItems();
+      return;
+    }
+
+    if (e.kind === 'notice' && look.notice === 'line') {
+      // a new lead as the original's system line (「New task: …」): green, then the count
+      const green: Style = { ...narr, color: O.lead };
+      const text = `${ui.leadLine[lang]}${EVIDENCE_LABELS[e.flag]?.[lang] ?? e.flag}`;
+      const countText = lang === 'zh' ? `（${e.count}/${e.total}）` : ` (${e.count}/${e.total})`;
+      const atoms = atomize([{ text, style: green }, { text: nbsp(countText), style: { ...result, color: O.muted }, glue: true, keep: true }]);
+      for (const a of atoms) a.text = a.text.replace(/\u00a0/g, ' ');
+      const lh = S.lineHeight;
+      y += 3;
+      for (const line of breakLines(lang, m, atoms, maxW, 0, (a) => a.style, undefined, S.narr * look.hang)) {
+        const bl = m.baseline(lang, green, y, lh);
+        for (const p of line) if (!p.atom.space) pushText(items, lang, col.x0 + p.x, bl, p.atom.text, p.atom.style, alpha);
+        y += lh;
+      }
+      y += 5;
+      plain.push(`${text}${countText}`);
       tagItems();
       return;
     }
@@ -360,7 +461,29 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
     let optionIndex: number | undefined;
     const greyed = e.kind === 'option' && e.state === 'greyed';
     let redMark = false;
-    if (e.kind === 'option') {
+    if (e.kind === 'option' && orig) {
+      // the original: 「1. -」 in the names' ink, then the words in its red-orange, dimmer once
+      // chosen. A check sits on its bar (the painter draws it): a white check's words dark, grey
+      // once it failed; a red check's words dark red
+      optionIndex = e.index;
+      const kind = e.option.check?.kind;
+      const ink = greyed ? O.locked : kind === 'white' ? O.whiteText : kind === 'red' ? O.redText : e.seen ? O.seen : O.option;
+      base = said(ink, 0);
+      const lead: Style = { ...narr, color: kind || greyed ? ink : O.name };
+      const num = `${e.number}. -`;
+      runs = [{ text: nbsp(num), style: lead, option: optionIndex, keep: true }];
+      let words = q(e.option.text[lang]);
+      if (e.option.check) {
+        const t = checkTag(e.option.check, lang);
+        const tagText = `${t.open}${t.skill}${t.rest}`;
+        runs.push({ text: ' ', style: base, option: optionIndex });
+        runs.push({ text: nbsp(tagText), style: base, option: optionIndex, keep: true, glue: true });
+        words = `${tagText} ${words}`;
+      }
+      runs.push({ text: ' ' + q(e.option.text[lang]), style: base, option: optionIndex });
+      hang = m.width(lang, lead, `${e.number}. -`) + m.width(lang, base, ' ');
+      plain.push(`${e.number}. - ${words}`);
+    } else if (e.kind === 'option') {
       // a current option: its number, its check tag if it has one, its words; a failed white
       // check waits greyed, a red check carries a red marker on its tag
       optionIndex = e.index;
@@ -382,21 +505,26 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
     } else {
       const { line } = e;
       if (line.speaker === 'narrator') {
-        runs = [{ text: line.text[lang], style: narr, body: true }];
+        runs = [{ text: q(line.text[lang]), style: narr, body: true }];
         indent = lang === 'zh' ? S.narr * 2 : S.narr * 1.2;
         firstBold = lang === 'zh';
-        plain.push(line.text[lang]);
+        plain.push(q(line.text[lang]));
       } else {
         // speaker, [result tag], em dash (drawn as a rule so its length does not depend on the font), words
         const name = speakerName(line, lang);
-        runs = [{ text: nbsp(caps(name)), style: label(speakerInk(line.speaker, INK.name)), keep: true }];
+        // (the original names the Horrific Necktie like a person, in the neutral ink)
+        const ink = orig && line.speaker === 'necktie' ? nameInk : speakerInk(line.speaker, nameInk);
+        runs = [{ text: nbsp(caps(name)), style: label(ink), keep: true }];
         const tag = line.result ? resultTag(line.result, lang) : '';
-        if (tag) runs.push({ text: nbsp(tag), style: result, glue: true, keep: true, pad: [S.label * 0.4, 0] });
-        runs.push({ text: '—', style: dash, glue: true, pad: [S.label * 0.3, S.label * 0.45], rule: S.label * 0.8 });
-        // the player's own past words stay in the options' face and rust, dimmed
-        if (line.speaker === 'you') base = mono(INK.rust, 0.3);
-        runs.push({ text: line.text[lang], style: base, body: true });
-        plain.push(`${caps(name)}${tag ? ' ' + tag : ''} — ${line.text[lang]}`);
+        if (tag) runs.push({ text: nbsp(tag), style: result, glue: true, keep: true, pad: [orig ? S.narr * 0.28 : S.label * 0.4, 0] });
+        runs.push({ text: '—', style: dash, glue: true, pad: rule.pad, rule: rule.len });
+        // the player's own past words stay in the options' face and rust, dimmed (the original
+        // prints them like any other line)
+        if (line.speaker === 'you' && !orig) base = mono(INK.rust, 0.3);
+        runs.push({ text: q(line.text[lang]), style: base, body: true });
+        // the original hangs the lines after the first in, under the words
+        hang = S.narr * look.hang;
+        plain.push(`${caps(name)}${tag ? ' ' + tag : ''} — ${q(line.text[lang])}`);
       }
     }
 
@@ -427,8 +555,11 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
           items.push({ t: 'mark', color: greyed ? INK.greyed : INK.redMark, alpha, box: { x: x - d * 1.35, y: bl - S.mono * 0.36 - d / 2, w: d, h: d } });
         }
         if (p.atom.rule) {
-          const h = Math.max(1, S.label * 0.07);
-          items.push({ t: 'rule', color: st.color, alpha: alpha * 0.55, box: { x, y: bl - S.narr * 0.36 - h / 2, w: p.atom.rule, h } });
+          // the board's dash at the CJK middle; the original's en dash at the height of its
+          // font's (the Latin one sits lower)
+          const h = orig ? Math.max(1, S.narr * 0.055) : Math.max(1, S.label * 0.07);
+          const mid = orig && lang === 'en' ? 0.25 : 0.36;
+          items.push({ t: 'rule', color: st.color, alpha: alpha * (orig ? 0.85 : 0.55), box: { x, y: bl - S.narr * mid - h / 2, w: p.atom.rule, h } });
           continue;
         }
         pushText(items, lang, x, bl, p.atom.text, st, alpha, p.atom.option);
@@ -436,7 +567,7 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
         if (from !== undefined) (items[items.length - 1] as Extract<DrawItem, { t: 'text' }>).from = from;
         prevEnd = col.x0 + p.x + p.w;
       }
-      if (idx === lastOption && li === lines.length - 1 && !greyed) {
+      if (idx === lastOption && li === lines.length - 1 && !greyed && look.cursor) {
         const em = base.size;
         cursor = { x: prevEnd + em * 0.35, y: bl + em * 0.2 - em * 1.08, w: em * 0.6, h: em * 1.08 };
         items.push({ t: 'cursor', color: INK.cursor, box: cursor });
@@ -445,7 +576,8 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
     });
     if (optionIndex !== undefined && e.kind === 'option') {
       const top = y - lines.length * lh;
-      options.push({ index: optionIndex, number: e.number, greyed, rect: { x: col.x0 - 10, y: top, w: maxW + 20, h: lines.length * lh } });
+      const check = e.option.check?.kind === 'red' ? 'red' : e.option.check ? 'white' : null;
+      options.push({ index: optionIndex, number: e.number, greyed, check, rect: { x: col.x0 - 10, y: top, w: maxW + 20, h: lines.length * lh } });
     }
     y += 2;
     tagItems();
@@ -461,11 +593,19 @@ export function layoutLog(entries: LogEntry[], lang: Lang, m: Measurer, col: Col
   }
   for (const o of options) o.rect.y += shift;
   const room = col.y1 - col.y0 - FADE * 0.6;
-  const ms = lang === 'zh' ? 18 : 15.5;
-  const mk: Style = { family: 'sans', size: ms, weight: 600, color: INK.cursor, ls: ms * 0.18, stroke: 0.3 };
-  const markText = ui.continue[lang];
-  const marker = { x: col.x1 - (m.width(lang, mk, markText) - mk.ls), y: col.y1 + ms + 2, text: markText, font: font(lang, mk), color: mk.color, ls: mk.ls };
-  return { items, options, chars, cursor, plain, window: { y0: col.y0, y1: col.y1, fade: FADE }, scrollMax: Math.max(0, content - room), height: Math.max(0, content), marker };
+  let marker: PageLayout['marker'];
+  if (look.marker === 'bar') {
+    // the original's CONTINUE bar: across the column, right under the newest line
+    const h = 26, top = col.y1 + 4, size = lang === 'zh' ? 18.5 : 22;
+    const st: Style = { family: 'cond', size, weight: 500, color: O.barText, ls: size * (lang === 'zh' ? 0.14 : 0.1), stroke: 0 };
+    marker = { x: col.x0 + 12, y: m.baseline(lang, st, top, h) + 0.5, text: ui.continueBar[lang], font: font(lang, st), color: st.color, ls: st.ls, bar: { x: col.x0 - 4, y: top, w: maxW + 8, h, fill: O.bar } };
+  } else {
+    const ms = lang === 'zh' ? 18 : 15.5;
+    const mk: Style = { family: 'sans', size: ms, weight: 600, color: INK.cursor, ls: ms * 0.18, stroke: 0.3 };
+    const markText = ui.continue[lang];
+    marker = { x: col.x1 - (m.width(lang, mk, markText) - mk.ls), y: col.y1 + ms + 2, text: markText, font: font(lang, mk), color: mk.color, ls: mk.ls };
+  }
+  return { items, options, chars, cursor, plain, window: { y0: col.y0, y1: col.y1, fade: FADE }, scrollMax: Math.max(0, content - room), height: Math.max(0, content), marker, look };
 }
 
 function pushText(items: DrawItem[], lang: Lang, x: number, y: number, text: string, s: Style, alpha: number, option?: number) {
@@ -483,5 +623,5 @@ export function layoutRightPage(lang: Lang, m: Measurer): PageLayout {
   const pno: Style = { family: 'serif', size: 13, weight: 400, color: '#2B2622', ls: 13 * 0.2, stroke: 0 };
   const pw = m.width(lang, pno, '18') - pno.ls;
   pushText(items, lang, PAGE.w - 52 - pw, m.baseline(lang, pno, PAGE.h - 26, 16), '18', pno, 0.5);
-  return { items, options: [], chars: [], cursor: null, plain: [], window: null, scrollMax: 0, height: 0 };
+  return { items, options: [], chars: [], cursor: null, plain: [], window: null, scrollMax: 0, height: 0, look: BOARD };
 }

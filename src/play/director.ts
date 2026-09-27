@@ -32,6 +32,10 @@ export interface Stagehands {
   cues: { play(cue: string): Promise<void>; enter(): Promise<void> };
   /** Which puppet bobs while its line types. */
   speaking(who: 'harry' | 'kim' | null): void;
+  /** The dice have settled on a check's result (?style=3 drops a slip beside them). */
+  checked?(success: boolean): void;
+  /** An option was chosen (?style=3 takes the slips away). */
+  chosen?(): void;
 }
 
 /** Rest after a line that does not stop (ms), after a stop's click, after the dice line. */
@@ -67,6 +71,8 @@ export class Director {
     const view = this.runner.options().find((o) => o.number === number);
     if (!view || view.state !== 'enabled') return false;
     this.idle = false;
+    this.log.chose(view.option);
+    this.hands.chosen?.();
     this.log.clearOptions();
     this.log.refreshMirror();
     void this.play(this.runner.choose(number));
@@ -202,6 +208,7 @@ export class Director {
   private async roll(r: RollResult) {
     await this.clock.wait(150);
     await this.hands.dice.roll(r.dice);
+    this.hands.checked?.(r.success);
     await this.log.append({ kind: 'check', check: r.check, dice: r.dice, total: r.total, success: r.success });
     await this.clock.wait(REST.roll);
   }

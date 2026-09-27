@@ -14,7 +14,10 @@
 // Fails on console errors or page errors, if an option on the path is missing or not in the
 // expected state, if a hover tip does not show, or if the end beat is never reached.
 //
-// Usage: node tools/play.mjs [--no-build] [--speed N] [--only zh|en]
+// --view N plays in camera framing N (src/scene/camera.ts VIEWS); --out DIR writes the
+// captures there instead of docs/.
+//
+// Usage: node tools/play.mjs [--no-build] [--speed N] [--only zh|en] [--view N] [--out DIR]
 import { chromium } from 'playwright-core';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
@@ -28,6 +31,8 @@ const args = process.argv.slice(2);
 const arg = (k, d) => (args.includes(k) ? args[args.indexOf(k) + 1] : d);
 const speed = Number(arg('--speed', 3));
 const only = arg('--only', null);
+const view = arg('--view', null);
+const out = arg('--out', join(root, 'docs'));
 
 /**
  * The path, by option id. `before`: captures at the options before choosing (hover tips);
@@ -56,7 +61,7 @@ if (!args.includes('--no-build')) {
 const server = await preview({ root, logLevel: 'warn', preview: { port: 4318, strictPort: false, open: false } });
 const url = server.resolvedUrls.local[0];
 const browser = await chromium.launch({ executablePath: CHROMIUM, args: CHROMIUM_ARGS });
-mkdirSync(join(root, 'docs'), { recursive: true });
+mkdirSync(out, { recursive: true });
 
 const problems = [];
 const T = 900_000; // software WebGL renders a frame in seconds; be patient
@@ -83,8 +88,8 @@ async function playthrough(lang) {
     // two fresh frames, so the capture shows the state reached, not the frame in flight
     const f = await page.evaluate(() => window.__play.frames);
     await until((f) => window.__play.frames >= f + 2, f);
-    await page.screenshot({ path: join(root, 'docs', `${name}.png`), timeout: T });
-    console.log(`  saved docs/${name}.png (${since()})`);
+    await page.screenshot({ path: join(out, `${name}.png`), timeout: T });
+    console.log(`  saved ${join(out, `${name}.png`)} (${since()})`);
   };
   /** Presses Space at every stop until `done` holds (capturing the stops listed in AT_STOP). */
   const advance = async (done) => {
@@ -116,7 +121,7 @@ async function playthrough(lang) {
     });
   };
 
-  await page.goto(`${url}?dice=${DICE}&speed=${speed}${lang === 'en' ? '&lang=en' : ''}`, { waitUntil: 'load' });
+  await page.goto(`${url}?dice=${DICE}&speed=${speed}${lang === 'en' ? '&lang=en' : ''}${view === null ? '' : `&view=${view}`}`, { waitUntil: 'load' });
   await until(() => window.__ready === true && !!window.__play);
   await advance(() => window.__play.idle);
   console.log(`[${lang}] opening settled (${since()})`);
