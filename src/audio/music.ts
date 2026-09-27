@@ -9,10 +9,11 @@
 const KEY = 'agent-elysium:music';
 const SRC = `${import.meta.env.BASE_URL}audio/elysium.mp3`;
 /**
- * Playback level. The track is mastered loud (about -16.5 dBFS RMS); this sits it near -25.6,
- * under the reading and the sound effects.
+ * Playback level (-19 dB). The track is mastered loud (-15.5 LUFS integrated); this sits it at
+ * -34.7 LUFS, under the sound effects: the dice and the checks peak 7 to 9 LU above it
+ * (momentary loudness), the lead cards and morale about level with it (docs/music.md).
  */
-const VOLUME = 0.35;
+const VOLUME = 0.11;
 /** Fades (time constants, s): in at the start, out at the toggle or a hidden tab, back in, out at the end, into and out of the flashback. */
 const FADE = { start: 1.2, off: 0.15, back: 0.4, end: 2.2, mood: 0.5 };
 /** The flashback: the low-pass cut-off (Hz) and the level (times VOLUME). */
